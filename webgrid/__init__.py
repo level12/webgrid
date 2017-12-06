@@ -17,6 +17,10 @@ from webhelpers2.html.tags import link_to
 from werkzeug.datastructures import MultiDict
 
 from .renderers import HTML, XLS
+from .utils import (
+    enumerate_class_attributes,
+    OverridableAttributeProperty
+)
 
 # conditional imports to support libs without requiring them
 try:
@@ -36,7 +40,7 @@ avg_ = sasql.func.avg
 
 class _None(object):
     """
-        A sentinal object to indicate no value
+        A sentinel object to indicate no value
     """
     pass
 
@@ -93,10 +97,16 @@ class Column(object):
         Column represents the fixed settings for a datagrid column
     """
     _creation_counter = 0
+
+    # NOTE: `key` and `render_in` have some property magic going on below
+    key = None
+    filter = None
+    can_sort = True
     xls_width = None
-    xls_num_format = None
     xls_style = None
-    render_in = 'html', 'xls'
+    xls_num_format = None
+    render_in = ('html', 'xls')
+    has_subtotal = False
 
     def __new__(cls, *args, **kwargs):
         col_inst = super(Column, cls).__new__(cls)
@@ -109,55 +119,70 @@ class Column(object):
         grid_cls_cols = grid_locals.setdefault('__cls_cols__', [])
         grid_cls_cols.append(self)
 
-    def __init__(self, label, key=None, filter=None, can_sort=True,
-                 xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, has_subtotal=False, **kwargs):
+    def __init__(self, label, key=_None, filter=_None, **kwargs):
+
         self.label = label
-        self.key = key
-        self.filter = filter
-        self.filter_for = None
-        self.filter_op = None
-        self._create_order = False
-        self.can_sort = can_sort
-        self.has_subtotal = has_subtotal
+        self.expr = None
+
+        for attr in enumerate_class_attributes(self):
+            if attr in kwargs:
+                setattr(self, attr, kwargs.pop(attr))
+
+        if key is not _None:
+            self.key = key
+
+        if filter is not _None:
+            self.filter = filter
+
         self.kwargs = kwargs
         self.grid = None
+
+        # filters can be sent in as a class (not class instance) if needed
+        if inspect.isclass(self.filter):
+            if self.expr is None:
+                raise ValueError('the filter was a class type, but no'
+                                 ' column-like object is available from "key" to pass in as'
+                                 ' as the first argument')
+            self.filter = self.filter(self.expr)
+
+    key = OverridableAttributeProperty('key', key)
+
+    @key.setter
+    def key(self, name, value):
         self.expr = None
-        if render_in is not _None:
-            self.render_in = ensure_tuple(render_in)
-        if xls_width:
-            self.xls_width = xls_width
-        if xls_num_format:
-            self.xls_num_format = xls_num_format
-        if xls_style:
-            self.xls_style = xls_style
 
         # if the key isn't a base string, assume its a column-like object that
         # works with a SA Query instance
-        if key is None:
+        if value is None:
             self.can_sort = False
-        elif not isinstance(key, six.string_types):
-            self.expr = col = key
+
+        elif isinstance(value, six.string_types):
+            pass
+
+        else:
+            self.expr = value
+
             # use column.key, column.name, or None in that order
-            key = getattr(col, 'key', getattr(col, 'name', None))
+            key = getattr(value, 'key', getattr(value, 'name', None))
 
             if key is None:
                 raise ValueError('expected filter to be a SQLAlchemy column-like'
                                  ' object, but it did not have a "key" or "name"'
                                  ' attribute')
-            self.key = key
 
-        # filters can be sent in as a class (not class instance) if needed
-        if inspect.isclass(filter):
-            if self.expr is None:
-                raise ValueError('the filter was a class type, but no'
-                                 ' column-like object is available from "key" to pass in as'
-                                 ' as the first argument')
-            self.filter = filter(self.expr)
+            value = key
+
+        setattr(self, name, value)
+
+    render_in = OverridableAttributeProperty('render_in', render_in)
+
+    @render_in.setter
+    def render_in(self, name, value):
+        setattr(self, name, ensure_tuple(value))
 
     def new_instance(self, grid):
         cls = self.__class__
-        column = cls(self.label, self.key, None, self.can_sort, _dont_assign=True)
+        column = cls(self.label, self.key, None, can_sort=self.can_sort, _dont_assign=True)
         column.grid = grid
         column.expr = self.expr
 
@@ -173,13 +198,10 @@ class Column(object):
         else:
             column.xlwt_stymat = None
 
-        # try to be smart about which attributes should get copied to the
-        # new instance by looking for attributes on the class that have the
-        # same name as arguments to the classes __init__ method
-        for argname in inspect.getargspec(self.__init__).args:
-            if argname != 'self' and hasattr(self, argname) and \
-                    argname not in ('label', 'key', 'filter', 'can_sort'):
-                setattr(column, argname, getattr(self, argname))
+        # copy the class attributes to the newly-instantiated column
+        for attr in enumerate_class_attributes(self):
+            if attr not in ('can_sort', 'filter', 'key', 'label'):
+                setattr(column, attr, getattr(self, attr))
 
         return column
 
@@ -274,13 +296,7 @@ class Column(object):
 
 class LinkColumnBase(Column):
     link_attrs = {}
-
-    def __init__(self, label, key=None, filter=None, can_sort=True,
-                 link_label=None, xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, **kwargs):
-        Column.__init__(self, label, key, filter, can_sort, xls_width,
-                        xls_style, xls_num_format, render_in, **kwargs)
-        self.link_label = link_label
+    link_label = None
 
     def render_html(self, record, hah):
         url = self.create_url(record)
@@ -295,16 +311,9 @@ class LinkColumnBase(Column):
 
 
 class BoolColumn(Column):
-
-    def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 reverse=False, true_label='True', false_label='False',
-                 xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, **kwargs):
-        Column.__init__(self, label, key_or_filter, key, can_sort, xls_width,
-                        xls_style, xls_num_format, render_in, **kwargs)
-        self.reverse = reverse
-        self.true_label = true_label
-        self.false_label = false_label
+    false_label = 'False'
+    reverse = False
+    true_label = 'True'
 
     def format_data(self, data):
         if self.reverse:
@@ -315,23 +324,12 @@ class BoolColumn(Column):
 
 
 class YesNoColumn(BoolColumn):
-
-    def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 reverse=False, xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, **kwargs):
-        BoolColumn.__init__(self, label, key_or_filter, key, can_sort, reverse,
-                            'Yes', 'No', xls_width, xls_style, xls_num_format, render_in, **kwargs)
+    false_label = 'No'
+    true_label = 'Yes'
 
 
 class DateColumnBase(Column):
-
-    def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 html_format=None, xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, **kwargs):
-        Column.__init__(self, label, key_or_filter, key, can_sort, xls_width,
-                        xls_style, xls_num_format, render_in, **kwargs)
-        if html_format:
-            self.html_format = html_format
+    html_format = None
 
     def render_html(self, record, hah):
         data = self.extract_and_format_data(record)
@@ -387,28 +385,19 @@ class TimeColumn(DateColumnBase):
 
 
 class NumericColumn(Column):
+    curr = ''
+    dp = '.'
+    format_as = 'general'
+    neg = '-'
+    places = 2
+    pos = ''
+    sep = ','
+    trailneg = ''
     xls_fmt_general = '#,##0{dec_places};{neg_prefix}-#,##0{dec_places}'
     xls_fmt_accounting = '_($* #,##0{dec_places}_);{neg_prefix}_($* (#,##0{dec_places})' + \
                          ';_($* "-"??_);_(@_)'
     xls_fmt_percent = '0{dec_places}%;{neg_prefix}-0{dec_places}%'
-
-    def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 reverse=False, xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, format_as='general', places=2, curr='',
-                 sep=',', dp='.', pos='', neg='-', trailneg='',
-                 xls_neg_red=True, has_subtotal=False, **kwargs):
-        Column.__init__(self, label, key_or_filter, key, can_sort, xls_width,
-                        xls_style, xls_num_format, render_in,
-                        has_subtotal, **kwargs)
-        self.places = places
-        self.curr = curr
-        self.sep = sep
-        self.dp = dp
-        self.pos = pos
-        self.neg = neg
-        self.trailneg = trailneg
-        self.xls_neg_red = xls_neg_red
-        self.format_as = format_as
+    xls_neg_red = True
 
     def html_decimal_format_opts(self, data):
         return (

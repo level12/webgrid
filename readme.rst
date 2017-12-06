@@ -38,3 +38,30 @@ Current Status
 ---------------
 
 Currently beta quality.
+
+Changes in 0.2.0
+----------------
+
+This update includes backwards-incompatible changes that affect the way column classes
+are defined.
+
+From this point forward, column classes should declare their pertinent configuration options
+via class attributes, rather than as initialization parameters.
+
+Pre-0.2.0:
+
+    class SomeColumn(Column):
+        def __init__(self, label, key=None, filter=None, can_sort=False,
+                 link_label=None, xls_width=None, xls_style=None, xls_num_format=None,
+                 render_in=_None, **kwargs):
+            Column.__init__(self, label, key, filter, can_sort, xls_width,
+                        xls_style, xls_num_format, render_in, **kwargs)
+            self.link_label = link_label
+
+
+The equivalent code, beginning in 0.2.0:
+
+    class SomeColumn(Column):
+        can_sort = False
+        link_label = None
+
