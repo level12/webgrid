@@ -179,7 +179,10 @@ class Column(object):
         # try to be smart about which attributes should get copied to the
         # new instance by looking for attributes on the class that have the
         # same name as arguments to the classes __init__ method
-        for argname in inspect.getargspec(self.__init__).args:
+        args = (inspect.getargspec(self.__init__).args
+                if six.PY2 else inspect.getfullargspec(self.__init__).args)
+
+        for argname in args:
             if argname != 'self' and hasattr(self, argname) and \
                     argname not in ('label', 'key', 'filter', 'can_sort'):
                 setattr(column, argname, getattr(self, argname))
