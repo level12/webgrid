@@ -154,7 +154,7 @@ def ignore_unique(f, decorated_obj, args, kwargs):
     except Exception as e:
         dbsess.rollback()
         if is_unique_exc(e):
-                return
+            return
         raise
 
 
