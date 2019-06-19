@@ -350,6 +350,68 @@ class OptionsIntFilterBase(OptionsFilterBase):
                                    default_value2)
 
 
+class EnumModifier(formencode.validators.UnicodeString):
+    def __init__(self, enum_type, **kw):
+        self.enum_type = enum_type
+        super().__init__(**kw)
+
+    def _convert_to_python(self, value, state):
+        value = super()._convert_to_python(value, state)
+        try:
+            return self.enum_type[value]
+        except KeyError:
+            raise formencode.validators.Invalid('Not a valid selection', value, state)
+
+    def _convert_from_python(self, value, state):
+        if isinstance(value, self.enum_type):
+            value = value.name
+        return super()._convert_from_python(value, state)
+
+
+class OptionsEnumFilter(OptionsFilterBase):
+    def __init__(
+            self,
+            sa_col,
+            value_modifier=None,
+            default_op=None,
+            default_value1=None,
+            default_value2=None,
+            enum_type=None,
+    ):
+        self.enum_type = enum_type
+        if self.enum_type is None:
+            raise ValueError('enum_type argument not given')
+        if value_modifier is None:
+            value_modifier = self.default_modifier
+        super(OptionsEnumFilter, self).__init__(
+            sa_col,
+            value_modifier=value_modifier,
+            default_op=default_op,
+            default_value1=default_value1,
+            default_value2=default_value2,
+        )
+
+    def default_modifier(self, value):
+        try:
+            return self.enum_type[value]
+        except KeyError:
+            raise ValueError('Not a valid selection')
+
+    def options_from(self):
+        return [(x.name, x.value) for x in self.enum_type]
+
+    def new_instance(self, **kwargs):
+        new_inst = super(OptionsEnumFilter, self).new_instance(**kwargs)
+        new_inst.enum_type = self.enum_type
+        return new_inst
+
+    def process(self, value):
+        if self.value_modifier is None:
+            return value
+
+        return self.value_modifier.to_python(value)
+
+
 class TextFilter(FilterBase):
     operators = (ops.eq, ops.not_eq, ops.contains, ops.not_contains, ops.empty, ops.not_empty)
 

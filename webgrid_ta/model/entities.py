@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 
+import enum
+import sys
+
 import arrow
 from blazeutils.strings import randchars
 import sqlalchemy as sa
@@ -33,6 +36,12 @@ class Car(db.Model, DefaultMixin):
         return '<Car %s, %s, %s>' % (self.make, self.model, self.year)
 
 
+class AccountType(enum.Enum):
+    admin = 'Admin'
+    manager = 'Manager'
+    employee = 'Employee'
+
+
 class Person(db.Model, DefaultMixin):
     __tablename__ = 'persons'
 
@@ -52,6 +61,7 @@ class Person(db.Model, DefaultMixin):
     start_time = sa.Column(sa.Time)
     legacycol1 = sa.Column('LegacyColumn1', sa.String(50), key='legacycolumn')
     legacycol2 = sa.Column('LegacyColumn2', sa.String(50))
+    account_type = sa.Column(sa.Enum(AccountType, name='person_account_type'))
 
     status = saorm.relationship('Status')
 

@@ -9,8 +9,8 @@ from .helpers import query_to_str
 
 from webgrid.filters import Operator
 from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilter, DateFilter, \
-    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter
-from webgrid_ta.model.entities import ArrowRecord, Person, db
+    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter
+from webgrid_ta.model.entities import ArrowRecord, Person, db, AccountType
 
 from .helpers import ModelBase
 from six.moves import map
@@ -1040,6 +1040,22 @@ class TestOptionsFilter(CheckFilterBase):
                                  default_value1=def_val).new_instance()
         filter.set(None, None)
         self.assert_filter_query(filter, "WHERE persons.sortorder IN (1, 2)")
+
+
+class TestEnumFilter(CheckFilterBase):
+    def get_filter(self):
+        return
+
+    def test_is(self):
+        filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', ['admin'])
+        self.assert_filter_query(filter, "WHERE persons.account_type = 'admin'")
+
+    def test_is_multiple(self):
+        filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', ['admin', 'manager'])
+        self.assert_filter_query(filter, "WHERE persons.account_type IN ('admin', 'manager')")
+
 
 
 class TestIntrospect(CheckFilterBase):

@@ -489,6 +489,17 @@ class NumericColumn(Column):
         return Column.xlwt_stymat_init(self)
 
 
+class EnumColumn(Column):
+    """
+    This column type is meant to be used with python `enum.Enum` type columns. It expects that
+    the display value is the `value` attribute of the enum instance.
+    """
+    def format_data(self, value):
+        if value is None:
+            return None
+        return value.value
+
+
 class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     __cls_cols__ = ()
     identifier = None
