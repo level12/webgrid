@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import enum
-import sys
 
 import arrow
 from blazeutils.strings import randchars

@@ -1057,7 +1057,6 @@ class TestEnumFilter(CheckFilterBase):
         self.assert_filter_query(filter, "WHERE persons.account_type IN ('admin', 'manager')")
 
 
-
 class TestIntrospect(CheckFilterBase):
     def test_new_instance(self):
         class TestFilter(FilterBase):
