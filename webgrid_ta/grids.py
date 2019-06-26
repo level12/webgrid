@@ -57,7 +57,8 @@ class PeopleGrid(Grid):
     Column(_('Sort Order'), Person.sortorder, render_in='xls')
     Column(_('State'), Person.state, render_in='xlsx')
     NumericColumn(_('Number'), Person.numericcol, has_subtotal=True)
-    EnumColumn(_('Account Type'), Person.account_type, OptionsEnumFilter(Person.account_type, enum_type=AccountType))
+    EnumColumn(_('Account Type'), Person.account_type,
+               OptionsEnumFilter(Person.account_type, enum_type=AccountType))
 
     def query_prep(self, query, has_sort, has_filters):
         query = query.add_columns(
