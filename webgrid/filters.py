@@ -361,10 +361,13 @@ class OptionsEnumFilter(OptionsFilterBase):
             enum_type=None,
     ):
         self.enum_type = enum_type
+
         if self.enum_type is None:
             raise ValueError('enum_type argument not given')
+
         if value_modifier is None:
             value_modifier = self.default_modifier
+
         super(OptionsEnumFilter, self).__init__(
             sa_col,
             value_modifier=value_modifier,

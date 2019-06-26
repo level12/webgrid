@@ -1043,8 +1043,19 @@ class TestOptionsFilter(CheckFilterBase):
 
 
 class TestEnumFilter(CheckFilterBase):
-    def get_filter(self):
-        return
+    @raises(ValueError)
+    def test_create_without_enum_type(self):
+        OptionsEnumFilter(Person.account_type)
+
+    @raises(ValueError)
+    def test_default_modifier_throws_error_when_not_exists(self):
+        f = OptionsEnumFilter(Person.account_type, enum_type=AccountType)
+        f.default_modifier('doesntexist')
+
+    def test_returns_value_when_value_modifier_is_none(self):
+        f = OptionsEnumFilter(Person.account_type, enum_type=AccountType)
+        f.value_modifier = None
+        f.process('value')
 
     def test_is(self):
         filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
