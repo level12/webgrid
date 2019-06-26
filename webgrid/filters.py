@@ -392,6 +392,9 @@ class OptionsEnumFilter(OptionsFilterBase):
         )
 
     def default_modifier(self, value):
+        if isinstance(value, self.enum_type):
+            return value
+
         try:
             return self.enum_type[value]
         except KeyError:

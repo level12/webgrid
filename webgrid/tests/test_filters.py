@@ -1056,6 +1056,11 @@ class TestEnumFilter(CheckFilterBase):
         filter.set('is', ['admin', 'manager'])
         self.assert_filter_query(filter, "WHERE persons.account_type IN ('admin', 'manager')")
 
+    def test_literal_value(self):
+        filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', [AccountType.admin])
+        self.assert_filter_query(filter, "WHERE persons.account_type = 'admin'")
+
 
 class TestIntrospect(CheckFilterBase):
     def test_new_instance(self):
