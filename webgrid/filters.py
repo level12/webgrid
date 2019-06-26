@@ -350,24 +350,6 @@ class OptionsIntFilterBase(OptionsFilterBase):
                                    default_value2)
 
 
-class EnumModifier(formencode.validators.UnicodeString):
-    def __init__(self, enum_type, **kw):
-        self.enum_type = enum_type
-        super().__init__(**kw)
-
-    def _convert_to_python(self, value, state):
-        value = super()._convert_to_python(value, state)
-        try:
-            return self.enum_type[value]
-        except KeyError:
-            raise formencode.validators.Invalid('Not a valid selection', value, state)
-
-    def _convert_from_python(self, value, state):
-        if isinstance(value, self.enum_type):
-            value = value.name
-        return super()._convert_from_python(value, state)
-
-
 class OptionsEnumFilter(OptionsFilterBase):
     def __init__(
             self,
