@@ -25,7 +25,7 @@ from webgrid import (
 )
 from webgrid.filters import TextFilter
 from webgrid.renderers import RenderLimitExceeded, HTML, XLS, XLSX, CSV
-from webgrid_ta.model.entities import ArrowRecord, Person, Status, Email, db
+from webgrid_ta.model.entities import ArrowRecord, Person, Status, Email, db, AccountType
 
 from webgrid_ta.grids import ArrowGrid, Grid, PeopleGrid as PG, ArrowCSVGrid
 from .helpers import inrequest, eq_html
@@ -85,8 +85,10 @@ def setup_module():
         p.emails.append(Email(email='email%03d@gmail.com' % x))
         if x % 4 == 1:
             p.status = sip
+            p.account_type = AccountType.admin
         elif x % 4 == 2:
             p.status = sp
+            p.account_type = AccountType.employee
         elif x % 4 == 0:
             p.status = None
 

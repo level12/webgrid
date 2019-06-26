@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 from webgrid import BaseGrid as BaseGrid, Column, LinkColumnBase, \
-    YesNoColumn, DateTimeColumn, DateColumn, NumericColumn
+    YesNoColumn, DateTimeColumn, DateColumn, NumericColumn, EnumColumn
 from webgrid.filters import TextFilter, OptionsFilterBase, Operator, \
-    DateTimeFilter, ops
-from .model.entities import ArrowRecord, Person, Status
+    DateTimeFilter, ops, OptionsEnumFilter
+from .model.entities import ArrowRecord, Person, Status, AccountType
 
 from .app import webgrid
 from webgrid.renderers import CSV
@@ -57,10 +57,11 @@ class PeopleGrid(Grid):
     Column(_('Sort Order'), Person.sortorder, render_in='xls')
     Column(_('State'), Person.state, render_in='xlsx')
     NumericColumn(_('Number'), Person.numericcol, has_subtotal=True)
+    EnumColumn(_('Account Type'), Person.account_type, OptionsEnumFilter(Person.account_type, enum_type=AccountType))
 
     def query_prep(self, query, has_sort, has_filters):
         query = query.add_columns(
-            Person.id, Person.lastname, Person.due_date
+            Person.id, Person.lastname, Person.due_date, Person.account_type,
         ).add_entity(Person).outerjoin(Person.status)
 
         # default sort
