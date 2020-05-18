@@ -16,7 +16,9 @@ develop_requires = [
     'SQLAlchemy>=0.9.0'
     'SQLAlchemyBWC',
     'mock',
-    'nose',
+    'nose',  # required to import some blazeweb helpers
+    'pytest',
+    'pytest-cov',
     'Flask',
     'Flask-Bootstrap',
     'Flask-Script',
@@ -56,6 +58,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
     license='BSD-3-Clause',
     packages=['webgrid'],
@@ -76,12 +79,10 @@ setup(
         'SQLAlchemy',
         'jinja2',
         'python-dateutil',
-        'Werkzeug',
+        'Werkzeug<1.0.0',
     ],
     entry_points="""
         [console_scripts]
         webgrid_ta = webgrid_ta.manage:script_entry
-        [nose.plugins]
-        webgridta_initapp = webgrid.webgrid_nose:WebGridNosePlugin
     """,
 )

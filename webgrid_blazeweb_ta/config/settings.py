@@ -56,5 +56,5 @@ class Test(Default):
 try:
     from site_settings import *  # noqa
 except ImportError as e:
-    if 'No module named site_settings' not in str(e):
+    if "No module named 'site_settings'" not in str(e):
         raise

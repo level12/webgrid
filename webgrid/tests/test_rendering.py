@@ -3,17 +3,14 @@ from __future__ import absolute_import
 import csv
 import datetime as dt
 import json
-import warnings
-from io import BytesIO
+import io
 
 import arrow
-import six
+import pytest
 import xlrd
 import xlsxwriter
 from markupsafe import Markup
-from nose.tools import eq_, raises
 from pyquery import PyQuery
-from six.moves import range
 
 from webgrid import (
     BoolColumn,
@@ -256,7 +253,7 @@ class TestHtmlRenderer(object):
     def test_render_html_attributes(self):
         result = render_html_attributes({})
         assert isinstance(result, Markup)
-        eq_(result, '')
+        assert result == ''
 
         result = render_html_attributes({
             'text': 'abc',
@@ -267,7 +264,7 @@ class TestHtmlRenderer(object):
             'esc&': '<>"'
         })
         assert isinstance(result, Markup)
-        eq_(result, ' bool1 empty="" esc&amp;="&lt;&gt;&#34;" text="abc"')
+        assert result == ' bool1 empty="" esc&amp;="&lt;&gt;&#34;" text="abc"'
 
     @inrequest('/')
     def test_no_filters(self):
@@ -282,14 +279,11 @@ class TestHtmlRenderer(object):
         class TGrid(Grid):
             hide_excel_link = True
             Column('Test', Person.id)
-        with warnings.catch_warnings(record=True) as warn:
-            warnings.simplefilter("always")
+        with pytest.warns(
+            DeprecationWarning,
+            match='Hide excel link is deprecated, you should just override allowed_export_targets instead'  # noqa
+        ):
             TGrid()
-        eq_(warn[0].category, DeprecationWarning)
-        eq_(
-            str(warn[0].message),
-            "Hide excel link is deprecated, you should just override allowed_export_targets instead" # noqa
-        )
 
     def get_grid(self, **kwargs):
         g = SimpleGrid(**kwargs)
@@ -300,90 +294,87 @@ class TestHtmlRenderer(object):
     @inrequest('/thepage?perpage=5&onpage=1')
     def test_current_url(self):
         g = self.get_grid()
-        eq_('/thepage?onpage=1&perpage=5', g.html.current_url())
-        eq_('/thepage?onpage=1&perpage=10', g.html.current_url(perpage=10))
+        assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
+        assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
 
     @inrequest('/thepage')
     def test_current_url_qs_prefix(self):
         g = self.get_grid(qs_prefix='dg_')
-        eq_('/thepage?dg_perpage=10', g.html.current_url(perpage=10))
+        assert '/thepage?dg_perpage=10' == g.html.current_url(perpage=10)
 
     @inrequest('/thepage?perpage=5&onpage=1')
     def test_xls_url(self):
         g = self.get_grid()
-        with warnings.catch_warnings(record=True) as warn:
-            warnings.simplefilter("always")
+        with pytest.warns(DeprecationWarning,
+                          match='xls_url is deprecated. Use export_url instead.'):
             url = g.html.xls_url()
-        eq_(url, '/thepage?export_to=xls&onpage=1&perpage=5')
-        eq_(len(warn), 1)
-        eq_(warn[0].category, DeprecationWarning)
-        eq_(str(warn[0].message), 'xls_url is deprecated. Use export_url instead.')
+        assert url == '/thepage?export_to=xls&onpage=1&perpage=5'
 
     @inrequest('/thepage?perpage=5&onpage=1')
     def test_export_url(self):
         g = self.get_grid()
-        eq_(g.html.export_url('xlsx'), '/thepage?export_to=xlsx&onpage=1&perpage=5')
-        eq_(g.html.export_url('xls'), '/thepage?export_to=xls&onpage=1&perpage=5')
-        eq_(g.html.export_url('csv'), '/thepage?export_to=csv&onpage=1&perpage=5')
+        assert g.html.export_url('xlsx') == '/thepage?export_to=xlsx&onpage=1&perpage=5'
+        assert g.html.export_url('xls') == '/thepage?export_to=xls&onpage=1&perpage=5'
+        assert g.html.export_url('csv') == '/thepage?export_to=csv&onpage=1&perpage=5'
 
     @inrequest('/thepage?onpage=3')
     def test_paging_url_first(self):
         g = self.get_grid()
-        eq_('/thepage?onpage=1&perpage=1', g.html.paging_url_first())
+        assert g.html.paging_url_first() == '/thepage?onpage=1&perpage=1'
 
     @inrequest('/thepage?onpage=3')
     def test_paging_url_next(self):
         g = self.get_grid()
-        eq_('/thepage?onpage=4&perpage=1', g.html.paging_url_next())
+        assert g.html.paging_url_next() == '/thepage?onpage=4&perpage=1'
 
     @inrequest('/thepage?onpage=3')
     def test_paging_url_prev(self):
         g = self.get_grid()
-        eq_('/thepage?onpage=2&perpage=1', g.html.paging_url_prev())
+        assert g.html.paging_url_prev() == '/thepage?onpage=2&perpage=1'
 
     @inrequest('/thepage?onpage=3')
     def test_paging_url_last(self):
         g = self.get_grid()
-        eq_('/thepage?onpage=5&perpage=1', g.html.paging_url_last())
+        assert g.html.paging_url_last() == '/thepage?onpage=5&perpage=1'
 
     @inrequest('/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
                '=bob&v2(name)=fred')
     def test_reset_url(self):
         g = self.get_grid()
-        eq_(
-            '/thepage?dgreset=1&foo=bar&session_key={0}'.format(g.session_key),
+        assert (
             g.html.reset_url()
+            == '/thepage?dgreset=1&foo=bar&session_key={0}'.format(g.session_key)
         )
 
     @inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_url(self):
         g = self.get_grid()
-        eq_(
-            '/thepage?foo=bar&session_key={0}'.format(g.session_key),
+        assert (
             g.html.form_action_url()
+            == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
         )
 
-    def test_paging_select(self):
-        def check_paging(expected):
+    @pytest.mark.parametrize('page_param,input_value', [
+        (1, '1'),
+        (2, '2'),
+        (3, '3'),
+        (4, '4'),
+        (5, '5'),
+        (0, '1'),
+        (6, '5'),
+        ('abc', '1'),
+    ])
+    def test_paging_select(self, page_param, input_value):
+
+        @inrequest('/thepage?onpage={}'.format(page_param))
+        def check_paging():
             g = self.get_grid()
             select_html = g.html.paging_select()
-            eq_(PyQuery(select_html).text().strip(), 'of 5')
+            assert PyQuery(select_html).text().strip() == 'of 5'
             assert_tag(select_html, 'input', id_='onpage', name='onpage', type='number',
-                       value=expected, min='1', max='5')
+                       value=input_value, min='1', max='5')
 
-        values = [
-            (1, '1'),
-            (2, '2'),
-            (3, '3'),
-            (4, '4'),
-            (5, '5'),
-            (0, '1'),
-            (6, '5'),
-            ('abc', '1'),
-        ]
-        for page, expect in values:
-            decorator = inrequest('/thepage?onpage={}'.format(page))
-            yield decorator(check_paging), expect
+        check_paging()
 
     @inrequest('/thepage?onpage=2')
     def test_paging_html(self):
@@ -528,13 +519,13 @@ class TestHtmlRenderer(object):
     @inrequest('/thepage')
     def test_confirm_export(self):
         g = PeopleGrid()
-        eq_(json.loads(g.html.confirm_export()), {'confirm_export': False, 'record_count': 3})
+        assert json.loads(g.html.confirm_export()) == {'confirm_export': False, 'record_count': 3}
 
         g.unconfirmed_export_limit = 2
-        eq_(json.loads(g.html.confirm_export()), {'confirm_export': True, 'record_count': 3})
+        assert json.loads(g.html.confirm_export()) == {'confirm_export': True, 'record_count': 3}
 
         g.unconfirmed_export_limit = None
-        eq_(json.loads(g.html.confirm_export()), {'confirm_export': False, 'record_count': 3})
+        assert json.loads(g.html.confirm_export()) == {'confirm_export': False, 'record_count': 3}
 
     @inrequest('/thepage')
     def test_grid_rendering(self):
@@ -563,7 +554,6 @@ class TestHtmlRenderer(object):
     def test_can_render(self):
         assert PeopleGrid().html.can_render() is True
 
-    @raises(RenderLimitExceeded)
     def test_render_error(self):
         class Renderer(HTML):
             def can_render(self):
@@ -574,7 +564,8 @@ class TestHtmlRenderer(object):
                 super(TestGrid, self).set_renderers()
                 self.html = Renderer(self)
 
-        TestGrid().html()
+        with pytest.raises(RenderLimitExceeded):
+            TestGrid().html()
 
     @inrequest('/thepage?search=foo')
     def test_render_search_filter(self):
@@ -618,8 +609,8 @@ class TestPageTotals(object):
         g = PGPageTotals()
         html = g.html()
         elem = find_tag(html, 'td', class_='totals-label', colspan='7')
-        eq_(len(elem), 1)
-        eq_(elem.text(), 'Page Totals (3 records):')
+        assert len(elem) == 1
+        assert elem.text() == 'Page Totals (3 records):'
 
 
 class PGGrandTotals(PeopleGrid):
@@ -675,7 +666,7 @@ class PGTotalsStringExpr(PeopleGrid):
         return query.add_columns(Person.floatcol.label('float_col'))
 
 
-class TestStringExprTotals(PeopleGrid):
+class TestStringExprTotals:
     @inrequest('/')
     def test_people_html(self):
         g = PGTotalsStringExpr()
@@ -689,7 +680,7 @@ class TestXLSRenderer(object):
 
     def test_some_basics(self):
         g = render_in_grid(PeopleGrid, 'xls')(per_page=1)
-        buffer = BytesIO()
+        buffer = io.BytesIO()
         wb = g.xls()
         wb.save(buffer)
         buffer.seek(0)
@@ -697,20 +688,20 @@ class TestXLSRenderer(object):
         book = xlrd.open_workbook(file_contents=buffer.getvalue())
         sh = book.sheet_by_name('render_in_grid')
         # headers
-        eq_(sh.ncols, 10)
-        eq_(sh.cell_value(0, 0), 'First Name')
-        eq_(sh.cell_value(0, 7), 'Sort Order')
+        assert sh.ncols == 10
+        assert sh.cell_value(0, 0) == 'First Name'
+        assert sh.cell_value(0, 7) == 'Sort Order'
 
         # last data row
-        eq_(sh.cell_value(3, 0), 'fn001')
-        eq_(sh.cell_value(3, 7), 1)
-        eq_(sh.nrows, 4)
+        assert sh.cell_value(3, 0) == 'fn001'
+        assert sh.cell_value(3, 7) == 1
+        assert sh.nrows == 4
 
     def test_subtotals_with_no_records(self):
         g = PGGrandTotals()
         g.column('firstname').filter.op = 'eq'
         g.column('firstname').filter.value1 = 'foobar'
-        buffer = six.BytesIO()
+        buffer = io.BytesIO()
         wb = g.xls()
         wb.save(buffer)
         buffer.seek(0)
@@ -719,7 +710,7 @@ class TestXLSRenderer(object):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
         g = PeopleGridWithAReallyReallyLongName()
-        buffer = BytesIO()
+        buffer = io.BytesIO()
         wb = g.xls()
         wb.save(buffer)
         buffer.seek(0)
@@ -749,7 +740,6 @@ class TestXLSRenderer(object):
         assert FakeCountsGrid(65534, 256, True).xls.can_render() is True
         assert FakeCountsGrid(65535, 257, False).xls.can_render() is False
 
-    @raises(RenderLimitExceeded)
     def test_render_error(self):
         class Renderer(XLS):
             def can_render(self):
@@ -760,7 +750,8 @@ class TestXLSRenderer(object):
                 super(TestGrid, self).set_renderers()
                 self.xls = Renderer(self)
 
-        TestGrid().xls()
+        with pytest.raises(RenderLimitExceeded):
+            TestGrid().xls()
 
 
 class TestXLSXRenderer(object):
@@ -773,14 +764,14 @@ class TestXLSXRenderer(object):
         book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
         sh = book.sheet_by_name('render_in_grid')
         # headers
-        eq_(sh.ncols, 10)
-        eq_(sh.cell_value(0, 0), 'First Name')
-        eq_(sh.cell_value(0, 7), 'State')
+        assert sh.ncols == 10
+        assert sh.cell_value(0, 0) == 'First Name'
+        assert sh.cell_value(0, 7) == 'State'
 
         # last data row
-        eq_(sh.cell_value(3, 0), 'fn001')
-        eq_(sh.cell_value(3, 7), 'st001')
-        eq_(sh.nrows, 4)
+        assert sh.cell_value(3, 0) == 'fn001'
+        assert sh.cell_value(3, 7) == 'st001'
+        assert sh.nrows == 4
 
     def test_group_headings(self):
         grid = StopwatchGrid()
@@ -791,18 +782,18 @@ class TestXLSXRenderer(object):
         sheet = book.sheet_by_index(0)
         # A [ 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ]
         #   [       | Lap 1 |   | Lap 2 | Lap 3 ]
-        eq_(sheet.row_values(0), ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', ''])
-        eq_(sheet.row_values(0), ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', ''])
-        eq_(sheet.cell_value(1, 1), 'Label')
-        eq_(sheet.cell_value(2, 1), 'Watch 1')
-        eq_(sheet.merged_cells, [
+        assert sheet.row_values(0) == ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', '']
+        assert sheet.row_values(0) == ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', '']
+        assert sheet.cell_value(1, 1) == 'Label'
+        assert sheet.cell_value(2, 1) == 'Watch 1'
+        assert sheet.merged_cells == [
             (0, 1, 0, 2),  # Buffer A1:A2
             (0, 1, 2, 4),  # Lap 1  A3:A4
             #              # Buffer A5
             (0, 1, 5, 7),  # Lap 2  A6:A7
             (0, 1, 7, 9),  # Lap 3  A8:A9
-        ])
-        eq_(sheet.ncols, 9)
+        ]
+        assert sheet.ncols == 9
 
     def test_subtotals_with_no_records(self):
         g = PGGrandTotals()
@@ -830,9 +821,9 @@ class TestXLSXRenderer(object):
 
         book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
         sheet = book.sheet_by_index(0)
-        eq_(sheet.nrows, 5)
-        eq_(sheet.cell_value(4, 0), 'Totals (3 records):')
-        eq_(sheet.cell_value(4, 8), 6.39)
+        assert sheet.nrows == 5
+        assert sheet.cell_value(4, 0) == 'Totals (3 records):'
+        assert sheet.cell_value(4, 8) == 6.39
         assert sheet.merged_cells == [(4, 5, 0, 8)]
 
     def test_totals_no_merge(self):
@@ -848,8 +839,8 @@ class TestXLSXRenderer(object):
         book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
         sheet = book.sheet_by_index(0)
 
-        eq_(sheet.nrows, 6)
-        eq_(sheet.cell_value(5, 0), 'Totals (4 records):')
+        assert sheet.nrows == 6
+        assert sheet.cell_value(5, 0) == 'Totals (4 records):'
         assert sheet.merged_cells == []
 
     def test_can_render(self):
@@ -874,7 +865,6 @@ class TestXLSXRenderer(object):
         assert FakeCountsGrid(1048574, 16384, True).xlsx.can_render() is True
         assert FakeCountsGrid(1048575, 16385, False).xlsx.can_render() is False
 
-    @raises(RenderLimitExceeded)
     def test_render_error(self):
         class Renderer(XLSX):
             def can_render(self):
@@ -885,7 +875,8 @@ class TestXLSXRenderer(object):
                 super(TestGrid, self).set_renderers()
                 self.xlsx = Renderer(self)
 
-        TestGrid().xlsx()
+        with pytest.raises(RenderLimitExceeded):
+            TestGrid().xlsx()
 
     def test_xlsx_format_caching(self):
         grid = PeopleGrid()
@@ -924,12 +915,12 @@ class TestCSVRenderer(object):
         g = render_in_grid(PeopleCSVGrid, 'csv')(per_page=1)
         csv_data = g.csv.build_csv()
         csv_data.seek(0)
-        byte_str = six.StringIO(csv_data.read().decode('utf-8'))
+        byte_str = io.StringIO(csv_data.read().decode('utf-8'))
         reader = csv.reader(byte_str, delimiter=',', quotechar='"')
         data = []
         for row in reader:
             data.append(row)
-        eq_(len(data[0]), 9)
+        assert len(data[0]) == 9
         assert data[0][0] == 'First Name'
         assert data[0][2] == 'Active'
         assert data[1][0] == 'fn004'
@@ -943,7 +934,7 @@ class TestCSVRenderer(object):
         g.allowed_export_targets = {'csv': CSV}
         csv_data = g.csv.build_csv()
         csv_data.seek(0)
-        byte_str = six.StringIO(csv_data.read().decode('utf-8'))
+        byte_str = io.StringIO(csv_data.read().decode('utf-8'))
         reader = csv.reader(byte_str, delimiter=',', quotechar='"')
         data = []
         for row in reader:
@@ -964,7 +955,7 @@ class TestCSVRenderer(object):
         g = CSVGrid()
         csv_data = g.csv.build_csv()
         csv_data.seek(0)
-        byte_str = six.StringIO(csv_data.read().decode('utf-8'))
+        byte_str = io.StringIO(csv_data.read().decode('utf-8'))
         reader = csv.reader(byte_str, delimiter=',', quotechar='"')
         data = []
         for row in reader:
@@ -1009,7 +1000,7 @@ class TestArrowDate(object):
         ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
-        buffer = BytesIO()
+        buffer = io.BytesIO()
         wb = g.xls()
         wb.save(buffer)
         buffer.seek(0)
@@ -1017,9 +1008,9 @@ class TestArrowDate(object):
         book = xlrd.open_workbook(file_contents=buffer.getvalue())
         sh = book.sheet_by_name('arrow_grid')
         # headers
-        eq_(sh.cell_value(0, 0), 'Created')
+        assert sh.cell_value(0, 0) == 'Created'
         # data row
-        eq_(
-            dt.datetime(*xlrd.xldate_as_tuple(sh.cell_value(1, 0), sh.book.datemode)[:6]),
-            dt.datetime(2016, 8, 10, 1, 2, 3)
+        assert (
+            dt.datetime(*xlrd.xldate_as_tuple(sh.cell_value(1, 0), sh.book.datemode)[:6])
+            == dt.datetime(2016, 8, 10, 1, 2, 3)
         )

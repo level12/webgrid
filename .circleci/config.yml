@@ -12,7 +12,7 @@ jobs:
                 command: ls -al
 
             - run:
-                name: install tox from wheelhouse
+                name: install tox
                 command: >
                     pip install --upgrade --force-reinstall tox
 

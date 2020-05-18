@@ -4,7 +4,6 @@ from decimal import Decimal as D
 from blazeutils.containers import HTMLAttributes
 from blazeutils.testing import raises
 import mock
-from nose.tools import eq_
 
 from webgrid import Column, LinkColumnBase, \
     BoolColumn, YesNoColumn, DateTimeColumn, DateColumn, NumericColumn
@@ -46,44 +45,44 @@ class TestColumn(object):
         g = TG()
 
         col = g.columns[0]
-        eq_(col.key, 'id')
+        assert col.key == 'id'
         assert col.expr is Person.id
         assert isinstance(col.filter, TextFilter)
-        eq_(col.can_sort, False)
-        eq_(col.visible, False)
+        assert col.can_sort is False
+        assert col.visible is False
 
         col = g.columns[1]
-        eq_(col.key, 'firstname')
+        assert col.key == 'firstname'
         assert col.expr is Person.firstname
         assert isinstance(col.filter, TextFilter)
-        eq_(col.can_sort, False)
-        eq_(col.link_label, 'hi')
-        eq_(col.visible, False)
+        assert col.can_sort is False
+        assert col.link_label == 'hi'
+        assert col.visible is False
 
         col = g.columns[2]
-        eq_(col.key, 'inactive')
+        assert col.key == 'inactive'
         assert col.expr is Person.inactive
         assert isinstance(col.filter, TextFilter)
-        eq_(col.can_sort, False)
-        eq_(col.reverse, True)
-        eq_(col.true_label, 'Yes')
-        eq_(col.false_label, 'No')
-        eq_(col.visible, False)
+        assert col.can_sort is False
+        assert col.reverse is True
+        assert col.true_label == 'Yes'
+        assert col.false_label == 'No'
+        assert col.visible is False
 
         col = g.columns[3]
-        eq_(col.key, 'createdts')
+        assert col.key == 'createdts'
         assert col.expr is Person.createdts
         assert isinstance(col.filter, DateFilter)
-        eq_(col.can_sort, False)
-        eq_(col.html_format, 'foo')
-        eq_(col.visible, False)
+        assert col.can_sort is False
+        assert col.html_format == 'foo'
+        assert col.visible is False
 
         col = g.columns[4]
-        eq_(col.key, 'address')
+        assert col.key == 'address'
         assert col.expr is Person.address
         assert isinstance(col.filter, IntFilter)
-        eq_(col.can_sort, False)
-        eq_(col.visible, False)
+        assert col.can_sort is False
+        assert col.visible is False
 
     def test_nonkeyed_not_sort(self):
         class TG(Grid):
@@ -91,7 +90,7 @@ class TestColumn(object):
 
         g = TG()
         col = g.columns[0]
-        eq_(col.can_sort, False)
+        assert col.can_sort is False
 
     @raises(ValueError, 'no column-like object is available')
     def test_filter_without_column_key(self):
@@ -132,21 +131,21 @@ class TestColumn(object):
         g = TG()
 
         value = '12345'
-        eq_(g.columns[0].xls_width_calc(value), 5)
-        eq_(g.columns[1].xls_width_calc(value), 10)
-        eq_(g.columns[2].xls_width_calc(value), 15)
+        assert g.columns[0].xls_width_calc(value) == 5
+        assert g.columns[1].xls_width_calc(value) == 10
+        assert g.columns[2].xls_width_calc(value) == 15
 
         value = '123456'
-        eq_(g.columns[0].xls_width_calc(value), 6)
+        assert g.columns[0].xls_width_calc(value) == 6
 
         value = 123
-        eq_(g.columns[0].xls_width_calc(value), 3)
+        assert g.columns[0].xls_width_calc(value) == 3
 
         value = 123.333
-        eq_(g.columns[0].xls_width_calc(value), 7)
+        assert g.columns[0].xls_width_calc(value) == 7
 
         value = dt.date(2012, 1, 1)
-        eq_(g.columns[3].xls_width_calc(value), 10)
+        assert g.columns[3].xls_width_calc(value) == 10
 
     def test_xls_width_setting(self):
         class LinkColumn(LinkColumnBase):
@@ -161,12 +160,12 @@ class TestColumn(object):
             DateColumn('DateTime', Person.createdts, xls_width=1)
         g = TG()
 
-        eq_(g.columns[0].xls_width_calc('123'), 1)
-        eq_(g.columns[1].xls_width_calc('123'), 1)
-        eq_(g.columns[2].xls_width_calc('123'), 1)
-        eq_(g.columns[3].xls_width_calc('123'), 1)
-        eq_(g.columns[4].xls_width_calc(dt.date(2012, 1, 1)), 1)
-        eq_(g.columns[5].xls_width_calc(dt.date(2012, 1, 1)), 1)
+        assert g.columns[0].xls_width_calc('123') == 1
+        assert g.columns[1].xls_width_calc('123') == 1
+        assert g.columns[2].xls_width_calc('123') == 1
+        assert g.columns[3].xls_width_calc('123') == 1
+        assert g.columns[4].xls_width_calc(dt.date(2012, 1, 1)) == 1
+        assert g.columns[5].xls_width_calc(dt.date(2012, 1, 1)) == 1
 
     def test_xls_style_setting(self):
         class LinkColumn(LinkColumnBase):
@@ -181,12 +180,12 @@ class TestColumn(object):
             DateColumn('DateTime', Person.createdts, xls_style='font: bold True')
         g = TG()
 
-        eq_(g.columns[0].xls_style, 'font: bold True')
-        eq_(g.columns[1].xls_style, 'font: bold True')
-        eq_(g.columns[2].xls_style, 'font: bold True')
-        eq_(g.columns[3].xls_style, 'font: bold True')
-        eq_(g.columns[4].xls_style, 'font: bold True')
-        eq_(g.columns[5].xls_style, 'font: bold True')
+        assert g.columns[0].xls_style == 'font: bold True'
+        assert g.columns[1].xls_style == 'font: bold True'
+        assert g.columns[2].xls_style == 'font: bold True'
+        assert g.columns[3].xls_style == 'font: bold True'
+        assert g.columns[4].xls_style == 'font: bold True'
+        assert g.columns[5].xls_style == 'font: bold True'
 
     def test_xls_number_format_setting(self):
         class LinkColumn(LinkColumnBase):
@@ -201,13 +200,13 @@ class TestColumn(object):
             DateColumn('DateTime', Person.createdts)
         g = TG()
 
-        eq_(g.columns[0].xls_num_format, 'General')
-        eq_(g.columns[1].xls_num_format, 'General')
-        eq_(g.columns[2].xls_num_format, 'General')
-        eq_(g.columns[3].xls_num_format, 'General')
-        eq_(g.columns[4].xls_num_format, 'General')
+        assert g.columns[0].xls_num_format == 'General'
+        assert g.columns[1].xls_num_format == 'General'
+        assert g.columns[2].xls_num_format == 'General'
+        assert g.columns[3].xls_num_format == 'General'
+        assert g.columns[4].xls_num_format == 'General'
         # should pull from the class if not given when instantiating
-        eq_(g.columns[5].xls_num_format, 'm/dd/yyyy')
+        assert g.columns[5].xls_num_format == 'm/dd/yyyy'
 
     def test_render_in_setting(self):
         class LinkColumn(LinkColumnBase):
@@ -234,20 +233,20 @@ class TestColumn(object):
 
         g = TG()
 
-        eq_(g.columns[0].render_in, ('html', 'xls', 'xlsx', 'csv'))
-        eq_(g.columns[1].render_in, ())
-        eq_(g.columns[2].render_in, ('xls',))
-        eq_(g.columns[3].render_in, ('xls', 'html'))
-        eq_(g.columns[4].render_in, ('xlsx',))
-        eq_(g.columns[5].render_in, ('xls',))
-        eq_(g.columns[6].render_in, ('xls',))
-        eq_(g.columns[7].render_in, ('xls', 'html'))
-        eq_(g.columns[8].render_in, ('csv',))
-        eq_(g.columns[9].render_in, ('csv', 'xlsx'))
+        assert g.columns[0].render_in == ('html', 'xls', 'xlsx', 'csv')
+        assert g.columns[1].render_in == tuple()
+        assert g.columns[2].render_in == ('xls',)
+        assert g.columns[3].render_in == ('xls', 'html')
+        assert g.columns[4].render_in == ('xlsx',)
+        assert g.columns[5].render_in == ('xls',)
+        assert g.columns[6].render_in == ('xls',)
+        assert g.columns[7].render_in == ('xls', 'html')
+        assert g.columns[8].render_in == ('csv',)
+        assert g.columns[9].render_in == ('csv', 'xlsx')
 
         g.c6_render_in = 'xls'
-        eq_(g.columns[8].render_in, ('xls',))
-        eq_(g.columns[9].render_in, ('xls', 'xlsx'))
+        assert g.columns[8].render_in == ('xls',)
+        assert g.columns[9].render_in == ('xls', 'xlsx')
 
     def test_visible_setting(self):
         class TestGrid(Grid):
@@ -261,14 +260,14 @@ class TestColumn(object):
                 return self.c3_visible
 
         grid = TestGrid()
-        eq_(grid.columns[0].visible, True)
-        eq_(grid.columns[1].visible, False)
-        eq_(grid.columns[2].visible, False)
-        eq_(grid.columns[3].visible, False)
+        assert grid.columns[0].visible is True
+        assert grid.columns[1].visible is False
+        assert grid.columns[2].visible is False
+        assert grid.columns[3].visible is False
 
         grid.c3_visible = True
-        eq_(grid.columns[2].visible, True)
-        eq_(grid.columns[3].visible, True)
+        assert grid.columns[2].visible is True
+        assert grid.columns[3].visible is True
 
     def test_number_formatting(self):
         class TG(Grid):
@@ -277,20 +276,20 @@ class TestColumn(object):
 
         c = g.columns[0]
         record = {'numericcol': D('1234.16')}
-        eq_(c.render_html(record, None), '1,234.2')
+        assert c.render_html(record, None) == '1,234.2'
 
         c.format_as = 'accounting'
-        eq_(c.render_html(record, None), '$1,234.16')
+        assert c.render_html(record, None) == '$1,234.16'
 
         # accounting with negative value
         record = {'numericcol': D('-1234.16')}
         hah = HTMLAttributes()
-        eq_(c.render_html(record, hah), '($1,234.16)')
+        assert c.render_html(record, hah) == '($1,234.16)'
         assert hah['class'] == 'negative'
 
         record = {'numericcol': D('.1673')}
         c.format_as = 'percent'
-        eq_(c.render_html(record, None), '16.7%')
+        assert c.render_html(record, None) == '16.7%'
 
     def test_number_formatting_for_excel(self):
         class TG(Grid):
@@ -298,24 +297,30 @@ class TestColumn(object):
         g = TG()
 
         c = g.columns[0]
-        eq_(c.xls_construct_format(c.xls_fmt_general), '#,##0.00;[RED]-#,##0.00')
-        eq_(c.xls_construct_format(c.xls_fmt_accounting),
-            '_($* #,##0.00_);[RED]_($* (#,##0.00);_($* "-"??_);_(@_)')
-        eq_(c.xls_construct_format(c.xls_fmt_percent), '0.00%;[RED]-0.00%')
+        assert c.xls_construct_format(c.xls_fmt_general) == '#,##0.00;[RED]-#,##0.00'
+        assert (
+            c.xls_construct_format(c.xls_fmt_accounting)
+            == '_($* #,##0.00_);[RED]_($* (#,##0.00);_($* "-"??_);_(@_)'
+        )
+        assert c.xls_construct_format(c.xls_fmt_percent) == '0.00%;[RED]-0.00%'
 
         # no red
         c.xls_neg_red = False
-        eq_(c.xls_construct_format(c.xls_fmt_general), '#,##0.00;-#,##0.00')
-        eq_(c.xls_construct_format(c.xls_fmt_accounting),
-            '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)')
-        eq_(c.xls_construct_format(c.xls_fmt_percent), '0.00%;-0.00%')
+        assert c.xls_construct_format(c.xls_fmt_general) == '#,##0.00;-#,##0.00'
+        assert (
+            c.xls_construct_format(c.xls_fmt_accounting)
+            == '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+        )
+        assert c.xls_construct_format(c.xls_fmt_percent) == '0.00%;-0.00%'
 
         # adjust places
         c.places = 0
-        eq_(c.xls_construct_format(c.xls_fmt_general), '#,##0;-#,##0')
-        eq_(c.xls_construct_format(c.xls_fmt_accounting),
-            '_($* #,##0_);_($* (#,##0);_($* "-"??_);_(@_)')
-        eq_(c.xls_construct_format(c.xls_fmt_percent), '0%;-0%')
+        assert c.xls_construct_format(c.xls_fmt_general) == '#,##0;-#,##0'
+        assert (
+            c.xls_construct_format(c.xls_fmt_accounting)
+            == '_($* #,##0_);_($* (#,##0);_($* "-"??_);_(@_)'
+        )
+        assert c.xls_construct_format(c.xls_fmt_percent) == '0%;-0%'
 
     def test_number_format_xlwt_stymat_init(self):
         # nothing specified defaults to 'general'
