@@ -1,12 +1,13 @@
 from __future__ import absolute_import
 
+import re
 from datetime import datetime
 from decimal import Decimal
 from os import path
 
 import flask
+import pytest
 from mock import mock
-from nose.tools import assert_regex, eq_
 import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 
@@ -22,7 +23,7 @@ class TestGrid(object):
     class TG(Grid):
         Column('First Name', Person.firstname)
 
-    def setUp(self):
+    def setup_method(self, _):
         Status.delete_cascaded()
         Person.testing_create()
         Person.testing_create()
@@ -37,7 +38,7 @@ class TestGrid(object):
     def test_column_key(self):
         g = self.TG()
         g.build_query()
-        eq_(g.columns[0].key, 'firstname')
+        assert g.columns[0].key == 'firstname'
 
     def test_columns_are_new_instances(self):
         g = self.TG()
@@ -55,13 +56,13 @@ class TestGrid(object):
             pass
 
         mg = Grid2()
-        eq_(mg.ident, 'grid2')
+        assert mg.ident == 'grid2'
 
         mg = Grid1()
-        eq_(mg.ident, 'cars')
+        assert mg.ident == 'cars'
 
         mg = Grid1('foo')
-        eq_(mg.ident, 'foo')
+        assert mg.ident == 'foo'
 
     def test_base_query(self):
         class CTG(Grid):
@@ -80,9 +81,9 @@ class TestGrid(object):
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',
             ]
-            eq_(len(expected), len(m_debug.call_args_list))
+            assert len(expected) == len(m_debug.call_args_list)
             for idx, call in enumerate(m_debug.call_args_list):
-                assert_regex(call[0][0], expected[idx])
+                assert re.match(expected[idx], call[0][0])
 
     @mock.patch('logging.Logger.debug')
     def test_subtotal_sum_by_default(self, m_debug):
@@ -98,9 +99,9 @@ class TestGrid(object):
             r'^No filters$',
             r'^Totals query ran in \d+\.?\d* seconds$',
         ]
-        eq_(len(expected), len(m_debug.call_args_list))
+        assert len(expected) == len(m_debug.call_args_list)
         for idx, call in enumerate(m_debug.call_args_list):
-            assert_regex(call[0][0], expected[idx])
+            assert re.match(expected[idx], call[0][0])
 
     def test_subtotal_sum(self):
         class CTG(Grid):
@@ -186,9 +187,9 @@ class TestGrid(object):
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',
             ]
-            eq_(len(expected), len(m_debug.call_args_list))
+            assert len(expected) == len(m_debug.call_args_list)
             for idx, call in enumerate(m_debug.call_args_list):
-                assert_regex(call[0][0], expected[idx])
+                assert re.match(expected[idx], call[0][0])
 
     def test_filter_instance(self):
         class CTG(Grid):
@@ -214,9 +215,9 @@ class TestGrid(object):
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',
             ]
-            eq_(len(expected), len(m_debug.call_args_list))
+            assert len(expected) == len(m_debug.call_args_list)
             for idx, call in enumerate(m_debug.call_args_list):
-                assert_regex(call[0][0], expected[idx])
+                re.match(expected[idx], call[0][0])
 
     def test_redundant_order_by(self):
         class CTG(Grid):
@@ -235,9 +236,9 @@ class TestGrid(object):
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',
             ]
-            eq_(len(expected), len(m_debug.call_args_list))
+            assert len(expected) == len(m_debug.call_args_list)
             for idx, call in enumerate(m_debug.call_args_list):
-                assert_regex(call[0][0], expected[idx])
+                assert re.match(expected[idx], call[0][0])
 
     def test_paging(self):
         g = self.TG()
@@ -255,30 +256,30 @@ class TestGrid(object):
             Column('First Name', Person.firstname)
         g = TG()
         assert_not_in_query(g, 'LIMIT 50 OFFSET 0')
-        eq_(g.page_count, 1)
+        assert g.page_count == 1
 
     def test_page_count(self):
         g = self.TG()
-        eq_(g.page_count, 1)
+        assert g.page_count == 1
 
         g.set_paging(1, 2)
-        eq_(g.page_count, 5)
+        assert g.page_count == 5
 
         g = self.TG(per_page=None)
-        eq_(g.page_count, 1)
+        assert g.page_count == 1
 
     @mock.patch('logging.Logger.debug')
     def test_record_count(self, m_debug):
         g = self.TG()
-        eq_(g.record_count, 5)
+        assert g.record_count == 5
         expected = [
             r'^<Grid "TG">$',
             r'^No filters$',
             r'^Count query ran in \d+\.?\d* seconds$',
         ]
-        eq_(len(expected), len(m_debug.call_args_list))
+        assert len(expected) == len(m_debug.call_args_list)
         for idx, call in enumerate(m_debug.call_args_list):
-            assert_regex(call[0][0], expected[idx])
+            assert re.match(expected[idx], call[0][0])
 
     def test_column_iterators_for_rendering(self):
         class TG(Grid):
@@ -296,24 +297,24 @@ class TestGrid(object):
 
         html_cols = tuple(tg.iter_columns('html'))
         assert len(html_cols) == 3
-        eq_(html_cols[0].key, 'firstname')
-        eq_(html_cols[1].key, 'inactive')
-        eq_(html_cols[2].key, 'yesno')
+        assert html_cols[0].key == 'firstname'
+        assert html_cols[1].key == 'inactive'
+        assert html_cols[2].key == 'yesno'
 
         xls_cols = tuple(tg.iter_columns('xls'))
         assert len(xls_cols) == 3
-        eq_(xls_cols[0].key, 'firstname')
-        eq_(xls_cols[1].key, 'lastname')
-        eq_(xls_cols[2].key, 'inactive')
+        assert xls_cols[0].key == 'firstname'
+        assert xls_cols[1].key == 'lastname'
+        assert xls_cols[2].key == 'inactive'
 
         xlsx_cols = tuple(tg.iter_columns('xlsx'))
         assert len(xlsx_cols) == 2
-        eq_(xlsx_cols[0].key, 'firstname')
-        eq_(xlsx_cols[1].key, 'fn3')
+        assert xlsx_cols[0].key == 'firstname'
+        assert xlsx_cols[1].key == 'fn3'
         csv_cols = tuple(tg.iter_columns('csv'))
         assert len(csv_cols) == 2
-        eq_(xls_cols[0].key, 'firstname')
-        eq_(csv_cols[1].key, 'fn4')
+        assert xls_cols[0].key == 'firstname'
+        assert csv_cols[1].key == 'fn4'
 
     def test_grid_inheritance(self):
         class SomeGrid(Grid):
@@ -323,7 +324,7 @@ class TestGrid(object):
             Column('n2', Person.lastname)
 
         pg = SomeGrid2()
-        eq_(len(pg.columns), 2)
+        assert len(pg.columns) == 2
         assert pg.columns[1].key == 'lastname'
 
     def test_export_as_response(self):
@@ -352,11 +353,8 @@ class TestGrid(object):
         export_xlsx.as_response.assert_called_once_with(None, None)
 
         grid = TG()
-        try:
+        with pytest.raises(ValueError, match='No export format set'):
             grid.export_as_response()
-            assert False, 'Expected ValueError'
-        except ValueError as exc:
-            eq_(str(exc), 'No export format set')
 
     def test_export_as_response_with_csv(self):
         export_csv = mock.MagicMock()
@@ -375,11 +373,8 @@ class TestGrid(object):
         export_csv.as_response.assert_called_once_with()
 
         grid = TG()
-        try:
+        with pytest.raises(ValueError, match='No export format set'):
             grid.export_as_response('xls')
-            assert False, 'Expected ValueError'
-        except ValueError as exc:
-            eq_(str(exc), 'No export format set')
 
     def test_search_expressions_filtering_nones(self):
         class NonSearchingFilter(FilterBase):
@@ -412,12 +407,8 @@ class TestGrid(object):
         class CTG(Grid):
             Column('First Name', Person.firstname, BadFilter)
 
-        try:
+        with pytest.raises(Exception, match='bad filter search expression: foo is not callable'):
             CTG().search_expression_generators
-            assert False, 'expected exception'
-        except Exception as exc:
-            if 'bad filter search expression: foo is not callable' not in str(exc):
-                raise
 
     def test_search_query(self):
         class CTG(Grid):
@@ -444,19 +435,19 @@ class TestQueryStringArgs(object):
         Person.testing_create()
 
     @inrequest('/foo?dg_perpage=1&dg_onpage=2')
-    def test_qs_prefix(self):
-        for grid_cls in (PeopleGrid, PeopleGridByConfig):
-            pg = grid_cls(qs_prefix='dg_')
-            pg.apply_qs_args()
-            eq_(pg.on_page, 2)
-            eq_(pg.per_page, 1)
+    @pytest.mark.parametrize('grid_cls', [PeopleGrid, PeopleGridByConfig])
+    def test_qs_prefix(self, grid_cls):
+        pg = grid_cls(qs_prefix='dg_')
+        pg.apply_qs_args()
+        assert pg.on_page == 2
+        assert pg.per_page == 1
 
     @inrequest('/foo?perpage=1&onpage=2')
     def test_qs_paging(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 2)
-        eq_(pg.per_page, 1)
+        assert pg.on_page == 2
+        assert pg.per_page == 1
 
         # make sure the corret values get applied to the query
         assert 'LIMIT 1 OFFSET 1' in query_to_str(pg.build_query())
@@ -465,76 +456,76 @@ class TestQueryStringArgs(object):
     def test_qs_onpage_invalid(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 1)
-        eq_(pg.per_page, 5)
-        eq_(pg.user_warnings[0], '"onpage" grid argument invalid, ignoring')
+        assert pg.on_page == 1
+        assert pg.per_page == 5
+        assert pg.user_warnings[0] == '"onpage" grid argument invalid, ignoring'
 
     @inrequest('/foo?perpage=5&onpage=-1')
     def test_qs_onpage_negative(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 1)
-        eq_(pg.per_page, 5)
-        eq_(len(pg.user_warnings), 0)
+        assert pg.on_page == 1
+        assert pg.per_page == 5
+        assert len(pg.user_warnings) == 0
 
     @inrequest('/foo?perpage=1&onpage=100')
     def test_qs_onpage_too_high(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 3)
-        eq_(pg.per_page, 1)
-        eq_(len(pg.user_warnings), 0)
+        assert pg.on_page == 3
+        assert pg.per_page == 1
+        assert len(pg.user_warnings) == 0
 
         # the records should be the same as if we were on the last page
-        eq_(len(pg.records), 1)
+        assert len(pg.records) == 1
 
     @inrequest('/foo?perpage=foo&onpage=2')
     def test_qs_perpage_invalid(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 2)
-        eq_(pg.per_page, 1)
-        eq_(pg.user_warnings[0], '"perpage" grid argument invalid, ignoring')
+        assert pg.on_page == 2
+        assert pg.per_page == 1
+        assert pg.user_warnings[0] == '"perpage" grid argument invalid, ignoring'
 
     @inrequest('/foo?perpage=-1&onpage=2')
     def test_qs_perpage_negative(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.on_page, 2)
-        eq_(pg.per_page, 1)
-        eq_(len(pg.user_warnings), 0)
+        assert pg.on_page == 2
+        assert pg.per_page == 1
+        assert len(pg.user_warnings) == 0
 
     @inrequest('/foo?sort1=foo&sort2=firstname&sort3=-status')
     def test_qs_sorting(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.order_by, [('firstname', False), ('status', True)])
-        eq_(pg.user_warnings[0], 'can\'t sort on invalid key "foo"')
+        assert pg.order_by == [('firstname', False), ('status', True)]
+        assert pg.user_warnings[0] == 'can\'t sort on invalid key "foo"'
 
     @inrequest('/foo?sort1=fullname&sort2=firstname&sort3=-status')
     def test_qs_sorting_not_allowed(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.order_by, [('firstname', False), ('status', True)])
-        eq_(pg.user_warnings[0], 'can\'t sort on invalid key "fullname"')
+        assert pg.order_by == [('firstname', False), ('status', True)]
+        assert pg.user_warnings[0] == 'can\'t sort on invalid key "fullname"'
 
     @inrequest('/foo?sort1=')
     def test_qs_sorting_ignores_emptystring(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.order_by, [])
-        eq_(len(pg.user_warnings), 0)
+        assert pg.order_by == []
+        assert len(pg.user_warnings) == 0
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is&v1(status)=1&v1(status)=2')
     def test_qs_filtering(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.columns[0].filter.op, 'eq')
-        eq_(pg.columns[0].filter.value1, 'fn001')
+        assert pg.columns[0].filter.op == 'eq'
+        assert pg.columns[0].filter.value1 == 'fn001'
         assert pg.columns[0].filter.value2 is None
 
-        eq_(pg.columns[4].filter.op, 'is')
-        eq_(pg.columns[4].filter.value1, [1, 2])
+        assert pg.columns[4].filter.op == 'is'
+        assert pg.columns[4].filter.value1 == [1, 2]
         assert pg.columns[4].filter.value2 is None
 
     @inrequest('/foo')
@@ -542,16 +533,16 @@ class TestQueryStringArgs(object):
         from webgrid_ta.grids import DefaultOpGrid
         pg = DefaultOpGrid()
         pg.apply_qs_args()
-        eq_(pg.columns[0].filter.op, 'eq')
-        eq_(pg.columns[0].filter.value1, None)
+        assert pg.columns[0].filter.op == 'eq'
+        assert pg.columns[0].filter.value1 is None
 
     @inrequest('/foo?op(firstname)=!eq&v1(firstname)=bob')
     def test_qs_filtering_default_op_override(self):
         from webgrid_ta.grids import DefaultOpGrid
         pg = DefaultOpGrid()
         pg.apply_qs_args()
-        eq_(pg.columns[0].filter.op, '!eq')
-        eq_(pg.columns[0].filter.value1, 'bob')
+        assert pg.columns[0].filter.op == '!eq'
+        assert pg.columns[0].filter.value1 == 'bob'
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_paging_doesnt_get_page_count_before_filters_are_handled(self):
@@ -561,7 +552,7 @@ class TestQueryStringArgs(object):
         # the paging.  Since the paging section uses .page_count, we have to
         # make sure the filters get processed first.  Otherwise an incorrect
         # page count gets cached.
-        eq_(pg.record_count, 2)
+        assert pg.record_count == 2
 
     @inrequest('/foo')
     def test_qs_no_session(self):
@@ -576,7 +567,7 @@ class TestQueryStringArgs(object):
         flask.request.args = MultiDict()
         pg2 = PeopleGrid()
         pg2.apply_qs_args()
-        eq_(pg2.column('firstname').filter.op, 'eq')
+        assert pg2.column('firstname').filter.op == 'eq'
         assert '_PeopleGrid' in flask.session['dgsessions']
         assert pg.session_key in flask.session['dgsessions']
         assert pg2.session_key in flask.session['dgsessions']
@@ -588,11 +579,11 @@ class TestQueryStringArgs(object):
         flask.request.args['op(firstname)'] = '!eq'
         pg2 = PeopleGrid()
         pg2.apply_qs_args()
-        eq_(pg2.column('firstname').filter.op, '!eq')
+        assert pg2.column('firstname').filter.op == '!eq'
         flask.request.args = MultiDict([('session_key', pg.session_key)])
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.column('firstname').filter.op, 'eq')
+        assert pg.column('firstname').filter.op == 'eq'
 
     @inrequest('/foo')
     def test_session_load_from_none(self):
@@ -600,7 +591,7 @@ class TestQueryStringArgs(object):
         flask.session['dgsessions'] = {}
         pg = PeopleGrid()
         args = pg.get_session_store(MultiDict())
-        eq_(args, MultiDict([]))
+        assert args == MultiDict([])
 
     @inrequest('/foo')
     def test_session_load_from_multidict(self):
@@ -610,7 +601,7 @@ class TestQueryStringArgs(object):
         }
         pg = PeopleGrid()
         args = pg.get_session_store(MultiDict())
-        eq_(args, MultiDict([('a', 'b'), ('a', 'c')]))
+        assert args == MultiDict([('a', 'b'), ('a', 'c')])
 
     @inrequest('/foo')
     def test_session_load_from_dict(self):
@@ -620,7 +611,7 @@ class TestQueryStringArgs(object):
         }
         pg = PeopleGrid()
         args = pg.get_session_store(MultiDict())
-        eq_(args, MultiDict([('a', 'b'), ('c', 'd')]))
+        assert args == MultiDict([('a', 'b'), ('c', 'd')])
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_keyed_session_with_export(self):
@@ -629,14 +620,14 @@ class TestQueryStringArgs(object):
         flask.request.args['op(firstname)'] = '!eq'
         pg2 = PeopleGrid()
         pg2.apply_qs_args()
-        eq_(pg2.column('firstname').filter.op, '!eq')
+        assert pg2.column('firstname').filter.op == '!eq'
         flask.request.args = MultiDict([
             ('session_key', pg.session_key),
             ('export_to', 'xls'),
         ])
         pg = PeopleGrid()
         pg.apply_qs_args()
-        eq_(pg.column('firstname').filter.op, 'eq')
+        assert pg.column('firstname').filter.op == 'eq'
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_keyed_session_with_override(self):
@@ -650,10 +641,10 @@ class TestQueryStringArgs(object):
         ])
         pg2 = PeopleGrid()
         pg2.apply_qs_args()
-        eq_(pg2.column('firstname').filter.op, 'eq')
-        eq_(pg2.column('firstname').filter.value1, 'bob')
-        eq_(pg2.column('createdts').filter.op, '!eq')
-        eq_(pg2.column('createdts').filter.value1, datetime(2017, 5, 6))
+        assert pg2.column('firstname').filter.op == 'eq'
+        assert pg2.column('firstname').filter.value1 == 'bob'
+        assert pg2.column('createdts').filter.op == '!eq'
+        assert pg2.column('createdts').filter.value1 == datetime(2017, 5, 6)
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_keyed_session_without_override(self):
@@ -668,8 +659,8 @@ class TestQueryStringArgs(object):
         pg2.apply_qs_args()
         assert not pg2.column('firstname').filter.op
         assert not pg2.column('firstname').filter.value1
-        eq_(pg2.column('createdts').filter.op, '!eq')
-        eq_(pg2.column('createdts').filter.value1, datetime(2017, 5, 6))
+        assert pg2.column('createdts').filter.op == '!eq'
+        assert pg2.column('createdts').filter.value1 == datetime(2017, 5, 6)
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_apply_prevents_session_load(self):
@@ -720,19 +711,19 @@ class TestQueryStringArgs(object):
     def test_export_to_xls(self):
         g = PeopleGrid()
         g.apply_qs_args()
-        eq_(g.export_to, 'xls')
+        assert g.export_to == 'xls'
 
     @inrequest('/thepage?export_to=xlsx')
     def test_export_to_xlsx(self):
         g = PeopleGrid()
         g.apply_qs_args()
-        eq_(g.export_to, 'xlsx')
+        assert g.export_to == 'xlsx'
 
     @inrequest('/thepage?export_to=foo')
     def test_export_to_unrecognized(self):
         g = PeopleGrid()
         g.apply_qs_args()
-        eq_(g.export_to, None)
+        assert g.export_to is None
 
     @inrequest('/foo?op(id)=eq&v1(id)=d')
     def test_exc_msg_in_warnings(self):
@@ -740,14 +731,14 @@ class TestQueryStringArgs(object):
             Column('T', Person.id, IntFilter)
         g = TGrid()
         g.apply_qs_args()
-        eq_(g.user_warnings[0], 'T: Please enter an integer value')
+        assert g.user_warnings[0] == 'T: Please enter an integer value'
 
     @inrequest('/foo?search=bar')
     def test_qs_search(self):
         g = PeopleGrid()
         g.enable_search = True
         g.apply_qs_args()
-        eq_(g.search_value, 'bar')
+        assert g.search_value == 'bar'
 
     @inrequest('/foo?search=bar')
     def test_qs_search_disabled(self):

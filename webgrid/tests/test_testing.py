@@ -1,7 +1,7 @@
 from io import BytesIO
 
+import pytest
 import xlwt
-from nose.tools import assert_raises
 
 from webgrid import testing
 
@@ -16,18 +16,18 @@ class TestAssertListEqual:
         testing.assert_list_equal('123', '123')
 
     def test_different_lengths(self):
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_list_equal([], [1])
 
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_list_equal([1], [])
 
     def test_different_elements(self):
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_list_equal([1, 2, 3], [1, 2, 4])
 
     def test_order_is_significant(self):
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_list_equal([1, 2, 3], [2, 3, 1])
 
     def test_generators(self):
@@ -65,13 +65,13 @@ class TestAssertRenderedXlsMatches:
         testing.assert_rendered_xls_matches(self.stream.getvalue(), xls_headers, xls_rows)
 
     def test_empty_xls(self):
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_rendered_xls_matches(b'', None, None)
 
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_rendered_xls_matches(None, None, None)
 
-        with assert_raises(AssertionError):
+        with pytest.raises(AssertionError):
             testing.assert_rendered_xls_matches(None, [], [])
 
     def test_blank_workbook(self):

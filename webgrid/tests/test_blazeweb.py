@@ -1,91 +1,89 @@
-from __future__ import absolute_import
-
 from os import path
 
-import six
+from blazeutils import tolist
+from blazeweb.events import signal
+from blazeweb.globals import ag, settings, user
+from blazeweb.hierarchy import findobj
+from blazeweb.scripting import load_current_app
+from blazeweb.testing import inrequest
+from sqlalchemy.orm.session import Session as SASession
+import mock
 
-# !!!: Should blazeweb be tested for Python 3?
-if six.PY2:  # noqa
-    from blazeutils import tolist
-    from blazeweb.events import signal
-    from blazeweb.globals import ag, settings, user
-    from blazeweb.hierarchy import findobj
-    from blazeweb.scripting import load_current_app
-    from blazeweb.testing import inrequest, TestApp
-    from nose.tools import eq_
-    from sqlalchemy.orm.session import Session as SASession
-    import mock
+from webgrid.renderers import HTML
 
-    from webgrid.renderers import HTML
 
-    class TestBlazeWeb(object):
-        @classmethod
-        def setup_class(cls):
-            # these lines necessary because we are sharing test space with a Flask
-            #   app built with FlaskSQLAlchemy. That lib places listeners on the
-            #   session class but expects its own code will run to set up a session
-            SASession._model_changes = mock.Mock()
-            SASession.app = mock.Mock()
+class TestBlazeWeb(object):
+    @classmethod
+    def setup_class(cls):
+        from blazeweb.testing import TestApp
 
-            _, _, _, wsgiapp = load_current_app('webgrid_blazeweb_ta', 'Test')
+        # these lines necessary because we are sharing test space with a Flask
+        #   app built with FlaskSQLAlchemy. That lib places listeners on the
+        #   session class but expects its own code will run to set up a session
+        SASession._model_changes = mock.Mock()
+        SASession.app = mock.Mock()
 
-            # make the app available to the tests
-            ag.wsgi_test_app = wsgiapp
+        _, _, _, wsgiapp = load_current_app('webgrid_blazeweb_ta', 'Test')
 
-            # an application can define functions to be called after the app
-            # is initialized but before any test inspection is done or tests
-            # are ran.  We call those functions here:
-            for callstring in tolist(settings.testing.init_callables):
-                tocall = findobj(callstring)
-                tocall()
+        # make the app available to the tests
+        ag.wsgi_test_app = wsgiapp
 
-            # we also support events for pre-test setup
-            signal('blazeweb.pre_test_init').send()
+        # an application can define functions to be called after the app
+        # is initialized but before any test inspection is done or tests
+        # are ran.  We call those functions here:
+        for callstring in tolist(settings.testing.init_callables):
+            tocall = findobj(callstring)
+            tocall()
 
-            cls.ta = TestApp(ag.wsgi_test_app)
+        # we also support events for pre-test setup
+        signal('blazeweb.pre_test_init').send()
 
-        def test_xls_as_response(self):
-            r = self.ta.get('/people/manage?export_to=xls')
-            eq_(r.headers['Content-Type'], 'application/vnd.ms-excel')
+        cls.ta = TestApp(ag.wsgi_test_app)
 
-        def test_xlsx_as_response(self):
-            r = self.ta.get('/people/manage?export_to=xlsx')
-            eq_(r.headers['Content-Type'],
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    def test_xls_as_response(self):
+        r = self.ta.get('/people/manage?export_to=xls')
+        assert r.headers['Content-Type'] == 'application/vnd.ms-excel'
 
-        def test_csv_as_response(self):
-            r = self.ta.get('/people/manage?export_to=csv')
-            eq_(r.headers['Content-Type'], 'text/csv')
+    def test_xlsx_as_response(self):
+        r = self.ta.get('/people/manage?export_to=xlsx')
+        assert (
+            r.headers['Content-Type']
+            == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
 
-        @inrequest('/')
-        def test_nonstandard_templating(self):
-            from webgrid_blazeweb_ta.views import PeopleGrid as PGBase
+    def test_csv_as_response(self):
+        r = self.ta.get('/people/manage?export_to=csv')
+        assert r.headers['Content-Type'] == 'text/csv'
 
-            class PeopleGridHTML(HTML):
-                def header(self):
-                    return self.load_content(
-                        'nonstandard_header.html',
-                        session_key=self.grid.session_key,
-                        renderer=self,
-                    )
+    @inrequest('/')
+    def test_nonstandard_templating(self):
+        from webgrid_blazeweb_ta.views import PeopleGrid as PGBase
 
-            class PeopleGrid(PGBase):
-                def set_renderers(self):
-                    self.html = PeopleGridHTML(self)
+        class PeopleGridHTML(HTML):
+            def header(self):
+                return self.load_content(
+                    'nonstandard_header.html',
+                    session_key=self.grid.session_key,
+                    renderer=self,
+                )
 
-            g = PeopleGrid()
-            g.apply_qs_args()
-            assert '#something' in g.html().data['text/css'][0]
+        class PeopleGrid(PGBase):
+            def set_renderers(self):
+                self.html = PeopleGridHTML(self)
 
-        @inrequest('/path?session_key=123456')
-        def test_session(self):
-            from webgrid_blazeweb_ta.views import PeopleGrid
-            g = PeopleGrid()
-            g.apply_qs_args()
-            assert '123456' in user.dgsessions
+        g = PeopleGrid()
+        g.apply_qs_args()
+        assert '#something' in g.html().data['text/css'][0]
 
-        @inrequest('/path?session_key=123456')
-        def test_static_path(self):
-            from webgrid_blazeweb_ta.views import PeopleGrid
-            g = PeopleGrid()
-            assert g.manager.static_path().endswith('webgrid{}static'.format(path.sep))
+    @inrequest('/path?session_key=123456')
+    def test_session(self):
+        from webgrid_blazeweb_ta.views import PeopleGrid
+        g = PeopleGrid()
+        g.apply_qs_args()
+        assert '123456' in user.dgsessions
+
+    @inrequest('/path?session_key=123456')
+    def test_static_path(self):
+        from webgrid_blazeweb_ta.views import PeopleGrid
+        g = PeopleGrid()
+        assert g.manager.static_path().endswith('webgrid{}static'.format(path.sep))

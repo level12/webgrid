@@ -3,9 +3,9 @@ import datetime as dt
 from collections import namedtuple
 from decimal import Decimal as D
 
+import pytest
 from blazeutils.testing import raises
 import formencode
-from nose.tools import eq_, assert_raises
 from .helpers import query_to_str
 
 from webgrid.filters import Operator
@@ -14,8 +14,6 @@ from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilt
 from webgrid_ta.model.entities import ArrowRecord, Person, db, AccountType
 
 from .helpers import ModelBase
-from six.moves import map
-from six.moves import range
 
 
 class CheckFilterBase(ModelBase):
@@ -281,95 +279,95 @@ class TestDateFilter(CheckFilterBase):
         filter = DateFilter(Person.due_date)
         filter.set('eq', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.due_date = '2010-12-31'")
-        eq_(filter.description, '12/31/2010')
+        assert filter.description == '12/31/2010'
 
     def test_eq_none(self):
         filter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('eq', None)
 
     def test_eq_default(self):
         filter = DateFilter(Person.due_date, default_op='eq')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_not_eq(self):
         filter = DateFilter(Person.due_date)
         filter.set('!eq', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.due_date != '2010-12-31'")
-        eq_(filter.description, 'excluding 12/31/2010')
+        assert filter.description == 'excluding 12/31/2010'
 
     def test_noteq_default(self):
         filter = DateFilter(Person.due_date, default_op='!eq')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_not_eq_none(self):
         filter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('!eq', None)
 
     def test_lte(self):
         filter = DateFilter(Person.due_date)
         filter.set('lte', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.due_date <= '2010-12-31'")
-        eq_(filter.description, 'up to 12/31/2010')
-        with assert_raises(formencode.Invalid):
+        assert filter.description == 'up to 12/31/2010'
+        with pytest.raises(formencode.Invalid):
             filter.set('lte', '')
 
     def test_lte_default(self):
         filter = DateFilter(Person.due_date, default_op='lte')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_lte_none(self):
         filter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
 
     def test_gte(self):
         filter = DateFilter(Person.due_date)
         filter.set('gte', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.due_date >= '2010-12-31'")
-        eq_(filter.description, 'beginning 12/31/2010')
+        assert filter.description == 'beginning 12/31/2010'
 
     def test_gte_default(self):
         filter = DateFilter(Person.due_date, default_op='gte')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_gte_none(self):
         figter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             figter.set('gte', None)
 
     def test_empty(self):
         filter = DateFilter(Person.due_date)
         filter.set('empty', None)
         self.assert_filter_query(filter, "WHERE persons.due_date IS NULL")
-        eq_(filter.description, 'date not specified')
+        assert filter.description == 'date not specified'
         filter.set('empty', '')
         self.assert_filter_query(filter, "WHERE persons.due_date IS NULL")
-        eq_(filter.description, 'date not specified')
+        assert filter.description == 'date not specified'
 
     def test_empty_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='empty')
         filter.set(None, None)
-        eq_(filter.description, 'date not specified')
+        assert filter.description == 'date not specified'
 
     def test_not_empty(self):
         filter = DateFilter(Person.due_date)
         filter.set('!empty', None)
         self.assert_filter_query(filter, "WHERE persons.due_date IS NOT NULL")
-        eq_(filter.description, 'any date')
+        assert filter.description == 'any date'
         filter.set('!empty', '')
         self.assert_filter_query(filter, "WHERE persons.due_date IS NOT NULL")
-        eq_(filter.description, 'any date')
+        assert filter.description == 'any date'
 
     def test_not_empty_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='!empty')
         filter.set(None, None)
-        eq_(filter.description, 'any date')
+        assert filter.description == 'any date'
 
     def test_between(self):
         filter = DateFilter(Person.due_date)
@@ -378,7 +376,7 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date BETWEEN '2010-01-31' AND '2010-12-31'"
         )
-        eq_(filter.description, '01/31/2010 - 12/31/2010')
+        assert filter.description == '01/31/2010 - 12/31/2010'
 
     def test_between_swap(self):
         filter = DateFilter(Person.due_date)
@@ -387,7 +385,7 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date BETWEEN '2010-01-31' AND '2010-12-31'"
         )
-        eq_(filter.description, '01/31/2010 - 12/31/2010')
+        assert filter.description == '01/31/2010 - 12/31/2010'
 
     def test_between_missing_date(self):
         filter = DateFilter(Person.due_date)
@@ -407,22 +405,22 @@ class TestDateFilter(CheckFilterBase):
             "WHERE persons.due_date BETWEEN '2010-12-31' AND '{}'".format(today)
         )
 
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('between', None)
-        eq_(filter.error, True)
-        eq_(filter.description, 'invalid')
+        assert filter.error is True
+        assert filter.description == 'invalid'
 
     def test_between_blank(self):
         filter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('between', '', '')
-        eq_(filter.error, True)
-        eq_(filter.description, 'invalid')
+        assert filter.error is True
+        assert filter.description == 'invalid'
 
     def test_between_default(self):
         filter = DateFilter(Person.due_date, default_op='between')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_not_between_missing_date(self):
         filter = DateFilter(Person.due_date)
@@ -442,10 +440,10 @@ class TestDateFilter(CheckFilterBase):
             "WHERE persons.due_date NOT BETWEEN '2010-12-31' AND '{}'".format(today)
         )
 
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('!between', None)
-        eq_(filter.error, True)
-        eq_(filter.description, 'invalid')
+        assert filter.error is True
+        assert filter.description == 'invalid'
 
     def test_not_between(self):
         filter = DateFilter(Person.due_date)
@@ -454,27 +452,27 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date NOT BETWEEN '2010-01-31' AND '2010-12-31'"
         )
-        eq_(filter.description, 'excluding 01/31/2010 - 12/31/2010')
+        assert filter.description == 'excluding 01/31/2010 - 12/31/2010'
 
     def test_not_between_default(self):
         filter = DateFilter(Person.due_date, default_op='!between')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_days_ago(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('da', '10')
         self.assert_filter_query(filter, "WHERE persons.due_date = '2011-12-22'")
-        eq_(filter.description, '12/22/2011')
+        assert filter.description == '12/22/2011'
 
     def test_days_ago_default(self):
         filter = DateFilter(Person.due_date, default_op='da')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_days_ago_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('da', None)
 
     def test_less_than_days_ago(self):
@@ -484,32 +482,32 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date > '2011-12-22' AND persons.due_date <= '2012-01-01'"
         )
-        eq_(filter.description, '12/22/2011 - 01/01/2012')
+        assert filter.description == '12/22/2011 - 01/01/2012'
 
     def test_less_than_days_ago_default(self):
         filter = DateFilter(Person.due_date, default_op='ltda')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_less_than_days_ago_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('ltda', None)
 
     def test_more_than_days_ago(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('mtda', '10')
         self.assert_filter_query(filter, "WHERE persons.due_date < '2011-12-22'")
-        eq_(filter.description, 'before 12/22/2011')
+        assert filter.description == 'before 12/22/2011'
 
     def test_more_than_days_ago_default(self):
         filter = DateFilter(Person.due_date, default_op='mtda')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_more_than_days_ago_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('mtda', None)
 
     def test_in_less_than_days(self):
@@ -519,83 +517,83 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date >= '2012-01-01' AND persons.due_date < '2012-01-11'"
         )
-        eq_(filter.description, '01/01/2012 - 01/11/2012')
+        assert filter.description == '01/01/2012 - 01/11/2012'
 
     def test_in_less_than_days_default(self):
         filter = DateFilter(Person.due_date, default_op='iltd')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_less_than_days_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('iltd', None)
 
     def test_in_more_than_days(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('imtd', '10')
         self.assert_filter_query(filter, "WHERE persons.due_date > '2012-01-11'")
-        eq_(filter.description, 'after 01/11/2012')
+        assert filter.description == 'after 01/11/2012'
 
     def test_in_more_than_days_default(self):
         filter = DateFilter(Person.due_date, default_op='imtd')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_more_than_days_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('imtd', None)
 
     def test_in_days(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('ind', '10')
         self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-11'")
-        eq_(filter.description, '01/11/2012')
+        assert filter.description == '01/11/2012'
 
     def test_in_days_default(self):
         filter = DateFilter(Person.due_date, default_op='ind')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_days_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('ind', None)
 
     def test_today(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('today', None)
         self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-01'")
-        eq_(filter.description, '01/01/2012')
+        assert filter.description == '01/01/2012'
 
     def test_today_default(self):
         filter = DateFilter(Person.due_date, default_op='today', _now=dt.date(2012, 1, 1))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012')
+        assert filter.description == '01/01/2012'
 
     def test_this_week(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 4))
         filter.set('thisweek', None)
         self.assert_filter_query(filter, self.between_week_sql)
-        eq_(filter.description, '01/01/2012 - 01/07/2012')
+        assert filter.description == '01/01/2012 - 01/07/2012'
 
     def test_this_week_default(self):
         filter = DateFilter(Person.due_date, default_op='thisweek', _now=dt.date(2012, 1, 4))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/07/2012')
+        assert filter.description == '01/01/2012 - 01/07/2012'
 
     def test_this_week_left_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('thisweek', None)
         self.assert_filter_query(filter, self.between_week_sql)
-        eq_(filter.description, '01/01/2012 - 01/07/2012')
+        assert filter.description == '01/01/2012 - 01/07/2012'
 
     def test_this_week_right_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 7))
         filter.set('thisweek', None)
         self.assert_filter_query(filter, self.between_week_sql)
-        eq_(filter.description, '01/01/2012 - 01/07/2012')
+        assert filter.description == '01/01/2012 - 01/07/2012'
 
     @raises(formencode.Invalid, 'Please enter a value')
     def test_days_operator_with_blank_value(self):
@@ -606,47 +604,47 @@ class TestDateFilter(CheckFilterBase):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 4))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_default(self):
         filter = DateFilter(Person.due_date, default_op='thismonth', _now=dt.date(2012, 1, 4))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_left_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_right_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 31))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_default(self):
         filter = DateFilter(Person.due_date, default_op='lastmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_left_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 1))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_right_edge(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 29))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_year(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
@@ -655,7 +653,7 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-12-31'"
         )
-        eq_(filter.description, '01/01/2012 - 12/31/2012')
+        assert filter.description == '01/01/2012 - 12/31/2012'
 
     def test_this_year_default(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4), default_op='thisyear')
@@ -664,35 +662,35 @@ class TestDateFilter(CheckFilterBase):
             filter,
             "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-12-31'"
         )
-        eq_(filter.description, '01/01/2012 - 12/31/2012')
+        assert filter.description == '01/01/2012 - 12/31/2012'
 
     def test_selmonth(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
         filter.set('selmonth', 1, 2012)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, 'Jan 2012')
+        assert filter.description == 'Jan 2012'
 
     def test_selmonth_default(self):
         filter = DateFilter(Person.due_date, default_op='selmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
-        eq_(filter.description, 'All')
+        assert filter.description == 'All'
 
     def test_selmonth_none(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('selmonth', None, 2012)
 
     def test_int_filter_process(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 29))
         filter.set('ltda', '1', '')
-        eq_(filter.error, False)
+        assert filter.error is False
 
     def test_bad_date(self):
         filter = DateFilter(Person.due_date)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('eq', '1/1/2015 - 8/31/2015')
-        eq_(filter.error, True)
-        eq_(filter.description, 'invalid')
+        assert filter.error is True
+        assert filter.description == 'invalid'
 
     @raises(formencode.Invalid, 'date filter given is out of range')
     def test_days_ago_overflow(self):
@@ -829,23 +827,23 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-12-31 00:00:00.000000' "
             "AND '2010-12-31 23:59:59.999999'")
-        eq_(filter.value1_set_with, '12/31/2010')
+        assert filter.value1_set_with == '12/31/2010'
 
     def test_eq_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='eq')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_eq_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('eq', None)
 
     def test_eq_with_time(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('eq', '12/31/2010 10:26:27')
         self.assert_filter_query(filter, "WHERE persons.createdts = '2010-12-31 10:26:27.000000'")
-        eq_(filter.value1_set_with, '12/31/2010 10:26 AM')
+        assert filter.value1_set_with == '12/31/2010 10:26 AM'
 
     def test_not_eq(self):
         filter = DateTimeFilter(Person.createdts)
@@ -854,12 +852,12 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts NOT BETWEEN '2010-12-31 00:00:00.000000' AND "
             "'2010-12-31 23:59:59.999999'")
-        eq_(filter.value1_set_with, '12/31/2010')
+        assert filter.value1_set_with == '12/31/2010'
 
     def test_not_eq_default(self):
         filter = DateFilter(Person.createdts, default_op='!eq')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_not_eq_none(self):
         filter = DateTimeFilter(Person.createdts)
@@ -876,16 +874,16 @@ class TestDateTimeFilter(CheckFilterBase):
         self.assert_filter_query(filter, "WHERE persons.createdts <= '2010-12-31 23:59:59.999999'")
         filter.set('lte', '12/31/2010', '')
         self.assert_filter_query(filter, "WHERE persons.createdts <= '2010-12-31 23:59:59.999999'")
-        eq_(filter.value1_set_with, '12/31/2010')
-        with assert_raises(formencode.Invalid):
+        assert filter.value1_set_with == '12/31/2010'
+        with pytest.raises(formencode.Invalid):
             filter.set('lte', '')
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
 
     def test_lte_default(self):
         filter = DateFilter(Person.createdts, default_op='lte')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_lte_with_time(self):
         filter = DateTimeFilter(Person.createdts)
@@ -894,27 +892,27 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_lte_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
 
     def test_gte(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('gte', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.createdts >= '2010-12-31 00:00:00.000000'")
-        eq_(filter.value1_set_with, '12/31/2010')
-        with assert_raises(formencode.Invalid):
+        assert filter.value1_set_with == '12/31/2010'
+        with pytest.raises(formencode.Invalid):
             filter.set('gte', '')
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('gte', None)
 
     def test_gte_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='gte')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_gte_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('gte', None)
 
     def test_gte_with_time(self):
@@ -932,7 +930,7 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_empty_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='empty')
         filter.set(None, None)
-        eq_(filter.description, 'date not specified')
+        assert filter.description == 'date not specified'
 
     def test_not_empty(self):
         filter = DateTimeFilter(Person.createdts)
@@ -944,7 +942,7 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_not_empty_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='!empty')
         filter.set(None, None)
-        eq_(filter.description, 'any date')
+        assert filter.description == 'any date'
 
     def test_between(self):
         filter = DateTimeFilter(Person.createdts)
@@ -953,17 +951,17 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-01-31 00:00:00.000000' AND "
             "'2010-12-31 23:59:59.999999'")
-        eq_(filter.value1_set_with, '01/31/2010 12:00 AM')
-        eq_(filter.value2_set_with, '12/31/2010 11:59 PM')
+        assert filter.value1_set_with == '01/31/2010 12:00 AM'
+        assert filter.value2_set_with == '12/31/2010 11:59 PM'
 
     def test_between_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='between')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_between_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('between', None, None)
 
     def test_between_missing_date(self):
@@ -978,10 +976,10 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_between_blank(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('between', '', '')
-        eq_(filter.error, True)
-        eq_(filter.description, 'invalid')
+        assert filter.error is True
+        assert filter.description == 'invalid'
 
     def test_between_with_time(self):
         filter = DateTimeFilter(Person.createdts)
@@ -990,8 +988,8 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-01-31 10:00:00.000000' AND "
             "'2010-12-31 10:59:59.000000'")
-        eq_(filter.value1_set_with, '01/31/2010 10:00 AM')
-        eq_(filter.value2_set_with, '12/31/2010 10:59 AM')
+        assert filter.value1_set_with == '01/31/2010 10:00 AM'
+        assert filter.value2_set_with == '12/31/2010 10:59 AM'
 
     def test_between_with_explicit_midnight(self):
         filter = DateTimeFilter(Person.createdts)
@@ -1004,7 +1002,7 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_not_between(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('!between', '1/31/2010', '12/31/2010')
-        eq_(filter.error, False)
+        assert filter.error is False
         self.assert_filter_query(
             filter,
             "WHERE persons.createdts NOT BETWEEN '2010-01-31 00:00:00.000000' AND "
@@ -1013,11 +1011,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_not_between_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='!between')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_not_between_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('!between', None, None)
 
     def test_days_ago(self):
@@ -1031,17 +1029,17 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_days_ago_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='da')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('da', None)
 
-    @raises(formencode.Invalid, 'date filter given is out of range')
     def test_days_ago_overflow(self):
         filter = DateTimeFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('da', '10000000')
+        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+            filter.set('da', '10000000')
 
     def test_less_than_days_ago(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 1, 1, 1, 1))
@@ -1054,11 +1052,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_less_than_days_ago_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='ltda')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_less_than_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('ltda', None)
 
     def test_more_than_days_ago(self):
@@ -1069,11 +1067,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_more_than_days_ago_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='mtda')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_more_than_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('mtda', None)
 
     def test_in_less_than_days(self):
@@ -1087,11 +1085,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_in_less_than_days_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='iltd')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_less_than_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('iltd', None)
 
     def test_in_more_than_days(self):
@@ -1102,11 +1100,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_in_more_than_days_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='imtd')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_more_than_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('imtd', None)
 
     def test_in_days(self):
@@ -1120,17 +1118,17 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_in_days_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='ind')
         filter.set(None, None)
-        eq_(filter.description, 'all')
+        assert filter.description == 'all'
 
     def test_in_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('ind', None)
 
-    @raises(formencode.Invalid, 'date filter given is out of range')
     def test_in_days_overflow(self):
         filter = DateTimeFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('ind', '10000000')
+        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+            filter.set('ind', '10000000')
 
     def test_today(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
@@ -1144,7 +1142,7 @@ class TestDateTimeFilter(CheckFilterBase):
         filter = DateTimeFilter(
             Person.createdts, default_op='today', _now=dt.datetime(2012, 1, 1, 12, 35))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012')
+        assert filter.description == '01/01/2012'
 
     def test_this_week(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 4, 12, 35))
@@ -1158,7 +1156,7 @@ class TestDateTimeFilter(CheckFilterBase):
         filter = DateTimeFilter(
             Person.createdts, default_op='thisweek', _now=dt.datetime(2012, 1, 4, 12, 35))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/07/2012')
+        assert filter.description == '01/01/2012 - 01/07/2012'
 
     def test_this_week_left_edge(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1))
@@ -1176,10 +1174,10 @@ class TestDateTimeFilter(CheckFilterBase):
             "WHERE persons.createdts BETWEEN '2012-01-01 00:00:00.000000' AND "
             "'2012-01-07 23:59:59.999999'")
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_days_operator_with_empty_value(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        filter.set('ind', '')
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('ind', '')
 
     def test_non_days_operator_with_empty_value(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
@@ -1204,49 +1202,49 @@ class TestDateTimeFilter(CheckFilterBase):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 4))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_default(self):
         filter = DateTimeFilter(
             Person.createdts, default_op='thismonth', _now=dt.date(2012, 1, 4))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_left_edge(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_month_right_edge(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 31))
         filter.set('thismonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_default(self):
         filter = DateTimeFilter(
             Person.createdts, default_op='lastmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_left_edge(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 1))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_last_month_right_edge(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 29))
         filter.set('lastmonth', None)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, '01/01/2012 - 01/31/2012')
+        assert filter.description == '01/01/2012 - 01/31/2012'
 
     def test_this_year(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4))
@@ -1256,7 +1254,7 @@ class TestDateTimeFilter(CheckFilterBase):
             "WHERE persons.createdts BETWEEN '2012-01-01 00:00:00.000000' AND "
             "'2012-12-31 23:59:59.999999'"
         )
-        eq_(filter.description, '01/01/2012 - 12/31/2012')
+        assert filter.description == '01/01/2012 - 12/31/2012'
 
     def test_this_year_default(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4), default_op='thisyear')
@@ -1266,23 +1264,23 @@ class TestDateTimeFilter(CheckFilterBase):
             "WHERE persons.createdts BETWEEN '2012-01-01 00:00:00.000000' AND "
             "'2012-12-31 23:59:59.999999'"
         )
-        eq_(filter.description, '01/01/2012 - 12/31/2012')
+        assert filter.description == '01/01/2012 - 12/31/2012'
 
     def test_selmonth(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4))
         filter.set('selmonth', 1, 2012)
         self.assert_filter_query(filter, self.between_sql)
-        eq_(filter.description, 'Jan 2012')
+        assert filter.description == 'Jan 2012'
 
     def test_selmonth_default(self):
         filter = DateTimeFilter(
             Person.createdts, default_op='selmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
-        eq_(filter.description, 'All')
+        assert filter.description == 'All'
 
     def test_selmonth_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4))
-        with assert_raises(formencode.Invalid):
+        with pytest.raises(formencode.Invalid):
             filter.set('selmonth', None, None)
 
     def test_search_expr(self):
@@ -1518,14 +1516,14 @@ class TestOptionsFilter(CheckFilterBase):
 
 
 class TestEnumFilter(CheckFilterBase):
-    @raises(ValueError)
     def test_create_without_enum_type(self):
-        OptionsEnumFilter(Person.account_type)
+        with pytest.raises(ValueError, match='enum_type argument not given'):
+            OptionsEnumFilter(Person.account_type)
 
-    @raises(ValueError)
     def test_default_modifier_throws_error_when_not_exists(self):
         f = OptionsEnumFilter(Person.account_type, enum_type=AccountType)
-        f.default_modifier('doesntexist')
+        with pytest.raises(ValueError, match='Not a valid selection'):
+            f.default_modifier('doesntexist')
 
     def test_returns_value_when_value_modifier_is_none(self):
         f = OptionsEnumFilter(Person.account_type, enum_type=AccountType)
@@ -1559,16 +1557,16 @@ class TestIntrospect(CheckFilterBase):
                 self.kwargs = kwargs
 
         tf1 = TestFilter(Person.firstname, 'foo', 'bar', 'baz', x=1, y=2)
-        eq_(tf1.a, Person.firstname)
-        eq_(tf1.b, 'foo')
-        eq_(tf1.vargs, ('bar', 'baz'))
-        eq_(tf1.kwargs, {'x': 1, 'y': 2})
+        assert tf1.a == Person.firstname
+        assert tf1.b == 'foo'
+        assert tf1.vargs == ('bar', 'baz')
+        assert tf1.kwargs == {'x': 1, 'y': 2}
 
         tf2 = tf1.new_instance()
-        eq_(tf2.a, Person.firstname)
-        eq_(tf2.b, 'foo')
-        eq_(tf2.vargs, ('bar', 'baz'))
-        eq_(tf2.kwargs, {'x': 1, 'y': 2})
+        assert tf2.a == Person.firstname
+        assert tf2.b == 'foo'
+        assert tf2.vargs == ('bar', 'baz')
+        assert tf2.kwargs == {'x': 1, 'y': 2}
 
         assert tf1 is not tf2
 
