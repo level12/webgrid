@@ -712,6 +712,11 @@ class TestDateFilter(CheckFilterBase):
         filter = DateFilter(Person.due_date)
         filter.set('eq', '7/45/2007')
 
+    @raises(formencode.Invalid, 'invalid date')
+    def test_overflow_date(self):
+        filter = DateFilter(Person.due_date)
+        filter.set('eq', '12345678901234567890')
+
     @raises(formencode.Invalid, 'Please enter an integer value')
     def test_days_operator_with_invalid_value(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
@@ -762,6 +767,11 @@ class TestDateFilter(CheckFilterBase):
         )
         assert expr.clauses[0].right.value == '%6/19/2019%'
         assert expr.clauses[1].right.value == dt.datetime(2019, 6, 19)
+
+    def test_overflow_search_expr(self):
+        expr_factory = DateFilter(Person.due_date).get_search_expr()
+        # This generates an overflow error that should be handled
+        expr_factory('12345678901234567890')
 
     def test_valid_date_for_backend(self):
         fake_dialect = namedtuple('dialect', 'name')
@@ -838,6 +848,11 @@ class TestDateTimeFilter(CheckFilterBase):
         filter = DateTimeFilter(Person.createdts)
         with pytest.raises(formencode.Invalid):
             filter.set('eq', None)
+
+    @raises(formencode.Invalid, 'invalid date')
+    def test_overflow_date(self):
+        filter = DateTimeFilter(Person.createdts)
+        filter.set('eq', '12345678901234567890')
 
     def test_eq_with_time(self):
         filter = DateTimeFilter(Person.createdts)
@@ -1311,6 +1326,11 @@ class TestDateTimeFilter(CheckFilterBase):
         expr = expr_factory('6/19/1752')
         assert str(expr) == 'CAST(persons.due_date AS VARCHAR) LIKE :param_1', str(expr)
         assert expr.right.value == '%6/19/1752%'
+
+    def test_search_expr_overflow_date(self):
+        expr_factory = DateTimeFilter(Person.due_date).get_search_expr()
+        # This generates an overflow error that should be handled
+        expr_factory('12345678901234567890')
 
 
 class TestTimeFilter(CheckFilterBase):

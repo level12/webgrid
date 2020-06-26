@@ -746,7 +746,7 @@ class _DateMixin(object):
                     base_expr,
                     date_comparator(date_value)
                 )
-            except ValueError:
+            except (ValueError, OverflowError):
                 pass
             return base_expr
         return expr
@@ -905,7 +905,7 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
                 return feval.Int(min=1900).to_python(d.year)
 
             return d
-        except ValueError:
+        except (ValueError, OverflowError):
             # allow open ranges when blanks are submitted as a second value
             if is_value2 and not value:
                 return self._get_today()
@@ -1065,7 +1065,7 @@ class DateTimeFilter(DateFilter):
     def _process_datetime(self, value, is_value2):
         try:
             dt_value = parse(value)
-        except ValueError:
+        except (ValueError, OverflowError):
             # allow open ranges when blanks are submitted as a second value
             if is_value2 and not value:
                 return self._get_now()
