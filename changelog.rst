@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.2.11 released 2020-07-07
+--------------------------
+
+- Fix date filter overflow error (116447b_)
+- Switch test runner to pytest from nose (dfdb3b0_)
+
+.. _116447b: https://github.com/level12/webgrid/commit/116447b
+.. _dfdb3b0: https://github.com/level12/webgrid/commit/dfdb3b0
+
+
 0.2.10 released 2020-05-15
 --------------------------
 
