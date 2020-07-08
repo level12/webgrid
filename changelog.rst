@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.12 released 2020-07-08
+--------------------------
+
+- Fix multiselect filter rendering bug for list options (abfd32f_)
+
+.. _abfd32f: https://github.com/level12/webgrid/commit/abfd32f
+
+
 0.2.11 released 2020-07-07
 --------------------------
 
