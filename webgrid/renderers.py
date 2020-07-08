@@ -361,15 +361,17 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '''
             {% for value, label in filter.options_seq %}
-                <label>
-                    <input
-                        {% if value in selected %}checked{% endif %}
-                        type="checkbox"
-                        value="{{value}}"
-                        name="selectItem{{field_name}}"
-                    />
-                    {{label}}
-                </label>
+                <li>
+                    <label>
+                        <input
+                            {% if value in selected %}checked{% endif %}
+                            type="checkbox"
+                            value="{{value}}"
+                            name="selectItem{{field_name}}"
+                        />
+                        {{label}}
+                    </label>
+                </li>
             {% endfor %}
             ''',
             filter=filter,
