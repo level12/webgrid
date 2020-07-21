@@ -357,6 +357,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_filter_options_multi(self, filter, field_name):
+        # Assume the multiselect filter has been set up with OptionsFilterBase.setup_validator
         selected = filter.value1 or []
         return self._render_jinja(
             '''
@@ -364,7 +365,7 @@ class HTML(GroupMixin, Renderer):
                 <li>
                     <label>
                         <input
-                            {% if value in selected %}checked{% endif %}
+                            {% if transform(value) in selected %}checked{% endif %}
                             type="checkbox"
                             value="{{value}}"
                             name="selectItem{{field_name}}"
@@ -377,6 +378,7 @@ class HTML(GroupMixin, Renderer):
             filter=filter,
             field_name=field_name,
             selected=selected,
+            transform=filter.value_modifier.to_python if filter.value_modifier else lambda x: x,
         )
 
     def filtering_col_inputs2(self, col):
