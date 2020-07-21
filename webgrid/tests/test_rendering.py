@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import csv
 import datetime as dt
+from enum import Enum
 import json
 import io
 
@@ -23,7 +24,7 @@ from webgrid import (
     col_styler,
     row_styler,
 )
-from webgrid.filters import TextFilter
+from webgrid.filters import TextFilter, OptionsEnumFilter
 from webgrid.renderers import (
     CSV,
     HTML,
@@ -515,6 +516,19 @@ class TestHtmlRenderer(object):
         g.key_column_map['firstname'].filter.html_extra = {'data-special-attr': 'foo'}
         filter_html = g.html.filtering_table_row(g.key_column_map['firstname'])
         assert '<tr class="firstname_filter" data-special-attr="foo">' in filter_html, filter_html
+
+    @inrequest('/thepage')
+    def test_multiselect_enum_options(self):
+        class PeopleType(Enum):
+            bob = 'Bob'
+            charlie = 'Charlie'
+
+        g = PeopleGrid()
+        name_filter = OptionsEnumFilter(Person.firstname, enum_type=PeopleType).new_instance()
+        name_filter.set('is', ['bob'])
+        output = g.html.filtering_filter_options_multi(name_filter, 'foo')
+        assert PyQuery(output).find('input[value="bob"]').attr('checked')
+        assert not PyQuery(output).find('input[value="charlie"]').attr('checked')
 
     @inrequest('/thepage')
     def test_confirm_export(self):
