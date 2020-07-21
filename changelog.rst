@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.2.13 released 2020-07-21
+--------------------------
+
+- Fix multiselect filter rendering bug for selected enum options (5e9aa00_)
+
+.. _5e9aa00: https://github.com/level12/webgrid/commit/5e9aa00
+
+
 0.2.12 released 2020-07-08
 --------------------------
 
