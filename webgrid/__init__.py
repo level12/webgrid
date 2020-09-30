@@ -732,9 +732,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         for key, value in self.allowed_export_targets.items():
             setattr(self, key, value(self))
 
-    def set_filter(self, key, op, value):
+    def set_filter(self, key, op, value, value2=None):
         self.clear_record_cache()
-        self.filtered_cols[key].filter.set(op, value)
+        self.filtered_cols[key].filter.set(op, value, value2=value2)
 
     def set_sort(self, *args):
         self.clear_record_cache()

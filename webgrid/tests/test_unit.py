@@ -199,6 +199,14 @@ class TestGrid(object):
         g.set_filter('firstname', 'eq', 'foo')
         assert_in_query(g, "WHERE upper(persons.last_name) = upper('foo')")
 
+    def test_filter_two_values(self):
+        class CTG(Grid):
+            Column('Sort Order', Person.sortorder, IntFilter(Person.sortorder))
+
+        g = CTG()
+        g.set_filter('sortorder', 'between', 5, value2=10)
+        assert_in_query(g, "WHERE persons.sortorder BETWEEN 5 AND 10")
+
     def test_order_by(self):
         class CTG(Grid):
             Column('First Name', Person.firstname)
