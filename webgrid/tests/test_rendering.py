@@ -594,6 +594,19 @@ class TestHtmlRenderer(object):
         filter_html = g.html.filtering_fields()
         assert_tag(filter_html, 'input', id='search_input', name='search', type='text', value='foo')
 
+    @inrequest('/thepage?search=foo&dgreset=1')
+    def test_render_search_filter_reset(self):
+        g = PeopleGrid()
+        g.enable_search = True
+
+        filter_html = g.html.filtering_fields()
+        tag = assert_tag(filter_html, 'input', id='search_input', name='search', type='text')
+        assert tag.val() == ''
+
+        g.apply_qs_args()
+        filter_html = g.html.filtering_fields()
+        assert_tag(filter_html, 'input', id='search_input', name='search', type='text', value='')
+
     def test_search_disabled(self):
         class PeopleGrid2(PeopleGrid):
             enable_search = False

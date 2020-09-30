@@ -973,7 +973,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
     def apply_qs_args(self, add_user_warnings=True):
         args = MultiDict(self.manager.request_args())
-        if 'search' in args and self.can_search():
+        if (
+            'search' in args
+            and self.can_search()
+            and self.prefix_qs_arg_key('dgreset') not in args
+        ):
             self.search_value = args['search'].strip()
 
         # args are pulled first from the request. If the session feature
