@@ -210,6 +210,16 @@ class TestNumberFilters(CheckFilterBase):
         filter.set('gte', '1')
         self.assert_filter_query(filter, "WHERE persons.numericcol >= 1")
 
+    def test_int_between(self):
+        filter = IntFilter(Person.numericcol)
+        filter.set('between', '5', '10')
+        self.assert_filter_query(filter, "WHERE persons.numericcol BETWEEN 5 AND 10")
+
+    def test_int_not_between(self):
+        filter = IntFilter(Person.numericcol)
+        filter.set('!between', '5', '10')
+        self.assert_filter_query(filter, "WHERE persons.numericcol NOT BETWEEN 5 AND 10")
+
     def test_number_filter_type_conversion1(self):
         filter = NumberFilter(Person.numericcol)
         filter.set('eq', '1')

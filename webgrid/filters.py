@@ -476,8 +476,8 @@ class TextFilter(FilterBase):
 
 
 class NumberFilterBase(FilterBase):
-    operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.empty,
-                 ops.not_empty)
+    operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
+                 ops.not_between, ops.empty, ops.not_empty)
 
     def process(self, value, is_value2):
         if self.op == self.default_op and not value:
@@ -493,6 +493,13 @@ class NumberFilterBase(FilterBase):
         # parenthesis, monetary symbols, etc. from the search value, but then we get to deal with
         # locale.
         return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
+
+    def apply(self, query):
+        if self.op == ops.between:
+            return query.filter(self.sa_col.between(self.value1, self.value2))
+        if self.op == ops.not_between:
+            return query.filter(~self.sa_col.between(self.value1, self.value2))
+        return super().apply(query)
 
 
 class IntFilter(NumberFilterBase):
