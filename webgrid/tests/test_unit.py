@@ -13,7 +13,7 @@ from werkzeug.datastructures import MultiDict
 
 from webgrid import Column, BoolColumn, YesNoColumn
 from webgrid.filters import FilterBase, TextFilter, IntFilter
-from webgrid_ta.model.entities import Person, Status, db
+from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
 from .helpers import assert_in_query, assert_not_in_query, query_to_str, inrequest
 from webgrid.renderers import CSV
@@ -22,6 +22,13 @@ from webgrid.renderers import CSV
 class TestGrid(object):
     class TG(Grid):
         Column('First Name', Person.firstname)
+
+    class KeyGrid(Grid):
+        # demonstrate grid operations when multiple column expressions have the same key
+        Column('Person ID', Person.id, IntFilter)
+        Column('Stopwatch ID', Stopwatch.id, IntFilter)
+
+        query_joins = [(Stopwatch, Stopwatch.id > 0)]
 
     def setup_method(self, _):
         Status.delete_cascaded()
@@ -428,6 +435,38 @@ class TestGrid(object):
         search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
                         " OR lower(persons.last_name) LIKE lower('%foo%')")
         assert_in_query(g, search_where)
+
+    def test_column_keys_unique(self):
+        grid = self.KeyGrid()
+        assert grid.column('id').expr == Person.id
+        assert grid.column('id_1').expr == Stopwatch.id
+
+    def test_column_keys_unique_query_default_sort(self):
+        grid = self.KeyGrid()
+        grid.query_default_sort = 'id'
+        assert_in_query(grid, 'ORDER BY stopwatches.id')
+        grid.query_default_sort = Stopwatch.id
+        assert_in_query(grid, 'ORDER BY stopwatches.id')
+        grid.query_default_sort = Person.id
+        assert_in_query(grid, 'ORDER BY persons.id')
+
+    @inrequest('/foo?op(id)=gte&v1(id)=0')
+    def test_column_keys_unique_filter_persons(self):
+        grid = self.KeyGrid()
+        grid.apply_qs_args()
+        assert_in_query(grid, 'WHERE persons.id >= 0')
+
+    @inrequest('/foo?op(id_1)=gte&v1(id_1)=0')
+    def test_column_keys_unique_filter_stopwatches(self):
+        grid = self.KeyGrid()
+        grid.apply_qs_args()
+        assert_in_query(grid, 'WHERE stopwatches.id >= 0')
+
+    @inrequest('/foo?sort1=id_1&sort2=id')
+    def test_column_keys_unique_sort(self):
+        grid = self.KeyGrid()
+        grid.apply_qs_args()
+        assert_in_query(grid, 'ORDER BY stopwatches.id, persons.id')
 
 
 class TestQueryStringArgs(object):

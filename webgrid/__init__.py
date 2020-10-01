@@ -166,6 +166,8 @@ class Column(object):
         self.kwargs = kwargs
         self.grid = None
         self.expr = None
+        self._query_idx = None
+        self._query_key = None
         if render_in is not _None:
             self.render_in = render_in
         self.visible = visible
@@ -199,7 +201,7 @@ class Column(object):
                 raise ValueError(_('expected filter to be a SQLAlchemy column-like'
                                    ' object, but it did not have a "key" or "name"'
                                    ' attribute'))
-            self.key = key
+            self.key = self._query_key = key
 
         # filters can be sent in as a class (not class instance) if needed
         if inspect.isclass(filter):
@@ -211,9 +213,12 @@ class Column(object):
 
     def new_instance(self, grid):
         cls = self.__class__
-        column = cls(self.label, self.key, None, self.can_sort, group=self.group, _dont_assign=True)
+        key = grid.get_unique_column_key(self.key)
+
+        column = cls(self.label, key, None, self.can_sort, group=self.group, _dont_assign=True)
         column.grid = grid
         column.expr = self.expr
+        column._query_key = self._query_key
 
         if self.filter:
             column.filter = self.filter.new_instance(dialect=grid.manager.db.engine.dialect)
@@ -259,24 +264,38 @@ class Column(object):
                 data = _filter(self.grid, data)
         return data
 
-    def extract_data(self, record):
+    def extract_data(self, record):  # noqa: C901
         """
             Locate the data for this column in the record and return it.
         """
-        # key style based on expression
-        if self.expr is not None:
-            try:
-                return record[self.key]
-            except (TypeError, KeyError):
-                pass
-
         # key style based on key
         try:
             return record[self.key]
         except (TypeError, KeyError):
             pass
 
+        # index style based on position in query and key
+        if (
+            self._query_idx is not None
+            and hasattr(record, '_fields')
+        ):
+            try:
+                if record._fields[self._query_idx] == self._query_key:
+                    return record[self._query_idx]
+            except IndexError:
+                pass
+
         # attribute style
+        try:
+            return getattr(record, self._query_key)
+        except AttributeError as e:
+            if ("object has no attribute '%s'" % self._query_key) not in str(e):
+                raise
+        except TypeError as e:
+            if 'attribute name must be string' not in str(e):
+                raise
+
+        # attribute style with grid key
         try:
             return getattr(record, self.key)
         except AttributeError as e:
@@ -701,6 +720,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             return self.key_column_map[ident]
         return self.columns[ident]
 
+    def has_column(self, ident):
+        if isinstance(ident, six.string_types):
+            return ident in self.key_column_map
+        return ident in self.columns
+
+    def get_unique_column_key(self, key):
+        suffix_counter = 0
+        new_key = key
+        while self.has_column(new_key):
+            suffix_counter += 1
+            new_key = '{}_{}'.format(key, suffix_counter)
+        return new_key
+
     def iter_columns(self, render_type):
         for col in self.columns:
             if col.visible and render_type in col.render_in:
@@ -802,8 +834,25 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         SUB = self.build_query(for_count=(not page_totals_only)).subquery()
 
         cols = []
-        for colname, coltuple in six.iteritems(self.subtotal_cols):
-            sa_aggregate_func, colobj = coltuple
+        # Not all columns can be totaled. But, we should put in null placeholders
+        # for any untotaled columns, so that the same query indices from query_base
+        # can be applied.
+        # This will apply to any columns with an expr. Other subtotaled columns can be
+        # tacked onto the end - these will not be indexed and must be referred to by name
+        for colobj in [
+            col for col in self.columns if col.expr is not None
+        ] + [
+            coltuple[1] for _, coltuple in self.subtotal_cols.items() if coltuple[1].expr is None
+        ]:
+            colname = colobj._query_key or colobj.key
+
+            if colobj.key not in self.subtotal_cols:
+                cols.append(
+                    sa.literal(None).label(colname)
+                )
+                continue
+
+            sa_aggregate_func, _ = self.subtotal_cols[colobj.key]
 
             # column may have a label. If it does, use it
             if isinstance(colobj.expr, sasql.expression._Label):
@@ -823,6 +872,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             else:
                 labeled_aggregate_col = sa_aggregate_func.label(colname)
             cols.append(labeled_aggregate_col)
+        cols.append(sa.literal(1).label('__is_total__'))
 
         t0 = time.perf_counter()
         result = self.manager.sa_query(*cols).select_entity_from(SUB).first()
@@ -875,6 +925,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self._records = records
 
     def query_base(self, has_sort, has_filters):
+        for idx, column in enumerate(filter(lambda col: col.expr is not None, self.columns)):
+            column._query_idx = idx
         cols = [col.expr for col in self.columns if col.expr is not None]
         query = self.manager.sa_query(*cols)
 

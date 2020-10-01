@@ -214,9 +214,11 @@ class TestHtmlRenderer(object):
     def test_car_html(self):
         key_data = (
             {'id': 1, 'make': 'ford', 'model': 'F150&', 'color': 'pink',
-             'dealer': 'bob', 'dealer_id': '7', 'active': True},
+             'dealer': 'bob', 'dealer_id': '7', 'active': True,
+             'active_1': True, 'active_2': True},
             {'id': 2, 'make': 'chevy', 'model': '1500', 'color': 'blue',
-             'dealer': 'fred', 'dealer_id': '9', 'active': False},
+             'dealer': 'fred', 'dealer_id': '9', 'active': False,
+             'active_1': False, 'active_2': False},
         )
 
         mg = CarGrid()
