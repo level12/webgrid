@@ -886,6 +886,10 @@ class XLS(Renderer):
         return 'xls'
 
     def __init__(self, grid, max_col_width=150):
+        warnings.warn(
+            "XLS support is deprecated and will be removed in a future version",
+            DeprecationWarning
+        )
         super().__init__(grid)
         self.define_styles()
         self.col_contents_widths = defaultdict(int)
