@@ -11,8 +11,9 @@
 
     <div>
         {{ renderer.header_sorting()|wg_safe }}
-        {{ renderer.header_paging()|wg_safe }}
     </div>
+
+    <hr class="flex-break">
 
     <div class="links">
         <input type="submit" value={{ _('Apply') }} />
@@ -22,5 +23,9 @@
         -->
         <input type="hidden" name="apply" value="" />
         <a href="{{renderer.reset_url()}}">{{ _('reset') }}</a>
+    </div>
+
+    <div class="paging">
+        {{ renderer.header_paging()|wg_safe }}
     </div>
 </form>

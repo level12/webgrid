@@ -31,12 +31,10 @@
 
 .datagrid form.header .links {
     text-align: left;
-    padding-top: 10px;
-    border-top: 1px solid #cccccc;
     /* use long hand form to avoid IE bugs */
     flex-grow: 1;
     flex-shrink: 0;
-    flex-basis: 100%;
+    flex-basis: auto;
 }
 
 .datagrid table.filters {
@@ -81,54 +79,39 @@
     font-style: italic;
 }
 
-.datagrid dl.sorting {
-    margin-right: 15px;
-    margin-bottom: 10px;
-}
-
-.datagrid dl.sorting dd {
-    margin: 4px 0 0 0;
-}
-
-.datagrid dl.sorting select {
-    width: 100%;
-}
-
 .datagrid .paging {
-    padding: 0;
-    margin: 0 15px 5px 0;
-    width: auto;
-    min-width: 250px;
+    flex-basis: auto;
 }
 
-.datagrid .paging dl {
+.datagrid .header dl {
     display: flex;
-    justify-content: space-evenly;
-    flex-wrap: wrap;
+    margin: 0;
+    align-items: center;
 }
 
-.datagrid .paging dl dt,
-.datagrid .paging dl dd {
+.datagrid .header dl dt,
+.datagrid .header dl dd {
     /* use long hand form to avoid IE bugs */
     flex-grow: 1;
     flex-shrink: 0;
-    flex-basis: 33.333%;
-    text-align: center;
-}
-
-.datagrid .paging dl dt {
-    order: 10;
-}
-
-.datagrid .paging dl dd {
-    order: 5;
+    flex-basis: auto;
     margin: 0;
 }
 
-.datagrid .paging input {
-    width: 50px;
+.datagrid .header dl dt {
+    margin-left: 1.25rem;
+    padding-left: 1.25rem;
+    margin-right: .75rem;
+    border-left: solid 1px #bbb;
 }
 
+.datagrid .header dl dt:first-child {
+    border: none;
+}
+
+.datagrid .paging input {
+    width: 8rem;
+}
 
 .datagrid div.footer p {
     float: left;
@@ -309,4 +292,10 @@ div.ms-parent input[type="checkbox"] {
 
 .ms-drop label {
     font-weight: normal;
+}
+
+.datagrid form.header hr.flex-break {
+    flex-basis: 100%;
+    border: none;
+    margin: 0;
 }
