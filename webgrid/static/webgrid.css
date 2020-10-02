@@ -11,22 +11,17 @@
     padding: 5px;
     background: #efefef;
     margin-bottom: 10px;
+}
+
+.datagrid form.header > div {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
 }
 
-.datagrid form.header > div {
-    /* use long hand form to avoid IE bugs */
-    flex-grow: 0;
-    flex-shrink: 1;
-    flex-basis: auto;
-}
-
-.datagrid form.header select,
-.datagrid form.header input {
-    margin: 0;
-    padding: 0;
+.datagrid form.header > div.bottom {
+    /* wrap-reverse so that the paging controls are above the "Apply" button in mobile */
+    flex-wrap: wrap-reverse;
 }
 
 .datagrid form.header .links {
@@ -35,6 +30,11 @@
     flex-grow: 1;
     flex-shrink: 0;
     flex-basis: auto;
+}
+
+.datagrid form.header .links a {
+    /* push the "reset" link away from the "Apply" button just a bit more */
+    margin-left: .75rem;
 }
 
 .datagrid table.filters {
@@ -77,6 +77,8 @@
 .datagrid tr.add-filter th {
     font-weight: normal;
     font-style: italic;
+    /* keep "Add Filter" from wrapping in mobile */
+    white-space: nowrap;
 }
 
 .datagrid .paging {
@@ -87,6 +89,8 @@
     display: flex;
     margin: 0;
     align-items: center;
+    /* Let paging controls wrap if needed when in mobile */
+    flex-wrap: wrap;
 }
 
 .datagrid .header dl dt,
@@ -107,11 +111,26 @@
 
 .datagrid .header dl dt:first-child {
     border: none;
+    /* In mobile, keeping the mar./pad. looks bad.  Has no visible affect in desktop */
+    margin-left: 0;
+    padding-left: 0;
 }
 
 .datagrid .paging input {
-    width: 8rem;
+    /* Firefox = 5 chars, Chrome = 6 chars */
+    width: 6rem;
+    /* hide up/down arrows to make more room for visible text */
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
+
+.datagrid .paging input[type=number]::-webkit-inner-spin-button,
+.datagrid .paging input[type=number]::-webkit-outer-spin-button {
+    /* Chrome: hide up/down arrows to make more room for visible text */
+    -webkit-appearance: none;
+}
+
 
 .datagrid div.footer p {
     float: left;

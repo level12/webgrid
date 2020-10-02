@@ -381,7 +381,7 @@ class TestHtmlRenderer(object):
     def test_paging_html(self):
         g = self.get_grid()
         input_html = g.html.paging_input()
-        assert_tag(input_html, 'input', name='perpage', type='text', value='1')
+        assert_tag(input_html, 'input', name='perpage', type='number', value='1')
 
         img_html = g.html.paging_img_first()
         assert_tag(img_html, 'img', alt='<<', width='16', height='13',
