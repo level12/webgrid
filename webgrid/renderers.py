@@ -521,7 +521,7 @@ class HTML(GroupMixin, Renderer):
     def paging_input(self):
         pp_qsk = self.grid.prefix_qs_arg_key('perpage')
         return self._render_jinja(
-            '<input type="text" name="{{name}}" value="{{value}}" />',
+            '<input type="number" min="1" name="{{name}}" value="{{value}}" />',
             name=pp_qsk,
             value=self.grid.per_page
         )

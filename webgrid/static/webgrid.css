@@ -11,32 +11,30 @@
     padding: 5px;
     background: #efefef;
     margin-bottom: 10px;
+}
+
+.datagrid form.header > div {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
 }
 
-.datagrid form.header > div {
-    /* use long hand form to avoid IE bugs */
-    flex-grow: 0;
-    flex-shrink: 1;
-    flex-basis: auto;
-}
-
-.datagrid form.header select,
-.datagrid form.header input {
-    margin: 0;
-    padding: 0;
+.datagrid form.header > div.bottom {
+    /* wrap-reverse so that the paging controls are above the "Apply" button in mobile */
+    flex-wrap: wrap-reverse;
 }
 
 .datagrid form.header .links {
     text-align: left;
-    padding-top: 10px;
-    border-top: 1px solid #cccccc;
     /* use long hand form to avoid IE bugs */
     flex-grow: 1;
     flex-shrink: 0;
-    flex-basis: 100%;
+    flex-basis: auto;
+}
+
+.datagrid form.header .links a {
+    /* push the "reset" link away from the "Apply" button just a bit more */
+    margin-left: .75rem;
 }
 
 .datagrid table.filters {
@@ -79,54 +77,58 @@
 .datagrid tr.add-filter th {
     font-weight: normal;
     font-style: italic;
-}
-
-.datagrid dl.sorting {
-    margin-right: 15px;
-    margin-bottom: 10px;
-}
-
-.datagrid dl.sorting dd {
-    margin: 4px 0 0 0;
-}
-
-.datagrid dl.sorting select {
-    width: 100%;
+    /* keep "Add Filter" from wrapping in mobile */
+    white-space: nowrap;
 }
 
 .datagrid .paging {
-    padding: 0;
-    margin: 0 15px 5px 0;
-    width: auto;
-    min-width: 250px;
+    flex-basis: auto;
 }
 
-.datagrid .paging dl {
+.datagrid .header dl {
     display: flex;
-    justify-content: space-evenly;
+    margin: 0;
+    align-items: center;
+    /* Let paging controls wrap if needed when in mobile */
     flex-wrap: wrap;
 }
 
-.datagrid .paging dl dt,
-.datagrid .paging dl dd {
+.datagrid .header dl dt,
+.datagrid .header dl dd {
     /* use long hand form to avoid IE bugs */
     flex-grow: 1;
     flex-shrink: 0;
-    flex-basis: 33.333%;
-    text-align: center;
-}
-
-.datagrid .paging dl dt {
-    order: 10;
-}
-
-.datagrid .paging dl dd {
-    order: 5;
+    flex-basis: auto;
     margin: 0;
 }
 
+.datagrid .header dl dt {
+    margin-left: 1.25rem;
+    padding-left: 1.25rem;
+    margin-right: .75rem;
+    border-left: solid 1px #bbb;
+}
+
+.datagrid .header dl dt:first-child {
+    border: none;
+    /* In mobile, keeping the mar./pad. looks bad.  Has no visible affect in desktop */
+    margin-left: 0;
+    padding-left: 0;
+}
+
 .datagrid .paging input {
-    width: 50px;
+    /* Firefox = 5 chars, Chrome = 6 chars */
+    width: 6rem;
+    /* hide up/down arrows to make more room for visible text */
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.datagrid .paging input[type=number]::-webkit-inner-spin-button,
+.datagrid .paging input[type=number]::-webkit-outer-spin-button {
+    /* Chrome: hide up/down arrows to make more room for visible text */
+    -webkit-appearance: none;
 }
 
 
@@ -309,4 +311,10 @@ div.ms-parent input[type="checkbox"] {
 
 .ms-drop label {
     font-weight: normal;
+}
+
+.datagrid form.header hr.flex-break {
+    flex-basis: 100%;
+    border: none;
+    margin: 0;
 }

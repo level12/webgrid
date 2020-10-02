@@ -5,8 +5,8 @@
 {%- endif -%}
 
 {% if grid.sorter_on %}
-<dl class="sorting">
-    <dt>{{ _('Sort By') }}</dt>
+<dl>
+    <dt>{{ _('Sort By') }}:</dt>
     <dd>{{ renderer.sorting_select1() }}</dd>
     <dd>{{ renderer.sorting_select2() }}</dd>
     <dd>{{ renderer.sorting_select3() }}</dd>

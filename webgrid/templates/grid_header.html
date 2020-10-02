@@ -5,22 +5,29 @@
 {%- endif -%}
 
 <form {{ renderer.header_form_attrs(class='header')|wg_attributes }}>
-    <div>
-        {{ renderer.header_filtering()|wg_safe }}
+    <div class="top">
+        <div class="filtering">
+            {{ renderer.header_filtering()|wg_safe }}
+        </div>
+
+        <div class="sorting">
+            {{ renderer.header_sorting()|wg_safe }}
+        </div>
     </div>
 
-    <div>
-        {{ renderer.header_sorting()|wg_safe }}
-        {{ renderer.header_paging()|wg_safe }}
-    </div>
+    <div class="bottom">
+        <div class="links">
+            <input type="submit" value={{ _('Apply') }} />
+            <!--
+            Webgrid can be configured to load filters from the session.
+            The hidden input is a flag to prevent session loading when the form is submitted.
+            -->
+            <input type="hidden" name="apply" value="" />
+            <a href="{{renderer.reset_url()}}">{{ _('reset') }}</a>
+        </div>
 
-    <div class="links">
-        <input type="submit" value={{ _('Apply') }} />
-        <!--
-        Webgrid can be configured to load filters from the session.
-        The hidden input is a flag to prevent session loading when the form is submitted.
-        -->
-        <input type="hidden" name="apply" value="" />
-        <a href="{{renderer.reset_url()}}">{{ _('reset') }}</a>
+        <div class="paging">
+            {{ renderer.header_paging()|wg_safe }}
+        </div>
     </div>
 </form>
