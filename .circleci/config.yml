@@ -1,20 +1,17 @@
 version: 2
-jobs:
-    build:
-        docker:
-            - image: level12/python-test-multi
-
+commands:
+    runtests:
+        parameters:
+            toxcommand:
+                type: string
+                default: tox
         steps:
             - checkout
 
             - run:
-                name: folder listing for debugging
-                command: ls -al
-
-            - run:
                 name: install tox
                 command: >
-                    pip install --upgrade --force-reinstall tox
+                    pip install --upgrade --force-reinstall tox pip
 
             - run:
                 name: version checks
@@ -25,7 +22,7 @@ jobs:
 
             - run:
                 name: run tox
-                command: tox
+                command: << parameters.toxcommand >>
 
             - store_test_results:
                 path: .circleci/test-reports/
@@ -33,3 +30,44 @@ jobs:
             - run:
                 name: push code coverage
                 command: bash <(curl -s https://codecov.io/bash) -X coveragepy -t "f52ea144-6e93-4cda-b927-1f578a6e814c"
+
+jobs:
+    postgres:
+        docker:
+            - image: level12/python-test-multi
+              environment:
+                SQLALCHEMY_DATABASE_URI: "postgresql://postgres:password@localhost/test"
+            - image: postgres:10.5
+              environment:
+                POSTGRES_USER: postgres
+                POSTGRES_PASSWORD: password
+                POSTGRES_DB: test
+        steps:
+            - runtests
+    sqlite:
+        docker:
+            - image: level12/python-test-multi
+              environment:
+                  SQLALCHEMY_DATABASE_URI: "sqlite://"
+        steps:
+            - runtests
+    mssql:
+        docker:
+            - image: level12/python-test-multi
+              environment:
+                  SQLALCHEMY_DATABASE_URI: "mssql+pymssql://SA:Password12!@localhost:1433/tempdb"
+            - image: mcr.microsoft.com/mssql/server:2017-latest
+              environment:
+                ACCEPT_EULA: Y
+                SA_PASSWORD: "Password12!"
+        steps:
+            - runtests:
+                toxcommand: tox -e py36-base,py36-i18n,py37-i18n
+
+workflows:
+    version: 2
+    build:
+        jobs:
+            - postgres
+            - sqlite
+            - mssql

@@ -17,6 +17,8 @@ develop_requires = [
     'SQLAlchemyBWC',
     'mock',
     'nose',  # required to import some blazeweb helpers
+    'psycopg2-binary',
+    'pymssql',
     'pytest',
     'pytest-cov',
     'Flask',
