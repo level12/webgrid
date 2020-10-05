@@ -68,6 +68,9 @@ class ops(object):
 
 class FilterBase(object):
     operators = ops.eq, ops.not_eq, ops.empty, ops.not_empty
+    # one operator may be specified as the "primary", i.e. the one to select when filter is added
+    # note, the renderer is responsible for using this operator
+    primary_op = None
     # if needed, specifiy the name of attributes set on the static instance of
     # this class that should get copied over to a new instance by
     # new_instance()
@@ -231,6 +234,7 @@ class _NoValue(object):
 
 class OptionsFilterBase(FilterBase):
     operators = ops.is_, ops.not_is, ops.empty, ops.not_empty
+    primary_op = ops.is_
     input_types = 'select'
     receives_list = True
     options_from = ()
@@ -436,6 +440,7 @@ class OptionsEnumFilter(OptionsFilterBase):
 
 class TextFilter(FilterBase):
     operators = (ops.eq, ops.not_eq, ops.contains, ops.not_contains, ops.empty, ops.not_empty)
+    primary_op = ops.contains
 
     @property
     def comparisons(self):
@@ -1201,6 +1206,7 @@ class YesNoFilter(FilterBase):
         ops.yes,
         ops.no
     )
+    primary_op = ops.yes
 
     def get_search_expr(self):
         def expr(value):
