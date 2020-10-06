@@ -943,7 +943,30 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         else:
             log.debug('No sorts')
 
+        # Special consideration for MSSQL, because if paging is to work, the query
+        # must have an ORDER BY clause. This is problematic, because if an app
+        # does not test for the query case where paging is enabled for page > 1,
+        # the query will not hit the error state. Fix the case if possible.
+        if (
+            self.pager_on
+            and self.manager
+            and self.manager.db.engine.dialect.name == 'mssql'
+            and not query._order_by
+        ):
+            query = self._fix_mssql_order_by(query)
+
         return query
+
+    def _fix_mssql_order_by(self, query):
+        # MSSQL must have an ORDER BY for paging to work. If no sort clause has been
+        # defined, sort by the first column. If that doesn't work, error out.
+        if len(self.columns):
+            query = self.columns[0].apply_sort(query, False)
+            if query._order_by:
+                return query
+        raise Exception(
+            'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'
+        )
 
     def args_have_op(self, args):
         # any of the grid's query string args can be used to

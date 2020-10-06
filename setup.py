@@ -18,7 +18,8 @@ develop_requires = [
     'mock',
     'nose',  # required to import some blazeweb helpers
     'psycopg2-binary',
-    'pymssql',
+    # pinned to version in our package index.
+    'pyodbc==4.0.30',
     'pytest',
     'pytest-cov',
     'Flask',
@@ -27,6 +28,7 @@ develop_requires = [
     'Flask-SQLAlchemy',
     'Flask-WebTest',
     'pyquery',
+    'sqlalchemy_pyodbc_mssql',
     'sqlalchemy_utils',
     'sqlalchemybwc',
     'wrapt',

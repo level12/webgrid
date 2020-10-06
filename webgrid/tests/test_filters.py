@@ -158,19 +158,26 @@ class TestTextFilterWithCaseSensitiveDialect(CheckFilterBase):
     def test_eq(self):
         tf = self.get_filter()
         tf.set('eq', 'foo')
+        query_term = "'foo'"
+        if db.engine.dialect.name == 'mssql':
+            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE upper(persons.firstname) = upper('foo')")
+        self.assert_in_query(query, f'WHERE upper(persons.firstname) = upper({query_term})')
 
     def test_not_eq(self):
         tf = self.get_filter()
         tf.set('!eq', 'foo')
+        query_term = "'foo'"
+        if db.engine.dialect.name == 'mssql':
+            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE upper(persons.firstname) != upper('foo')")
+        self.assert_in_query(query, f'WHERE upper(persons.firstname) != upper({query_term})')
 
     def test_contains(self):
         sql_check = {
             'sqlite': "WHERE lower(persons.firstname) LIKE lower('%foo%')",
             'postgresql': "WHERE persons.firstname ILIKE '%foo%'",
+            'mssql': "WHERE lower(persons.firstname) LIKE lower('%foo%')",
         }
         tf = self.get_filter()
         tf.set('contains', 'foo')
@@ -181,6 +188,7 @@ class TestTextFilterWithCaseSensitiveDialect(CheckFilterBase):
         sql_check = {
             'sqlite': "WHERE lower(persons.firstname) NOT LIKE lower('%foo%')",
             'postgresql': "WHERE persons.firstname NOT ILIKE '%foo%'",
+            'mssql': "WHERE lower(persons.firstname) NOT LIKE lower('%foo%')",
         }
         tf = self.get_filter()
         tf.set('!contains', 'foo')
@@ -1356,6 +1364,7 @@ class TestTimeFilter(CheckFilterBase):
         sql = {
             'sqlite': f'CAST(\'{time_str}:00.000000\' AS TIME)',
             'postgresql': f'CAST(\'{time_str}:00.000000\' AS TIME WITHOUT TIME ZONE)',
+            'mssql': f'CAST(\'{time_str}:00.000000\' AS TIME)',
         }
         return sql.get(db.engine.dialect.name)
 
@@ -1627,6 +1636,7 @@ class TestYesNoFilter(CheckFilterBase):
         sql_check = {
             'sqlite': "WHERE persons.boolcol = 1",
             'postgresql': "WHERE persons.boolcol = true",
+            'mssql': "WHERE persons.boolcol = 1",
         }
         filterobj = YesNoFilter(Person.boolcol)
         filterobj.set('y', None)
@@ -1637,6 +1647,7 @@ class TestYesNoFilter(CheckFilterBase):
         sql_check = {
             'sqlite': "WHERE persons.boolcol = 0",
             'postgresql': "WHERE persons.boolcol = false",
+            'mssql': "WHERE persons.boolcol = 0",
         }
         filterobj = YesNoFilter(Person.boolcol)
         filterobj.set('n', None)

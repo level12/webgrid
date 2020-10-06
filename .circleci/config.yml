@@ -55,14 +55,13 @@ jobs:
         docker:
             - image: level12/python-test-multi
               environment:
-                  SQLALCHEMY_DATABASE_URI: "mssql+pymssql://SA:Password12!@localhost:1433/tempdb"
+                  SQLALCHEMY_DATABASE_URI: "mssql+pyodbc_mssql://SA:Password12!@localhost:1433/tempdb?driver=ODBC+Driver+17+for+SQL+Server"
             - image: mcr.microsoft.com/mssql/server:2017-latest
               environment:
                 ACCEPT_EULA: Y
                 SA_PASSWORD: "Password12!"
         steps:
-            - runtests:
-                toxcommand: tox -e py36-base,py36-i18n,py37-i18n
+            - runtests
 
 workflows:
     version: 2
