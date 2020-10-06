@@ -95,8 +95,6 @@ def query_to_str(statement, bind=None):
 
     dialect = bind.dialect
     compiler = statement._compiler(dialect)
-    print('Compiler: ', compiler, type(compiler))
-
     literal_compiler = compiler_instance_factory(compiler, dialect, statement)
     return 'TESTING ONLY BIND: ' + literal_compiler.process(statement)
 

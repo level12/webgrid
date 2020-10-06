@@ -52,7 +52,9 @@ from webgrid_ta.model.entities import (
 from .helpers import eq_html, inrequest, render_in_grid
 
 
-def query_exclude_person(query):
+def _query_exclude_person(query):
+    # this is pretty limited, but only used in the below couple of grids to
+    # exclude the third Person record
     persons = Person.query.order_by(Person.id).limit(3).all()
     exclude_id = persons[2].id if len(persons) >= 3 else -1
     return query.filter(Person.id != exclude_id)
@@ -68,7 +70,7 @@ class PeopleGrid(PG):
 
         # default filter
         if not has_filters:
-            query = query_exclude_person(query)
+            query = _query_exclude_person(query)
 
         return query
 
@@ -85,7 +87,7 @@ class PeopleCSVGrid(PG):
 
         # default filter
         if not has_filters:
-            query = query_exclude_person(query)
+            query = _query_exclude_person(query)
 
         return query
 
