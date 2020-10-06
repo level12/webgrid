@@ -234,7 +234,8 @@ class TestGrid(object):
 
         g = CTG()
         g.set_sort('firstname', 'lastname', '-firstname')
-        assert_in_query(g, 'ORDER BY persons.firstname, persons.last_name\n')
+        assert_in_query(g, 'ORDER BY persons.firstname, persons.last_name')
+        assert_not_in_query(g, 'ORDER BY persons.firstname, persons.last_name,')
         with mock.patch('logging.Logger.debug') as m_debug:
             g.records
             expected = [
@@ -425,8 +426,12 @@ class TestGrid(object):
 
         g = CTG()
         g.search_value = 'foo'
-        search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
-                        " OR lower(persons.last_name) LIKE lower('%foo%')")
+        if db.engine.dialect.name == 'sqlite':
+            search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
+                            " OR lower(persons.last_name) LIKE lower('%foo%')")
+        elif db.engine.dialect.name == 'postgresql':
+            search_where = ("WHERE persons.firstname ILIKE '%foo%'"
+                            " OR persons.last_name ILIKE '%foo%'")
         assert_in_query(g, search_where)
 
 
@@ -524,16 +529,21 @@ class TestQueryStringArgs(object):
         assert pg.order_by == []
         assert len(pg.user_warnings) == 0
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is&v1(status)=1&v1(status)=2')
     def test_qs_filtering(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
+        first_id = Status.query.filter_by(label='pending').one().id
+        second_id = Status.query.filter_by(label='in process').one().id
+        with flask.current_app.test_request_context(
+            '/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is'
+            f'&v1(status)={first_id}&v1(status)={second_id}'
+        ):
+            pg = PeopleGrid()
+            pg.apply_qs_args()
         assert pg.columns[0].filter.op == 'eq'
         assert pg.columns[0].filter.value1 == 'fn001'
         assert pg.columns[0].filter.value2 is None
 
         assert pg.columns[4].filter.op == 'is'
-        assert pg.columns[4].filter.value1 == [1, 2]
+        assert pg.columns[4].filter.value1 == [first_id, second_id]
         assert pg.columns[4].filter.value2 is None
 
     @inrequest('/foo')

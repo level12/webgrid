@@ -52,6 +52,12 @@ from webgrid_ta.model.entities import (
 from .helpers import eq_html, inrequest, render_in_grid
 
 
+def query_exclude_person(query):
+    persons = Person.query.order_by(Person.id).limit(3).all()
+    exclude_id = persons[2].id if len(persons) >= 3 else -1
+    return query.filter(Person.id != exclude_id)
+
+
 class PeopleGrid(PG):
     def query_prep(self, query, has_sort, has_filters):
         query = PG.query_prep(self, query, True, True)
@@ -62,7 +68,7 @@ class PeopleGrid(PG):
 
         # default filter
         if not has_filters:
-            query = query.filter(Person.id != 3)
+            query = query_exclude_person(query)
 
         return query
 
@@ -79,7 +85,7 @@ class PeopleCSVGrid(PG):
 
         # default filter
         if not has_filters:
-            query = query.filter(Person.id != 3)
+            query = query_exclude_person(query)
 
         return query
 
@@ -223,11 +229,13 @@ class TestHtmlRenderer(object):
         mg.set_records(key_data)
         eq_html(mg.html.table(), 'basic_table.html')
 
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @inrequest('/')
     def test_people_html(self):
         pg = render_in_grid(PeopleGrid, 'html')()
         eq_html(pg.html.table(), 'people_table.html')
 
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @inrequest('/')
     def test_stopwatch_html(self):
         # Test Stopwatch grid with column groups.
