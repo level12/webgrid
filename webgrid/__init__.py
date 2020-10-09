@@ -620,7 +620,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     allowed_export_targets = None
     # Enables single-search feature, where one search value is applied to every supporting
     # filter at once
-    enable_search = False
+    enable_search = True
 
     # List of joins to bring the query together for all columns. May have just the join object,
     # or also conditions

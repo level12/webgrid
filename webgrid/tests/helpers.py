@@ -29,7 +29,7 @@ class ModelBase(object):
         db_sess_scope.pop()
 
 
-def compiler_instance_factory(compiler, dialect, statement):
+def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
     class LiteralCompiler(compiler.__class__):
         def render_literal_value(self, value, type_):
             import datetime
@@ -69,6 +69,22 @@ def compiler_instance_factory(compiler, dialect, statement):
                 bindparam, within_columns_clause=within_columns_clause,
                 literal_binds=literal_binds, **kwargs
             )
+
+        def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
+                        fromhints=None, use_schema=True, **kwargs):
+            """Strip the default schema from table names when it is not needed"""
+            ret_val = super().visit_table(table, asfrom, iscrud, ashint, fromhints, use_schema,
+                                          **kwargs)
+            if db.engine.dialect.name == 'mssql' and ret_val.startswith('dbo.'):
+                return ret_val[4:]
+            return ret_val
+
+        def visit_column(self, column, add_to_result_map=None, include_table=True, **kwargs):
+            """Strip the default schema from table names when it is not needed"""
+            ret_val = super().visit_column(column, add_to_result_map, include_table, **kwargs)
+            if db.engine.dialect.name == 'mssql' and ret_val.startswith('dbo.'):
+                return ret_val[4:]
+            return ret_val
 
     return LiteralCompiler(dialect, statement)
 
