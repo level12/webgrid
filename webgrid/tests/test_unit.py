@@ -77,7 +77,12 @@ class TestGrid(object):
         g = CTG()
         query = g.build_query()
         assert_not_in_query(query, 'WHERE')
-        assert_not_in_query(query, 'ORDER BY')
+        if db.engine.dialect.name != 'mssql':
+            assert_not_in_query(query, 'ORDER BY')
+        else:
+            # MSSQL queries get an ORDER BY patched in if none is provided,
+            # else paging doesn't work
+            assert_in_query(query, 'ORDER BY')
         with mock.patch('logging.Logger.debug') as m_debug:
             rs = g.records
             assert len(rs) > 0, rs
@@ -175,7 +180,10 @@ class TestGrid(object):
 
         g = CTG()
         g.set_filter('firstname', 'eq', 'foo')
-        assert_in_query(g, "WHERE upper(persons.firstname) = upper('foo')")
+        if db.engine.dialect.name == 'mssql':
+            assert_in_query(g, "WHERE persons.firstname = 'foo'")
+        else:
+            assert_in_query(g, "WHERE upper(persons.firstname) = upper('foo')")
 
         with mock.patch('logging.Logger.debug') as m_debug:
             g.records
@@ -204,7 +212,10 @@ class TestGrid(object):
 
         g = CTG()
         g.set_filter('firstname', 'eq', 'foo')
-        assert_in_query(g, "WHERE upper(persons.last_name) = upper('foo')")
+        if db.engine.dialect.name == 'mssql':
+            assert_in_query(g, "WHERE persons.last_name = 'foo'")
+        else:
+            assert_in_query(g, "WHERE upper(persons.last_name) = upper('foo')")
 
     def test_filter_two_values(self):
         class CTG(Grid):
@@ -241,7 +252,8 @@ class TestGrid(object):
 
         g = CTG()
         g.set_sort('firstname', 'lastname', '-firstname')
-        assert_in_query(g, 'ORDER BY persons.firstname, persons.last_name\n')
+        assert_in_query(g, 'ORDER BY persons.firstname, persons.last_name')
+        assert_not_in_query(g, 'ORDER BY persons.firstname, persons.last_name,')
         with mock.patch('logging.Logger.debug') as m_debug:
             g.records
             expected = [
@@ -257,13 +269,24 @@ class TestGrid(object):
 
     def test_paging(self):
         g = self.TG()
-        assert_in_query(g, 'LIMIT 50 OFFSET 0')
+        if db.engine.dialect.name == 'mssql':
+            assert_in_query(g, 'SELECT TOP 50 ')
+        else:
+            assert_in_query(g, 'LIMIT 50 OFFSET 0')
 
         g.set_paging(2, 1)
-        assert_in_query(g, 'LIMIT 2 OFFSET 0')
+        if db.engine.dialect.name == 'mssql':
+            assert_in_query(g, 'SELECT TOP 2 ')
+        else:
+            assert_in_query(g, 'LIMIT 2 OFFSET 0')
 
         g.set_paging(10, 5)
-        assert_in_query(g, 'LIMIT 10 OFFSET 40')
+        if db.engine.dialect.name == 'mssql':
+            assert_in_query(g, 'WHERE mssql_rn > 40 AND mssql_rn <= 10 + 40')
+            assert_in_query(g, 'SELECT persons.firstname AS firstname, ROW_NUMBER() '
+                               'OVER (ORDER BY persons.firstname) AS mssql_rn')
+        else:
+            assert_in_query(g, 'LIMIT 10 OFFSET 40')
 
     def test_paging_disabled(self):
         class TG(Grid):
@@ -432,8 +455,15 @@ class TestGrid(object):
 
         g = CTG()
         g.search_value = 'foo'
-        search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
-                        " OR lower(persons.last_name) LIKE lower('%foo%')")
+        if db.engine.dialect.name == 'sqlite':
+            search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
+                            " OR lower(persons.last_name) LIKE lower('%foo%')")
+        elif db.engine.dialect.name == 'postgresql':
+            search_where = ("WHERE persons.firstname ILIKE '%foo%'"
+                            " OR persons.last_name ILIKE '%foo%'")
+        elif db.engine.dialect.name == 'mssql':
+            search_where = ("WHERE persons.firstname LIKE '%foo%'"
+                            " OR persons.last_name LIKE '%foo%'")
         assert_in_query(g, search_where)
 
     def test_column_keys_unique(self):
@@ -497,7 +527,10 @@ class TestQueryStringArgs(object):
         assert pg.per_page == 1
 
         # make sure the corret values get applied to the query
-        assert 'LIMIT 1 OFFSET 1' in query_to_str(pg.build_query())
+        if db.engine.dialect.name == 'mssql':
+            assert 'WHERE mssql_rn > 1 AND mssql_rn <= 1 + 1' in query_to_str(pg.build_query())
+        else:
+            assert 'LIMIT 1 OFFSET 1' in query_to_str(pg.build_query())
 
     @inrequest('/foo?perpage=5&onpage=foo')
     def test_qs_onpage_invalid(self):
@@ -563,16 +596,21 @@ class TestQueryStringArgs(object):
         assert pg.order_by == []
         assert len(pg.user_warnings) == 0
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is&v1(status)=1&v1(status)=2')
     def test_qs_filtering(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
+        first_id = Status.query.filter_by(label='pending').one().id
+        second_id = Status.query.filter_by(label='in process').one().id
+        with flask.current_app.test_request_context(
+            '/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is'
+            f'&v1(status)={first_id}&v1(status)={second_id}'
+        ):
+            pg = PeopleGrid()
+            pg.apply_qs_args()
         assert pg.columns[0].filter.op == 'eq'
         assert pg.columns[0].filter.value1 == 'fn001'
         assert pg.columns[0].filter.value2 is None
 
         assert pg.columns[4].filter.op == 'is'
-        assert pg.columns[4].filter.value1 == [1, 2]
+        assert pg.columns[4].filter.value1 == [first_id, second_id]
         assert pg.columns[4].filter.value2 is None
 
     @inrequest('/foo')
@@ -737,9 +775,9 @@ class TestQueryStringArgs(object):
     @inrequest('/foo?sort1=legacycol1&sort2=legacycol2')
     def test_sa_expr_sort(self):
         class AGrid(Grid):
-            firstname = Column('First Name')
-            legacycol1 = Column('LC1')
-            legacycol2 = Column('LC2')
+            Column('First Name', 'firstname')
+            Column('LC1', Person.legacycol1)
+            Column('LC2', Person.legacycol2)
 
             def query_base(self, has_sort, has_filters):
                 query = db.session.query(

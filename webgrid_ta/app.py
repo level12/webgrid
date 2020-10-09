@@ -27,10 +27,10 @@ warnings.filterwarnings('ignore', '.*support Decimal objects natively.*')
 webgrid = WebGrid()
 
 
-def create_app(config):
+def create_app(config, database_url=None):
     app = Flask(__name__)
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     # app.config['SQLALCHEMY_ECHO'] = True
     # app.config['DEBUG'] = True

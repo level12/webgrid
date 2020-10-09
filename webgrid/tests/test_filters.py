@@ -158,26 +158,42 @@ class TestTextFilterWithCaseSensitiveDialect(CheckFilterBase):
     def test_eq(self):
         tf = self.get_filter()
         tf.set('eq', 'foo')
+        query_term = "'foo'"
+        if db.engine.dialect.name == 'mssql':
+            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE upper(persons.firstname) = upper('foo')")
+        self.assert_in_query(query, f'WHERE upper(persons.firstname) = upper({query_term})')
 
     def test_not_eq(self):
         tf = self.get_filter()
         tf.set('!eq', 'foo')
+        query_term = "'foo'"
+        if db.engine.dialect.name == 'mssql':
+            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE upper(persons.firstname) != upper('foo')")
+        self.assert_in_query(query, f'WHERE upper(persons.firstname) != upper({query_term})')
 
     def test_contains(self):
+        sql_check = {
+            'sqlite': "WHERE lower(persons.firstname) LIKE lower('%foo%')",
+            'postgresql': "WHERE persons.firstname ILIKE '%foo%'",
+            'mssql': "WHERE lower(persons.firstname) LIKE lower('%foo%')",
+        }
         tf = self.get_filter()
         tf.set('contains', 'foo')
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE lower(persons.firstname) LIKE lower('%foo%')")
+        self.assert_in_query(query, sql_check.get(db.engine.dialect.name))
 
     def test_doesnt_contain(self):
+        sql_check = {
+            'sqlite': "WHERE lower(persons.firstname) NOT LIKE lower('%foo%')",
+            'postgresql': "WHERE persons.firstname NOT ILIKE '%foo%'",
+            'mssql': "WHERE lower(persons.firstname) NOT LIKE lower('%foo%')",
+        }
         tf = self.get_filter()
         tf.set('!contains', 'foo')
         query = tf.apply(db.session.query(Person.id))
-        self.assert_in_query(query, "WHERE lower(persons.firstname) NOT LIKE lower('%foo%')")
+        self.assert_in_query(query, sql_check.get(db.engine.dialect.name))
 
     def test_search_expr(self):
         expr_factory = self.get_filter().get_search_expr()
@@ -1344,45 +1360,59 @@ class TestDateTimeFilter(CheckFilterBase):
 
 
 class TestTimeFilter(CheckFilterBase):
+    def dialect_time(self, time_str):
+        sql = {
+            'sqlite': f'CAST(\'{time_str}:00.000000\' AS TIME)',
+            'postgresql': f'CAST(\'{time_str}:00.000000\' AS TIME WITHOUT TIME ZONE)',
+            'mssql': f'CAST(\'{time_str}:00.000000\' AS TIME)',
+        }
+        return sql.get(db.engine.dialect.name)
+
     def test_eq(self):
+        time_string = self.dialect_time('11:30')
         filter = TimeFilter(Person.start_time)
         filter.set('eq', '11:30 am')
         self.assert_filter_query(filter,
-                                 "WHERE persons.start_time = CAST('11:30:00.000000' AS TIME)")
+                                 "WHERE persons.start_time = " + time_string)
 
     def test_not_eq(self):
+        time_string = self.dialect_time('23:30')
         filter = TimeFilter(Person.start_time)
         filter.set('!eq', '11:30 pm')
         self.assert_filter_query(filter,
-                                 "WHERE persons.start_time != CAST('23:30:00.000000' AS TIME)")
+                                 "WHERE persons.start_time != " + time_string)
 
     def test_lte(self):
+        time_string = self.dialect_time('09:00')
         filter = TimeFilter(Person.start_time)
         filter.set('lte', '9:00 am')
         self.assert_filter_query(filter,
-                                 "WHERE persons.start_time <= CAST('09:00:00.000000' AS TIME)")
+                                 "WHERE persons.start_time <= " + time_string)
 
     def test_gte(self):
+        time_string = self.dialect_time('10:15')
         filter = TimeFilter(Person.start_time)
         filter.set('gte', '10:15 am')
         self.assert_filter_query(filter,
-                                 "WHERE persons.start_time >= CAST('10:15:00.000000' AS TIME)")
+                                 "WHERE persons.start_time >= " + time_string)
 
     def test_between(self):
+        time_start = self.dialect_time('09:00')
+        time_end = self.dialect_time('17:00')
         filter = TimeFilter(Person.start_time)
         filter.set('between', '9:00 am', '5:00 pm')
         self.assert_filter_query(
             filter,
-            "WHERE persons.start_time BETWEEN CAST('09:00:00.000000' AS TIME) AND "
-            "CAST('17:00:00.000000' AS TIME)")
+            f"WHERE persons.start_time BETWEEN {time_start} AND {time_end}")
 
     def test_not_between(self):
+        time_start = self.dialect_time('09:00')
+        time_end = self.dialect_time('17:00')
         filter = TimeFilter(Person.start_time)
         filter.set('!between', '9:00 am', '5:00 pm')
         self.assert_filter_query(
             filter,
-            "WHERE persons.start_time NOT BETWEEN CAST('09:00:00.000000' AS TIME) AND "
-            "CAST('17:00:00.000000' AS TIME)")
+            f"WHERE persons.start_time NOT BETWEEN {time_start} AND {time_end}")
 
     def test_empty(self):
         filter = TimeFilter(Person.start_time)
@@ -1603,16 +1633,26 @@ class TestIntrospect(CheckFilterBase):
 
 class TestYesNoFilter(CheckFilterBase):
     def test_y(self):
+        sql_check = {
+            'sqlite': "WHERE persons.boolcol = 1",
+            'postgresql': "WHERE persons.boolcol = true",
+            'mssql': "WHERE persons.boolcol = 1",
+        }
         filterobj = YesNoFilter(Person.boolcol)
         filterobj.set('y', None)
         query = filterobj.apply(db.session.query(Person.boolcol))
-        self.assert_in_query(query, "WHERE persons.boolcol = 1")
+        self.assert_in_query(query, sql_check.get(db.engine.dialect.name))
 
     def test_n(self):
+        sql_check = {
+            'sqlite': "WHERE persons.boolcol = 0",
+            'postgresql': "WHERE persons.boolcol = false",
+            'mssql': "WHERE persons.boolcol = 0",
+        }
         filterobj = YesNoFilter(Person.boolcol)
         filterobj.set('n', None)
         query = filterobj.apply(db.session.query(Person.boolcol))
-        self.assert_in_query(query, "WHERE persons.boolcol = 0")
+        self.assert_in_query(query, sql_check.get(db.engine.dialect.name))
 
     def test_a(self):
         filterobj = YesNoFilter(Person.boolcol)

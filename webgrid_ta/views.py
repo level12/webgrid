@@ -15,6 +15,8 @@ def index():
 
     class CurrencyCol(NumericColumn):
         def format_data(self, data):
+            if data is None:
+                return data
             return data if int(data) % 2 else data * -1
 
     class PeopleGrid(PGBase):

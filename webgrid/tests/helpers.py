@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from os import path as opath
+from unittest import mock
 
 from blazeutils.testing import assert_equal_txt
 import flask
@@ -51,7 +52,14 @@ def compiler_instance_factory(compiler, dialect, statement):
             elif value is None:
                 return 'NULL'
             else:
-                return super(LiteralCompiler, self).render_literal_value(value, type_)
+                # Turn off double percent escaping, since we don't run these strings and
+                # it creates a large number of differences for test cases
+                with mock.patch.object(
+                    dialect.identifier_preparer,
+                    '_double_percents',
+                    False
+                ):
+                    return super(LiteralCompiler, self).render_literal_value(value, type_)
 
         def visit_bindparam(
                 self, bindparam, within_columns_clause=False,
@@ -87,7 +95,6 @@ def query_to_str(statement, bind=None):
 
     dialect = bind.dialect
     compiler = statement._compiler(dialect)
-
     literal_compiler = compiler_instance_factory(compiler, dialect, statement)
     return 'TESTING ONLY BIND: ' + literal_compiler.process(statement)
 
