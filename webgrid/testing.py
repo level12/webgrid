@@ -3,8 +3,10 @@ A collection of utilities for testing webgrid functionality in client applicatio
 """
 import re
 import urllib
+import warnings
 
 import flask
+import openpyxl
 from pyquery import PyQuery
 import xlrd
 
@@ -61,6 +63,10 @@ def assert_rendered_xls_matches(rendered_xls, xls_headers, xls_rows):
     :param xls_rows: list of rows in order as they will appear in the worksheet
     :return:
     """
+    warnings.warn(
+        "XLS support is deprecated and will be removed in a future version",
+        DeprecationWarning
+    )
     assert rendered_xls
     workbook = xlrd.open_workbook(file_contents=rendered_xls)
 
@@ -100,6 +106,53 @@ def assert_rendered_xls_matches(rendered_xls, xls_headers, xls_rows):
                 (cell.value for cell in row),
                 expected_row
             )
+
+
+def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
+    """
+    Verifies that `rendered_xlsx` has a set of headers and values that match
+    the given parameters.
+
+    NOTE: This method does not perform in-depth analysis of complex workbooks!
+          Assumes header rows and data rows are contiguous.
+          Multiple worksheets or complex layouts *are not verified!*
+
+    :param rendered_xlsx: binary data passed to openpyxl as file contents
+    :param xlsx_headers: list of rows of column headers
+    :param xlsx_rows: list of rows in order as they will appear in the worksheet
+    :return:
+    """
+    assert rendered_xlsx
+    rendered_xlsx.filename.seek(0)
+
+    book = openpyxl.load_workbook(rendered_xlsx.filename)
+    assert len(book.sheetnames) >= 1
+    sheet = book[book.sheetnames[0]]
+
+    # # verify the shape of the sheet
+
+    # ## shape of rows (1 row for the headers, 1 for each row of data)
+    nrows = len(xlsx_rows)
+    if xlsx_headers:
+        nrows += len(xlsx_headers)
+    assert max([nrows, 1]) == sheet.max_row
+
+    # ## shape of columns
+    ncols = max(
+        max(len(values) for values in xlsx_headers) if xlsx_headers else 0,
+        max(len(values) for values in xlsx_rows) if xlsx_rows else 0
+    )
+    assert max([ncols, 1]) == sheet.max_column
+
+    row_iter = sheet.iter_rows()
+
+    expected_rows = (xlsx_headers or []) + (xlsx_rows or [])
+
+    for row, expected_row in zip(row_iter, expected_rows):
+        assert_list_equal(
+            (cell.value for cell in row),
+            expected_row
+        )
 
 
 class GridBase:

@@ -17,6 +17,7 @@ develop_requires = [
     'SQLAlchemyBWC',
     'mock',
     'nose',  # required to import some blazeweb helpers
+    'openpyxl',
     'psycopg2-binary',
     # pinned to version in our package index.
     'pyodbc==4.0.30',

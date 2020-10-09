@@ -7,6 +7,7 @@ import json
 import io
 
 import arrow
+import openpyxl
 import pytest
 import xlrd
 import xlsxwriter
@@ -816,39 +817,40 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-        book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
-        sh = book.sheet_by_name('render_in_grid')
+        book = openpyxl.load_workbook(wb.filename)
+        sh = book['render_in_grid']
+
         # headers
-        assert sh.ncols == 10
-        assert sh.cell_value(0, 0) == 'First Name'
-        assert sh.cell_value(0, 7) == 'State'
+        assert sh.max_column == 10
+        assert sh.cell(1, 1).value == 'First Name'
+        assert sh.cell(1, 8).value == 'State'
 
         # last data row
-        assert sh.cell_value(3, 0) == 'fn001'
-        assert sh.cell_value(3, 7) == 'st001'
-        assert sh.nrows == 4
+        assert sh.max_row == 4
+        assert sh.cell(4, 1).value == 'fn001'
+        assert sh.cell(4, 8).value == 'st001'
 
     def test_group_headings(self):
         grid = StopwatchGrid()
         wb = grid.xlsx()
         wb.filename.seek(0)
 
-        book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
-        sheet = book.sheet_by_index(0)
-        # A [ 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ]
-        #   [       | Lap 1 |   | Lap 2 | Lap 3 ]
-        assert sheet.row_values(0) == ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', '']
-        assert sheet.row_values(0) == ['', '', 'Lap 1', '', '', 'Lap 2', '', 'Lap 3', '']
-        assert sheet.cell_value(1, 1) == 'Label'
-        assert sheet.cell_value(2, 1) == 'Watch 1'
-        assert sheet.merged_cells == [
-            (0, 1, 0, 2),  # Buffer A1:A2
-            (0, 1, 2, 4),  # Lap 1  A3:A4
-            #              # Buffer A5
-            (0, 1, 5, 7),  # Lap 2  A6:A7
-            (0, 1, 7, 9),  # Lap 3  A8:A9
+        book = openpyxl.load_workbook(wb.filename)
+        sheet = book[book.sheetnames[0]]
+        #   [ A | B | C | D | E | F | G | H | I ]
+        # 1 [       | Lap 1 |   | Lap 2 | Lap 3 ]
+        row_values = [cell.value for cell in next(sheet.iter_rows(max_row=1))]
+        assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
+        assert sheet.cell(2, 2).value == 'Label'
+        assert sheet.cell(3, 2).value == 'Watch 1'
+        assert [str(range_) for range_ in sheet.merged_cells.ranges] == [
+            'A1:B1',
+            'C1:D1',
+            # E is a single cell
+            'F1:G1',
+            'H1:I1',
         ]
-        assert sheet.ncols == 9
+        assert sheet.max_column == 9
 
     def test_subtotals_with_no_records(self):
         g = PGGrandTotals()
@@ -864,8 +866,8 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-        book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
-        book.sheet_by_name('people_grid_with_a_really_r...')
+        book = openpyxl.load_workbook(wb.filename)
+        assert book['people_grid_with_a_really_r...']
 
     def test_totals(self):
         g = PeopleGrid()
@@ -874,12 +876,12 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-        book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
-        sheet = book.sheet_by_index(0)
-        assert sheet.nrows == 5
-        assert sheet.cell_value(4, 0) == 'Totals (3 records):'
-        assert sheet.cell_value(4, 8) == 6.39
-        assert sheet.merged_cells == [(4, 5, 0, 8)]
+        book = openpyxl.load_workbook(wb.filename)
+        sheet = book[book.sheetnames[0]]
+        assert sheet.max_row == 5
+        assert sheet.cell(5, 1).value == 'Totals (3 records):'
+        assert sheet.cell(5, 9).value == 6.39
+        assert [str(range_) for range_ in sheet.merged_cells.ranges] == ['A5:H5']
 
     def test_totals_no_merge(self):
         class TestGrid(Grid):
@@ -891,12 +893,12 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-        book = xlrd.open_workbook(file_contents=wb.filename.getvalue())
-        sheet = book.sheet_by_index(0)
+        book = openpyxl.load_workbook(wb.filename)
+        sheet = book[book.sheetnames[0]]
 
-        assert sheet.nrows == 6
-        assert sheet.cell_value(5, 0) == 'Totals (4 records):'
-        assert sheet.merged_cells == []
+        assert sheet.max_row == 6
+        assert sheet.cell(6, 1).value == 'Totals (4 records):'
+        assert sheet.merged_cells.ranges == []
 
     def test_can_render(self):
         class FakeCountsGrid(PeopleGrid):
