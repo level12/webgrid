@@ -2,6 +2,7 @@ import datetime as dt
 from io import BytesIO
 
 import pytest
+import xlsxwriter
 import xlwt
 
 from webgrid import testing
@@ -138,6 +139,112 @@ class TestAssertRenderedXlsMatches:
         # the right `None` gets dropped
         self.assert_matches([], [
             ['', 1, 1.23, 'hello']
+        ])
+
+
+class TestAssertRenderedXlsxMatches:
+    def setup(self):
+        self.stream = BytesIO()
+        self.workbook = xlsxwriter.Workbook(self.stream, options={'in_memory': True})
+        self.sheet = self.workbook.add_worksheet('sheet1')
+
+        self.headers_written = None
+
+    def set_headers(self, headers):
+        assert self.headers_written is None
+        self.set_values(headers)
+        self.headers_written = len(headers)
+
+    def set_values(self, values):
+        row_offset = 0
+
+        if self.headers_written:
+            row_offset = self.headers_written
+
+        for row_index, row in enumerate(values, start=row_offset):
+            for col_index, value in enumerate(row):
+                self.sheet.write(row_index, col_index, value)
+
+    def assert_matches(self, xlsx_headers, xlsx_rows):
+        self.workbook.close()
+        testing.assert_rendered_xlsx_matches(self.workbook, xlsx_headers, xlsx_rows)
+
+    def test_empty_xlsx(self):
+        with pytest.raises(AssertionError):
+            testing.assert_rendered_xlsx_matches(b'', None, None)
+
+        with pytest.raises(AssertionError):
+            testing.assert_rendered_xlsx_matches(None, None, None)
+
+        with pytest.raises(AssertionError):
+            testing.assert_rendered_xlsx_matches(None, [], [])
+
+    def test_blank_workbook(self):
+        self.assert_matches([], [])
+
+    def test_single_header(self):
+        self.set_headers([['Foo']])
+        self.assert_matches([['Foo']], [])
+
+    def test_multiple_headers(self):
+        self.set_headers([['Foo', 'Bar']])
+        self.assert_matches([['Foo', 'Bar']], [])
+
+    def test_single_row(self):
+        self.set_values([[1, 2, 3]])
+        self.assert_matches([], [[1, 2, 3]])
+
+    def test_multiple_rows(self):
+        self.set_values([
+            [1, 2, 3],
+            [2, 3, 4]
+        ])
+
+        self.assert_matches([], [
+            [1, 2, 3],
+            [2, 3, 4]
+        ])
+
+    def test_headers_and_rows(self):
+        self.set_headers([
+            ['Foo', 'Bar'],
+            ['Snoopy', 'Dog'],
+        ])
+        self.set_values([
+            [1, 2],
+            [2, 3],
+            [3, 4]
+        ])
+
+        self.assert_matches(
+            [
+                ['Foo', 'Bar'],
+                ['Snoopy', 'Dog'],
+            ],
+            [
+                [1, 2],
+                [2, 3],
+                [3, 4]
+            ]
+        )
+
+    def test_value_types(self):
+        self.set_values([
+            [1, 1.23, 'hello', None, True, False]
+        ])
+
+        self.assert_matches([], [
+            [1, 1.23, 'hello', None, True, False]
+        ])
+
+    def test_none_is_mangled(self):
+        self.set_values([
+            [None, 1, 1.23, 'hello', None]
+        ])
+
+        # the right `None` gets dropped
+        self.assert_matches([], [
+            [None, 1, 1.23, 'hello']
         ])
 
 
