@@ -15,6 +15,7 @@ from webgrid import (
 from webgrid.filters import (
     DateFilter,
     DateTimeFilter,
+    IntFilter,
     Operator,
     OptionsEnumFilter,
     OptionsFilterBase,
@@ -26,7 +27,7 @@ from webgrid.renderers import CSV
 from webgrid_ta.extensions import lazy_gettext as _
 
 from .app import webgrid
-from .model.entities import AccountType, ArrowRecord, Person, Status, Stopwatch
+from .model.entities import AccountType, ArrowRecord, Person, Radio, Status, Stopwatch
 
 
 class Grid(BaseGrid):
@@ -170,3 +171,11 @@ class TemporalGrid(Grid):
     DateTimeColumn(_('Created'), Person.createdts, DateTimeFilter)
     DateColumn(_('Due Date'), Person.due_date, DateFilter)
     TimeColumn(_('Start Time'), Person.start_time, TimeFilter)
+
+
+class RadioGrid(Grid):
+    session_on = True
+
+    Column('Make', Radio.make, TextFilter)
+    Column('Model', Radio.model, TextFilter)
+    Column('Year', Radio.year, IntFilter)

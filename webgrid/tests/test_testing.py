@@ -5,7 +5,8 @@ import pytest
 import xlwt
 
 from webgrid import testing
-from webgrid_ta.grids import TemporalGrid
+from webgrid_ta.grids import RadioGrid, TemporalGrid
+from webgrid_ta.model.entities import Person, db
 
 
 class TestAssertListEqual:
@@ -140,9 +141,15 @@ class TestAssertRenderedXlsMatches:
         ])
 
 
-@pytest.mark.skip(reason='postgres-only test')
-class TestPGCompilerMixin(testing.PGCompilerMixin, testing.GridBase):
+@pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason='sqlite-only test')
+class TestGridBase(testing.GridBase):
     grid_cls = TemporalGrid
+
+    sort_tests = (
+        ('createdts', 'persons.createdts'),
+        ('due_date', 'persons.due_date'),
+        ('start_time', 'persons.start_time'),
+    )
 
     @property
     def filters(self):
@@ -151,13 +158,52 @@ class TestPGCompilerMixin(testing.PGCompilerMixin, testing.GridBase):
              "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
             ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
             ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
-             "WHERE persons.start_time = CAST('01:30' AS TIME WITHOUT TIME ZONE)"),
+             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME)"),
+        )
+
+    def setup_method(self, _):
+        Person.delete_cascaded()
+        Person.testing_create(
+            createdts=dt.datetime(2018, 1, 1, 5, 30),
+            due_date=dt.date(2019, 5, 31),
+            start_time=dt.time(1, 30),
+        )
+
+    def test_expected_rows(self):
+        self.expect_table_header((('Created', 'Due Date', 'Start Time'), ))
+        self.expect_table_contents((('01/01/2018 05:30 AM', '05/31/2019', '01:30 AM'), ))
+
+
+@pytest.mark.skipif(db.engine.dialect.name != 'postgresql', reason='postgres-only test')
+class TestGridBasePG(testing.GridBase):
+    grid_cls = TemporalGrid
+
+    sort_tests = (
+        ('createdts', 'persons.createdts'),
+        ('due_date', 'persons.due_date'),
+        ('start_time', 'persons.start_time'),
+    )
+
+    @property
+    def filters(self):
+        return (
+            ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
+             "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
+            ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
+            ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
+             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)"),
         )
 
 
-@pytest.mark.skip(reason='sql server-only test')
-class TestMSSQLCompilerMixin(testing.MSSQLCompilerMixin, testing.GridBase):
+@pytest.mark.skipif(db.engine.dialect.name != 'mssql', reason='sql server-only test')
+class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
     grid_cls = TemporalGrid
+
+    sort_tests = (
+        ('createdts', 'persons.createdts'),
+        ('due_date', 'persons.due_date'),
+        ('start_time', 'persons.start_time'),
+    )
 
     @property
     def filters(self):
@@ -166,5 +212,18 @@ class TestMSSQLCompilerMixin(testing.MSSQLCompilerMixin, testing.GridBase):
              "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
             ('due_date', 'eq', '2018-01-01', "WHERE persons.due_date = '2018-01-01'"),
             ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
-             "WHERE persons.start_time = CAST('01:30' AS TIME)"),
+             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME)"),
+        )
+
+
+@pytest.mark.skipif(db.engine.dialect.name != 'mssql', reason='sql server-only test')
+class TestGridBaseMSSQLStrings(testing.MSSQLGridBase):
+    grid_cls = RadioGrid
+
+    @property
+    def filters(self):
+        return (
+            ('make', 'eq', 'foo', "WHERE sabwp_radios.make = 'foo'"),
+            ('model', 'eq', 'foo', "WHERE sabwp_radios.model = 'foo'"),
+            ('year', 'eq', '1945', "WHERE sabwp_radios.year = 1945"),
         )
