@@ -114,8 +114,23 @@ function datagrid_activate_filter(filter_key) {
     // Added _filter to address CSS collision with Bootstrap
     // Ref: https://github.com/level12/webgrid/issues/28
     var jq_tr = $('.datagrid .filters tr.' + filter_key+ "_filter");
+
+    if (_datagrid_is_loaded) {
+        // move user-selected filter to the end of the list, so it shows up right where it was selected
+        // note, we don't preserve this ordering through page refresh
+        var detached_row = jq_tr.detach();
+        detached_row.insertBefore('.datagrid .filters tr.add-filter');
+    }
+
     // show the filter's row of controls
     jq_tr.show();
+
+    if (_datagrid_is_loaded) {
+        var primary_filter_op = jq_tr.find('td.operator option[data-render="primary"]').attr('value');
+        jq_tr.find('td.operator select').val(primary_filter_op);
+        // ensure all event handlers (including custom ones) run for op select
+        jq_tr.find('td.operator select').change();
+    }
 
     // make sure the option in the "Add Filter" select box for this
     // filter is disabled
@@ -179,6 +194,13 @@ function datagrid_toggle_filter_inputs(jq_filter_tr) {
                     jq_filter_tr.find('.inputs1 input[name="' + v1name + '"]').removeAttr('name');
                     jq_filter_tr.find('.inputs1 select').attr('name', v1name);
                 }
+                if (_datagrid_is_loaded) {
+                    var mselect = jq_filter_tr.find('.inputs1 select').data('multipleSelect');
+                    if (mselect) {
+                        // note, directly opening did not seem to work, need to call in separate function
+                        setTimeout(function(){mselect.open();}, 10);
+                    }
+                }
             } else {
                 if (_datagrid_is_loaded) {
                     jq_filter_tr.find('.inputs1 input').val('');
@@ -188,6 +210,9 @@ function datagrid_toggle_filter_inputs(jq_filter_tr) {
                 jq_filter_tr.find('.inputs1 .ms-parent').hide();
                 jq_filter_tr.find('.inputs1 input').attr('name',v1name);
                 jq_filter_tr.find('.inputs1 select').removeAttr('name');
+                if (_datagrid_is_loaded) {
+                    jq_filter_tr.find('.inputs1 input').focus();
+                }
             }
         }
         if( field_type == '2inputs' || field_type == 'select+input' ) {

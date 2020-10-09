@@ -275,11 +275,14 @@ class HTML(GroupMixin, Renderer):
         else:
             current_selected = filter.op
 
+        primary_op = filter.primary_op or filter.operators[0]
+        is_primary = lambda op: 'primary' if op == primary_op else None  # noqa: E731
+
         field_name = 'op({0})'.format(col.key)
         field_name = self.grid.prefix_qs_arg_key(field_name)
 
         return self.render_select(
-            [(op.key, op.display) for op in filter.operators],
+            [(op.key, op.display, is_primary(op)) for op in filter.operators],
             current_selected,
             name=field_name
         )
@@ -450,8 +453,9 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '''
             <select{{attrs|wg_attributes}}>
-                {% for value, label in options %}
+                {% for value, label, data in options %}
                     <option value="{{value}}"
+                        {%- if data %} data-render="{{data}}" {%- endif -%}
                         {%- if value in current_selection %} selected {%- endif -%}
                     >
                         {{- label -}}
@@ -459,7 +463,7 @@ class HTML(GroupMixin, Renderer):
                 {% endfor %}
             </select>
             ''',
-            options=options,
+            options=((opt if len(opt) == 3 else (opt + (None, ))) for opt in options),
             current_selection=current_selection,
             placeholder=placeholder,
             attrs=kwargs,

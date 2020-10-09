@@ -518,6 +518,22 @@ class TestHtmlRenderer(object):
         assert '<tr class="firstname_filter" data-special-attr="foo">' in filter_html, filter_html
 
     @inrequest('/thepage')
+    def test_filter_primary_op_specified(self):
+        g = PeopleGrid()
+        g.key_column_map['firstname'].filter.primary_op = '!eq'
+        filter_html = g.html.filtering_table_row(g.key_column_map['firstname'])
+        assert PyQuery(filter_html).find('option[value="!eq"]').attr('data-render') == 'primary'
+        assert not PyQuery(filter_html).find('option[value="eq"]').attr('data-render')
+
+    @inrequest('/thepage')
+    def test_filter_primary_op_not_specified(self):
+        g = PeopleGrid()
+        g.key_column_map['firstname'].filter.primary_op = None
+        filter_html = g.html.filtering_table_row(g.key_column_map['firstname'])
+        assert PyQuery(filter_html).find('option[value="eq"]').attr('data-render') == 'primary'
+        assert not PyQuery(filter_html).find('option[value="!eq"]').attr('data-render')
+
+    @inrequest('/thepage')
     def test_multiselect_enum_options(self):
         class PeopleType(Enum):
             bob = 'Bob'
