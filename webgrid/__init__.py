@@ -23,6 +23,7 @@ from werkzeug.datastructures import MultiDict
 
 from .extensions import gettext as _
 from .renderers import HTML, XLS, XLSX
+from .version import VERSION as __version__
 
 # conditional imports to support libs without requiring them
 try:
