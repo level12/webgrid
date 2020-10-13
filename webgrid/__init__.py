@@ -23,7 +23,7 @@ from werkzeug.datastructures import MultiDict
 
 from .extensions import gettext as _
 from .renderers import HTML, XLS, XLSX
-from .version import VERSION as __version__
+from .version import VERSION as __version__  # noqa: F401
 
 # conditional imports to support libs without requiring them
 try:
@@ -45,9 +45,17 @@ avg_ = sasql.func.avg
 
 
 def subtotal_function_map(v):
-    # subtotals default to the simplest expression (sum). avg is also an option, or you
-    #   can assign a string or expression (string using column labels would probably
-    #   work best at this stage)
+    """Maps string value to a function, or passes the value through.
+
+    Recognizes True, "sum" or "avg". If True, "sum" is used as the default
+    subtotal function.
+
+    Args:
+        v (Union(str, callable)): Value defining the subtotal method.
+
+    Returns:
+        Union(str, callable): `sum` or `avg` SQLAlchemy functions, or the value.
+    """
     if v is True or v == 'sum':
         return sum_
     elif v == 'avg':
@@ -110,8 +118,25 @@ class _DeclarativeMeta(type):
 
 
 class Column(object):
-    """
-        Column represents the fixed settings for a datagrid column
+    """Column represents the data and render specification for a table column.
+
+    Args:
+        label (str): Label to use for filter/sort selection and table header.
+        key (Union[Expression, str], optional): Field key or SQLAlchemy expression.
+            Defaults to None.
+        filter ([type], optional): [description]. Defaults to None.
+        can_sort (bool, optional): [description]. Defaults to True.
+        xls_style ([type], optional): [description]. Defaults to None.
+        xls_num_format ([type], optional): [description]. Defaults to None.
+        render_in ([type], optional): [description]. Defaults to _None.
+        has_subtotal (bool, optional): [description]. Defaults to False.
+        visible (bool, optional): [description]. Defaults to True.
+        group ([type], optional): [description]. Defaults to None.
+
+    Class Attributes:
+        xls_width (float, optional): Override to autocalculated width in Excel exports.
+        xls_num_format (str, optional): Default numeric/date format type.
+        xls_style (Any): Deprecated, used for XLS exports.
     """
     _creation_counter = 0
     xls_width = None
@@ -596,6 +621,12 @@ class EnumColumn(Column):
 
 
 class ColumnGroup(object):
+    """Represents a grouping of grid columns which may be rendered within a group label.
+
+    Args:
+        label (str): Grouping label to be rendered for the column set.
+        class_ (str): CSS class name to apply in HTML rendering.
+    """
     label = None
     class_ = None
 
@@ -605,6 +636,74 @@ class ColumnGroup(object):
 
 
 class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
+    """WebGrid grid base class.
+
+    Handles class declarative-style grid description of columns, filterers, and rendering.
+
+    The constructor is responsible for:
+
+    - setting initial attributes
+    - initializing renderers
+    - setting up columns for the grid instance
+    - running the grid's `post_init` method
+
+    Args:
+        ident (str, optional): Identifier value for ident instance property. Defaults to None.
+
+        per_page (int, optional): Default number of records per page. Defaults to _None.
+
+        on_page (int, optional): Default starting page. Defaults to _None.
+
+        qs_prefix (str, optional): Arg name prefix to apply in query string. Useful for having
+        multiple unconnected grids on a single page. Defaults to ''.
+
+        class_ (str, optional): CSS class name for main grid div. Defaults to 'datagrid'.
+
+    Class Attributes:
+        identifier (str): Optional string identifier used for the ident property.
+
+        sorter_on (bool): Enable HTML sorting UX. Default True.
+
+        pager_on (bool): Enable record limits in queries and HTML pager UX. Default True.
+
+        per_page (int): Default number of records per page, can be overridden in constructor
+        or through query string args. Default 50.
+
+        on_page (int): Default page number, can be overridden in constructor or through
+        query string args. Default 1.
+
+        hide_controls_box (bool): Hides HTML filter/page/sort/count UX. Default False.
+
+        session_on (bool): Enable web context session storage of grid filter/page/sort args.
+        Default True.
+
+        subtotals (string): Enable subtotals. Can be none|page|grand|all. Default "none".
+
+        manager (Manager): Framework plugin for the web context, such as webgrid.flask.WebGrid.
+
+        allowed_export_targets (dict[str, Renderer]): Map non-HTML export targets to the
+        Renderer classes.
+
+        enable_search (bool): Enable single-search UX. Default True.
+
+        unconfirmed_export_limit (int): Ask for confirmation before exporting more than this many
+        records. Set to None to disable. Default 10000.
+
+        query_joins (tuple): Tuple of joins to bring the query together for all columns. May
+        have just the join object, or also conditions.
+        e.g. [Blog], ([Blog.category], ), or [(Blog, Blog.active == sa.true())]
+        Note, relationship attributes must be referenced within tuples, due to SQLAlchemy magic.
+
+        query_outer_joins (tuple): Tuple of outer joins. See query_joins.
+
+        query_filter (tuple): Filter parameter(s) tuple to be used on the query.
+        Note, relationship attributes must be referenced within tuples, due to SQLAlchemy magic.
+
+        query_default_sort (tuple): Parameter(s) tuple to be passed to order_by if sort options
+        are not set on the grid.
+        Note, relationship attributes must be referenced within tuples, due to SQLAlchemy magic.
+
+    """
     __cls_cols__ = ()
     identifier = None
     sorter_on = True
@@ -614,7 +713,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     hide_controls_box = False
     hide_excel_link = False
     # enables keyed session store of grid arguments
-    session_on = False
+    session_on = True
     # enables page/grand subtotals: none|page|grand|all
     subtotals = 'none'
     manager = None
@@ -688,6 +787,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self.post_init()
 
     def _init_columns(self):
+        """Create column instances to attach to a grid instance.
+
+        Columns set up in the declarative grid description are instances bound to the grid
+        class. When the grid is instantiated, those column instances need to be copied over
+        to the grid instance.
+
+        Columns are responsible for their own "copy" process with the `new_instance` method.
+        """
         for col in self.__cls_cols__:
             new_col = col.new_instance(self)
             self.columns.append(new_col)
@@ -701,14 +808,21 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                 )
 
     def post_init(self):
-        """Provided for subclasses to run post-initialization customizations"""
+        """Provided for subclasses to run post-initialization customizations.
+        """
         pass
 
     def before_query_hook(self):
-        """ Just a hook to give subclasses a chance to change things before executing the query """
+        """Hook to give subclasses a chance to change things before executing the query.
+        """
         pass
 
     def build(self):
+        """Apply query args, run `before_query_hook`, and execute a record count query.
+
+        Calling `build` is preferred to simply calling `apply_qs_args` in a view. Otherwise,
+        AttributeErrors can be hidden when the grid is used in Jinja templates.
+        """
         self.apply_qs_args()
         self.before_query_hook()
         # this will force the query to execute.  We used to wait to evaluate this but it ended
@@ -717,16 +831,52 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self.record_count
 
     def column(self, ident):
+        """Retrieve a grid column instance via either the key string or index int.
+
+        Args:
+            ident (Union[str, int]): Key/index for lookup.
+
+        Returns:
+            Column: Instance column matching the ident.
+
+        Raises:
+            KeyError when ident is a string not matching any column.
+
+            IndexError when ident is an int but out of bounds for the grid.
+        """
         if isinstance(ident, six.string_types):
             return self.key_column_map[ident]
         return self.columns[ident]
 
     def has_column(self, ident):
+        """Verify string key or int index is defined for the grid instance.
+
+        Args:
+            ident (Union[str, int]): Key/index for lookup.
+
+        Returns:
+            bool: Indicates whether key/index is in the grid columns.
+
+        """
         if isinstance(ident, six.string_types):
             return ident in self.key_column_map
-        return ident in self.columns
+        return 0 <= ident < len(self.columns)
 
     def get_unique_column_key(self, key):
+        """Apply numeric suffix to a field key to make the key unique to the grid.
+
+        Helpful for when multiple entities are represented in grid columns but have
+        the same field names.
+
+        For instance, Blog.label and Author.label both have the field name `label`.
+        The first column will have the `label` key, and the second will get `label_1`.
+
+        Args:
+            key (str): field key to make unique.
+
+        Returns:
+            str: unique key that may be assigned in the grid's `key_column_map`.
+        """
         suffix_counter = 0
         new_key = key
         while self.has_column(new_key):
@@ -735,19 +885,36 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return new_key
 
     def iter_columns(self, render_type):
+        """Generator yielding columns that are visible and enabled for target `render_type`.
+
+        Args:
+            render_type (str): [description]
+
+        Yields:
+            Column: Grid instance's column instance that is renderable for `render_type`.
+        """
         for col in self.columns:
             if col.visible and render_type in col.render_in:
                 yield col
 
     def can_search(self):
-        # enable_search will turn the feature on/off, but don't enable it if none of the filters
-        # support it
+        """Grid `enable_search` attr turns on search, but check if there are supporting filters.
+
+        Returns:
+            bool: search enabled and supporting filters exist
+        """
         return self.enable_search and len(self.search_expression_generators) > 0
 
     @property
     def search_expression_generators(self):
-        # See FilterBase.get_search_expr
-        # Should return a tuple of callables, each taking a single argument (the search value).
+        """Get single-search query modifier factories from the grid filters.
+
+        Raises:
+            Exception: filter's `get_search_expr` did not return None or callable
+
+        Returns:
+            tuple(callable): search expression callables from grid filters
+        """
         # We filter out None here so as to disregard filters that don't support the search feature.
         def check_expression_generator(expr_gen):
             if expr_gen is not None and not callable(expr_gen):
@@ -761,15 +928,37 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         ))
 
     def set_renderers(self):
+        """Renderers assigned as attributes on the grid instance, named by render target.
+        """
         self.html = HTML(self)
         for key, value in self.allowed_export_targets.items():
             setattr(self, key, value(self))
 
     def set_filter(self, key, op, value, value2=None):
+        """Set filter parameters on a column's filter. Resets record cache.
+
+        Args:
+            key (str): Column identifier
+            op (str): Operator
+            value (Any): First filter value
+            value2 (Any, optional): Second filter value if applicable. Defaults to None.
+        """
         self.clear_record_cache()
         self.filtered_cols[key].filter.set(op, value, value2=value2)
 
     def set_sort(self, *args):
+        """Set sort parameters for main query. Resets record cache.
+
+        If keys are passed in that do not belong to this grid, raise user warnings
+        (not exceptions). These warnings are suppressed if the grid has a "foreign"
+        session assigned (i.e. two grids share some of the same columns, and should
+        load as much information as possible from the shared session key).
+
+        Args:
+            Each arg is expected to be a column key. If the sort is to be descending for
+            that key, prepend with a "-".
+            E.g. `grid.set_sort('author', '-post_date')`
+        """
         self.clear_record_cache()
         self.order_by = []
 
@@ -786,11 +975,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                 self.user_warnings.append(_('''can't sort on invalid key "{key}"''', key=key))
 
     def set_paging(self, per_page, on_page):
+        """Set paging parameters for the main query. Resets record cache.
+
+        Args:
+            per_page (int): Record limit for each page.
+            on_page (int): With `per_page`, computes the offset.
+        """
         self.clear_record_cache()
         self.per_page = per_page
         self.on_page = on_page
 
     def clear_record_cache(self):
+        """Reset records and record count cached from previous queries.
+        """
         self._record_count = None
         self._records = None
 
@@ -802,6 +999,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
     @property
     def has_filters(self):
+        """Indicates whether filters will be applied in `build_query`.
+
+        Returns:
+            bool: True if filter(s) have op/value set or single search value is given.
+        """
         for col in six.itervalues(self.filtered_cols):
             if col.filter.is_active:
                 return True
@@ -809,10 +1011,23 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
     @property
     def has_sort(self):
+        """Indicates whether ordering will be applied in `build_query`.
+
+        Returns:
+            bool: True if grid's `order_by` list is populated.
+        """
         return bool(self.order_by)
 
     @property
     def record_count(self):
+        """Count of records for current filtered query.
+
+        Value is cached to prevent duplicate query execution. Methods changing
+        the query (e.g. `set_filter`) will reset the cached value.
+
+        Returns:
+            int: Count of records.
+        """
         if self._record_count is None:
             query = self.build_query(for_count=True)
             t0 = time.perf_counter()
@@ -823,6 +1038,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
     @property
     def records(self):
+        """Records returned for current filtered/sorted/paged query.
+
+        Result is cached to prevent duplicate query execution. Methods changing
+        the query (e.g. `set_filter`) will reset the cached result.
+
+        Returns:
+            list(Any): Result records from SQLAlchemy query.
+        """
         if self._records is None:
             query = self.build_query()
             t0 = time.perf_counter()
@@ -832,6 +1055,17 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return self._records
 
     def _totals_col_results(self, page_totals_only):
+        """Executes query to retrieve subtotals for the filtered query.
+
+        A single result record is returned, which will have fields corresponding to all of the
+        grid columns (same as a record returned in the general records query).
+
+        Args:
+            page_totals_only (bool): Tells query builder to use only current page records.
+
+        Returns:
+            Any: Single result record.
+        """
         SUB = self.build_query(for_count=(not page_totals_only)).subquery()
 
         cols = []
@@ -884,23 +1118,60 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
     @property
     def page_totals(self):
+        """Executes query to retrieve subtotals for the filtered query on the current page.
+
+        A single result record is returned, which will have fields corresponding to all of the
+        grid columns (same as a record returned in the general records query).
+
+        Returns:
+            Any: Single result record.
+        """
         if self._page_totals is None:
             self._page_totals = self._totals_col_results(page_totals_only=True)
         return self._page_totals
 
     @property
     def grand_totals(self):
+        """Executes query to retrieve subtotals for the filtered query.
+
+        A single result record is returned, which will have fields corresponding to all of the
+        grid columns (same as a record returned in the general records query).
+
+        Returns:
+            Any: Single result record.
+        """
         if self._grand_totals is None:
             self._grand_totals = self._totals_col_results(page_totals_only=False)
         return self._grand_totals
 
     @property
     def page_count(self):
+        """Page count, or 1 if no `per_page` is set.
+        """
         if self.per_page is None:
             return 1
         return max(0, self.record_count - 1) // self.per_page + 1
 
     def build_query(self, for_count=False):
+        """Constructs, but does not execute, a grid query from columns and configuration.
+
+        This is the query the grid functions trust for results for records, count, page
+        count, etc. Customization of the query should happen here or in the methods called
+        within.
+
+        Build sequence:
+        - `query_base`
+        - `query_prep`
+        - `query_filters`
+        - `query_sort`
+        - `query_paging`
+
+        Args:
+            for_count (bool, optional): Excludes sort/page from query. Defaults to False.
+
+        Returns:
+            Query: SQLAlchemy query object
+        """
         log.debug(str(self))
 
         has_filters = self.has_filters
@@ -922,10 +1193,32 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return query
 
     def set_records(self, records):
+        """Assign a set of records to the grid's cache.
+
+        Useful for simple grids that simply need to be rendered as a table. Note that any
+        ops performed on the grid, such as setting filter/sort/page options, will clear this
+        cached information.
+
+        Args:
+            records (list(Any)): List of record objects that can be referenced for column data.
+        """
         self._record_count = len(records)
         self._records = records
 
     def query_base(self, has_sort, has_filters):
+        """Construct a query from grid columns, using grid's join/filter/sort attributes.
+
+        Used by `build_query` to establish the basic query from column spec. If query is to be
+        modified, it is recommended to do so in `query_prep` if possible, rather than overriding
+        `query_base`.
+
+        Args:
+            has_sort (bool): Tells method not to order query, since the grid has sort params.
+            has_filters (bool): Tells method if grid has filter params. Not used.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         for idx, column in enumerate(filter(lambda col: col.expr is not None, self.columns)):
             column._query_idx = idx
         cols = [col.expr for col in self.columns if col.expr is not None]
@@ -946,9 +1239,35 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return query
 
     def query_prep(self, query, has_sort, has_filters):
+        """Modify the query that was constructed in `query_base`.
+
+        Joins, query filtering, and default sorting can be applied via grid attributes. However,
+        sometimes grid queries need columns added, instance-time modifications applied, etc.
+
+        Called by `build_query`.
+
+        Args:
+            query (Query): SQLAlchemy query object.
+            has_sort (bool): Tells method grid has sort params defined.
+            has_filters (bool): Tells method if grid has filter params.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         return query
 
     def query_filters(self, query):
+        """Modify the query by applying filter terms.
+
+        Called by `build_query` to apply any column filters as needed. Also enacts
+        the single-search value if specified.
+
+        Args:
+            query (Query): SQLAlchemy query object.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         filter_display = []
         if self.search_value is not None:
             query = self.apply_search(query, self.search_value)
@@ -964,14 +1283,32 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return query
 
     def apply_search(self, query, value):
-        # We depend on the filters to know what to do with the search value, and then OR the
-        # expressions together for our query
+        """Modify the query by applying a filter term constructed from search clauses.
+
+        Calls each filter search expression factory with the search value to get a search
+        clause, then ORs them all together for the main query.
+
+        Args:
+            query (Query): SQLAlchemy query.
+            value (str): Search value.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         return query.filter(sa.or_(*filter(
             lambda item: item is not None,
             (expr(value) for expr in self.search_expression_generators)
         )))
 
     def query_paging(self, query):
+        """Modify the query by applying limit/offset to match grid parameters.
+
+        Args:
+            query (Query): SQLAlchemy query.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         if self.on_page and self.per_page:
             offset = (self.on_page - 1) * self.per_page
             query = query.offset(offset).limit(self.per_page)
@@ -979,6 +1316,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return query
 
     def query_sort(self, query):
+        """Modify the query by applying sort to match grid parameters.
+
+        Args:
+            query (Query): SQLAlchemy query.
+
+        Returns:
+            Query: SQLAlchemy query
+        """
         redundant = []
         sort_display = []
         for key, flag_desc in self.order_by:
@@ -1011,8 +1356,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return query
 
     def _fix_mssql_order_by(self, query):
-        # MSSQL must have an ORDER BY for paging to work. If no sort clause has been
-        # defined, sort by the first column. If that doesn't work, error out.
+        """MSSQL must have an ORDER BY for paging to work. If no sort clause has been
+        defined, sort by the first column. If that doesn't work, error out.
+        """
         if len(self.columns):
             query = self.columns[0].apply_sort(query, False)
             if query._order_by:
@@ -1022,6 +1368,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         )
 
     def args_have_op(self, args):
+        """Check args for containing any filter operators with the grid's `qs_prefix`.
+
+        Args:
+            args (MultiDict): Request args.
+
+        Returns:
+            bool: True if at least one op is present.
+        """
         # any of the grid's query string args can be used to
         #   override the session behavior (except export_to)
         r = re.compile(
@@ -1030,24 +1384,59 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return any(r.match(a) for a in args.keys())
 
     def args_have_session_override(self, args):
+        """Check args for containing a session override with the grid's `qs_prefix`.
+
+        Args:
+            args (MultiDict): Request args.
+
+        Returns:
+            bool: True if session_override is present.
+        """
         r = re.compile(
             self.qs_prefix + 'session_override'
         )
         return any(r.match(a) for a in args.keys())
 
     def args_have_page(self, args):
+        """Check args for containing any page args with the grid's `qs_prefix`.
+
+        Args:
+            args (MultiDict): Request args.
+
+        Returns:
+            bool: True if at least one page arg is present.
+        """
         r = re.compile(
             self.qs_prefix + '(onpage|perpage)'
         )
         return any(r.match(a) for a in args.keys())
 
     def args_have_sort(self, args):
+        """Check args for containing any sort keys with the grid's `qs_prefix`.
+
+        Args:
+            args (MultiDict): Request args.
+
+        Returns:
+            bool: True if at least one sort key is present.
+        """
         r = re.compile(
             self.qs_prefix + '(sort[1-3])'
         )
         return any(r.match(a) for a in args.keys())
 
     def apply_qs_args(self, add_user_warnings=True):
+        """Process query string arguments and session store for filter/page/sort/export.
+
+        Session/args precedence applies as follows:
+        - if session_override or no filter ops, load args from session store
+        - having filter ops present will reset session store unless session_override is present
+        - page/sort args will always take precedence over stored args, but not reset the store
+        - export argument is handled outside of the session store
+
+        Args:
+            add_user_warnings (bool, optional): Add flash messages for warnings. Defaults to True.
+        """
         args = MultiDict(self.manager.request_args())
         if (
             'search' in args
@@ -1108,6 +1497,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                 self.manager.flash_message('warning', msg)
 
     def _apply_filtering(self, args):
+        """Turn request/session args into filter settings.
+
+        Args:
+            args (MultiDict): Full arguments to search for filters.
+        """
         for col in six.itervalues(self.filtered_cols):
             filter = col.filter
             filter_op_qsk = self.prefix_qs_arg_key('op({0})'.format(col.key))
@@ -1138,6 +1532,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                     self.user_warnings.append(invalid_msg)
 
     def _apply_paging(self, args):
+        """Turn request/session args into page settings.
+
+        Args:
+            args (MultiDict): Full arguments to search for paging.
+        """
         pp_qsk = self.prefix_qs_arg_key('perpage')
         if pp_qsk in args:
             per_page = self.apply_validator(fev.Int, args[pp_qsk], pp_qsk)
@@ -1155,6 +1554,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             self.on_page = on_page
 
     def _apply_sorting(self, args):
+        """Turn request/session args into sort settings.
+
+        Args:
+            args (MultiDict): Full arguments to search for sort keys.
+        """
         sort_qs_keys = [
             self.prefix_qs_arg_key('sort1'),
             self.prefix_qs_arg_key('sort2'),
@@ -1169,9 +1573,27 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self.set_export_to(args.get(export_qsk, None))
 
     def prefix_qs_arg_key(self, key):
+        """Given a bare arg key, return the prefixed version that will actually be in the request.
+
+        Args:
+            key (str): Bare arg key.
+
+        Returns:
+            str: Prefixed arg key.
+        """
         return '{0}{1}'.format(self.qs_prefix, key)
 
     def apply_validator(self, validator, value, qs_arg_key):
+        """Apply a FormEncode validator to value, and produce a warning if invalid.
+
+        Args:
+            validator (Validator): FormEncode-style validator.
+            value (str): Value to validate.
+            qs_arg_key (str): Arg name to include in warning if value is invalid.
+
+        Returns:
+            Any: Output of `validator.to_python(value)`, or `None` if invalid.
+        """
         try:
             return validator.to_python(value)
         except Invalid:
@@ -1180,10 +1602,27 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             return None
 
     def set_export_to(self, to):
+        """Set export parameter after validating it exists in known targets.
+
+        Args:
+            to (str): Renderer attribute if it is known. Invalid value ignored.
+        """
         if to in self.allowed_export_targets:
             self.export_to = to
 
     def export_as_response(self, wb=None, sheet_name=None):
+        """Return renderer response for view layer to provide as a file.
+
+        Args:
+            wb (Workbook, optional): XlsxWriter Workbook. Defaults to None.
+            sheet_name (Worksheet, optional): XlsxWriter Worksheet. Defaults to None.
+
+        Raises:
+            ValueError: No export parameter given.
+
+        Returns:
+            Response: Return response processed through renderer and manager.
+        """
         if not self.export_to:
             raise ValueError('No export format set')
         exporter = getattr(self, self.export_to)
@@ -1192,6 +1631,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return exporter.as_response()
 
     def get_session_store(self, args, session_override=False):
+        """Load args from session by session_key, and return as MultiDict.
+
+        If session_override, adjust args list before returning.
+
+        If reset arg is provided, pass back the given args instead.
+
+        Args:
+            args (MultiDict): Request args used for session key, reset, and overrides.
+            session_override (bool, optional): Adjust storage using args. Defaults to False.
+
+        Returns:
+            MultiDict: Args to be used in grid operations.
+        """
         # check args for a session key. If the key is present,
         #   look it up in the session and use the saved args
         #   (if they have been saved under that key). If not,
@@ -1224,6 +1676,13 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return stored_args if (stored_args and not reset) else args
 
     def save_session_store(self, args):
+        """Save the args in the session under the session key and as defaults for this grid.
+
+        Note, export and reset args are ignored for storage.
+
+        Args:
+            args (MultiDict): Request args to be loaded in next session store retrieval.
+        """
         # save the args in the session under the session key
         #   and also as the default args for this grid
         web_session = self.manager.web_session()
