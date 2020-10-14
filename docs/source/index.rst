@@ -22,6 +22,8 @@ With a grid configured from one or more entities, WebGrid provides these feature
 
    grid/getting-started
    grid/grid
+   grid/managers
+   grid/built-in-columns
    filters/index
    renderers/index
 

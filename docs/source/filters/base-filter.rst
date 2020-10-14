@@ -1,6 +1,9 @@
 Base Filters
 ============
 
+.. autoclass:: webgrid.filters.Operator
+    :members:
+
 .. autoclass:: webgrid.filters.FilterBase
     :members:
 
@@ -8,8 +11,5 @@ Base Filters
     :members:
 
 .. autoclass:: webgrid.filters.OptionsIntFilterBase
-    :members:
-
-.. autoclass:: webgrid.filters.OptionsEnumFilter
     :members:
 

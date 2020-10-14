@@ -26,6 +26,24 @@ class UnrecognizedOperator(ValueError):
 
 
 class Operator(object):
+    """Filter operator representing name and potential inputs.
+
+    See webgrid.filters.ops for a collection of predefined operators.
+
+    Args:
+        key (str): Internal identifier to be used in code and in request args.
+
+        display (str): Label for rendering the operator.
+
+        field_type (str): Input field spec. Can be:
+        - None: no input fields
+        - input: single freeform text input
+        - 2inputs: two freeform text inputs
+        - select: single select box
+        - select+input: select box as first input, freeform text as second
+
+        hint (str, optional): Input field hint to show in UI. Defaults to None.
+    """
     def __init__(self, key, display, field_type, hint=None):
         self.key = key
         self.display = display
@@ -67,6 +85,51 @@ class ops(object):
 
 
 class FilterBase(object):
+    """Base filter class interface for webgrid filters.
+
+    Contains filter operators, inputs, render information, and the inner workings to apply
+    the filter to the database query as needed.
+
+    Args:
+        sa_col (Expression): SQLAlchemy expression to which we apply operator/values.
+
+        default_op (str, optional): UI shortcut to enable filter with the specified op if
+        none is given by the user. Defaults to None.
+
+        default_value1 (str, optional): Use with `default_op` to set input. Defaults to None.
+
+        default_value2 (str, optional): Use with `default_op` to set input. Defaults to None.
+
+        dialect (str, optional): DB dialect in use, for filters supporting multiple DBMS platforms.
+        Defaults to None.
+
+    Class attributes:
+        operators (tuple(Operator)): Available filter operators in the order they should appear.
+
+        primary_op (str, optional): Key of operator to be selected automatically when the filter
+        is added in UI. Defaults to first available filter op.
+
+        init_attrs_for_instance (tuple(str)): Attributes to set when copying filter instance.
+        Should not normally need to be set.
+
+        input_types (tuple(str)): Possible input types for renderer to make available. Can be
+        "input", "input2", and/or "select". Defaults to `("input", )`.
+
+        receives_list (bool): Filter takes a list of values in its `set` method. Defaults to False.
+
+    Instance attributes:
+        op (str): Operator key set by the user or programmatically.
+
+        value1 (Any): First input value following validation processing.
+
+        value2 (Any): Second input value following validation processing.
+
+        value1_set_with (str): First input value raw from `set` call.
+
+        value2_set_with (str): Second input value raw from `set` call.
+
+        error (bool): True if input processing encountered a validation error.
+    """
     operators = ops.eq, ops.not_eq, ops.empty, ops.not_empty
     # one operator may be specified as the "primary", i.e. the one to select when filter is added
     # note, the renderer is responsible for using this operator
@@ -119,6 +182,7 @@ class FilterBase(object):
 
     @property
     def is_active(self):
+        """Filter is active if op is set and input requirements are met."""
         operator_by_key = {op.key: op for op in self.operators}
         return self.op is not None and not self.error and (
             operator_by_key[self.op].field_type is None or self.value1 is not None
@@ -126,10 +190,12 @@ class FilterBase(object):
 
     @property
     def is_display_active(self):
+        """Filter display is active (i.e. show as a selected filter in UI) if op is set."""
         return self.op is not None
 
     @property
     def op_keys(self):
+        """List of Operator keys used by this filter."""
         if self._op_keys is None:
             self._op_keys = [op.key for op in self.operators]
         return self._op_keys
@@ -140,6 +206,19 @@ class FilterBase(object):
         return value
 
     def set(self, op, value1, value2=None):
+        """Set filter operator and input values.
+
+        Stores the raw inputs, then processes the inputs for validation. Applies the default
+        operator if needed.
+
+        Args:
+            op (str): Operator key.
+            value1 (Any): First filter input value. Pass None if the operator takes no input.
+            value2 (Any, optional): Second filter input value. Defaults to None.
+
+        Raises:
+            formencode.Invalid: One or more inputs did not validate.
+        """
         if not op:
             self.default_op = self._default_op() if callable(self._default_op) else self._default_op
             self.op = self.default_op
@@ -166,9 +245,11 @@ class FilterBase(object):
             raise
 
     def raise_unrecognized_op(self):
+        """Specified operator was not in the filter's list."""
         raise UnrecognizedOperator(_('unrecognized operator: {op}', op=self.op))
 
     def apply(self, query):
+        """Query modifier to apply the needed clauses for filter inputs."""
         if self.op == self.default_op and self.value1 is None:
             return query
         if self.op == ops.eq:
@@ -194,6 +275,7 @@ class FilterBase(object):
         return value
 
     def format_invalid(self, exc, col):
+        """Wrapper for generating a validation error string."""
         return '{0}: {1}'.format(
             col.label,
             str(exc)

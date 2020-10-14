@@ -122,20 +122,37 @@ class Column(object):
 
     Args:
         label (str): Label to use for filter/sort selection and table header.
+
         key (Union[Expression, str], optional): Field key or SQLAlchemy expression.
-            Defaults to None.
-        filter ([type], optional): [description]. Defaults to None.
-        can_sort (bool, optional): [description]. Defaults to True.
-        xls_style ([type], optional): [description]. Defaults to None.
-        xls_num_format ([type], optional): [description]. Defaults to None.
-        render_in ([type], optional): [description]. Defaults to _None.
-        has_subtotal (bool, optional): [description]. Defaults to False.
-        visible (bool, optional): [description]. Defaults to True.
-        group ([type], optional): [description]. Defaults to None.
+        If an expression is provided, column attempts to derive a string key name from
+        the expression. Defaults to None.
+
+        filter (FilterBase, optional): Filter class or instance. Defaults to None.
+
+        can_sort (bool, optional): Enables column for selection in sort keys. Defaults to True.
+
+        xls_style (Any, optional): Deprecated, used for XLS exports. Defaults to None.
+
+        xls_num_format (str, optional): XLSX number/date format. Defaults to None.
+
+        render_in (Union(list(str), callable), optional): Targets to render as a column.
+        Defaults to _None.
+
+        has_subtotal (Union(bool,str,callable), optional): Subtotal method to use, if any.
+        True or "sum" will yield a sum total. "avg" maps to average. Can also be a
+        callable that will be called with the aggregate expression and is expected
+        to return a SQLAlchemy expression. Defaults to False.
+
+        visible (Union(bool, callable), optional): Enables any target in `render_in`.
+        Defaults to True.
+
+        group (ColumnGroup, optional): Render grouping under a single heading. Defaults to None.
 
     Class Attributes:
         xls_width (float, optional): Override to autocalculated width in Excel exports.
+
         xls_num_format (str, optional): Default numeric/date format type.
+
         xls_style (Any): Deprecated, used for XLS exports.
     """
     _creation_counter = 0
@@ -147,6 +164,13 @@ class Column(object):
 
     @property
     def render_in(self):
+        """Target(s) in which the field should be rendered as a column.
+
+        Can be set to a callable, which will be called with the column instance.
+
+        Returns:
+            tuple(str): Renderer identifiers.
+        """
         resolved = self._render_in
         if callable(resolved):
             resolved = resolved(self)
@@ -158,6 +182,13 @@ class Column(object):
 
     @property
     def visible(self):
+        """Enables column to be rendered to any target in `render_in`.
+
+        Can be set to a callable, which will be called with the column instance.
+
+        Returns:
+            bool: Enable render.
+        """
         resolved = self._visible
         if callable(resolved):
             resolved = resolved(self)
@@ -174,6 +205,11 @@ class Column(object):
         return col_inst
 
     def _assign_to_grid(self):
+        """Columns being set up in declarative fashion need to be attached to the class
+        somewhere. In WebGrid, we have a class attribute `__cls_cols__` that columns
+        append themselves to. Subclasses, use of mixins, etc. will combine these column
+        lists elsewhere.
+        """
         grid_locals = sys._getframe(2).f_locals
         grid_cls_cols = grid_locals.setdefault('__cls_cols__', [])
         grid_cls_cols.append(self)
@@ -238,6 +274,12 @@ class Column(object):
             self.filter = filter(self.expr)
 
     def new_instance(self, grid):
+        """Create a "copy" instance that is linked to a grid instance.
+
+        Used during the grid instantiation process. Grid classes have column instances defining
+        the grid structure. When the grid instantiates, we have to copy those column instances
+        along with it, to attach them to the grid instance.
+        """
         cls = self.__class__
         key = grid.get_unique_column_key(self.key)
 
@@ -338,12 +380,21 @@ class Column(object):
         return value
 
     def render(self, render_type, record, *args, **kwargs):
+        """Entrypoint from renderer.
+
+        Uses any renderer-specific overrides from the column, or else falls back to
+        the output of `extract_and_format_data`.
+
+        Renderer-specific methods are expected to be named `render_<type>`,
+        e.g. `render_html` or `render_xlsx`.
+        """
         render_attr = 'render_{0}'.format(render_type)
         if hasattr(self, render_attr):
             return getattr(self, render_attr)(record, *args, **kwargs)
         return self.extract_and_format_data(record)
 
     def apply_sort(self, query, flag_desc):
+        """Query modifier to enable sort for this column's expression."""
         if self.expr is None:
             direction = 'DESC' if flag_desc else 'ASC'
             return query.order_by(sasql.text('{0} {1}'.format(self.key, direction)))
@@ -355,6 +406,11 @@ class Column(object):
         return '<Column "{0.key}" from "{0.grid}">'.format(self)
 
     def xls_width_calc(self, value):
+        """Calculate a width to use for an Excel renderer.
+
+        Defaults to the `xls_width` attribute, if it is set to a non-zero value. Otherwise,
+        use the length of the stringified value.
+        """
         if self.xls_width:
             return self.xls_width
         if isinstance(value, six.string_types):
@@ -381,6 +437,17 @@ class Column(object):
 
 
 class LinkColumnBase(Column):
+    """Base class for columns rendering as links in HTML.
+
+    Expects a subclass to supply a `create_url` method for defining the link target.
+
+    Notable args:
+        link_label (str, optional): Caption to use instead of extracted data from the record.
+
+    Class attributes:
+        link_attrs (dict): Additional attributes to render on the A tag.
+
+    """
     link_attrs = {}
 
     def __init__(self, label, key=None, filter=None, can_sort=True,
@@ -392,6 +459,7 @@ class LinkColumnBase(Column):
         self.link_label = link_label
 
     def link_to(self, label, url, **kwargs):
+        """Basic render of an anchor tag."""
         return self.grid.html._render_jinja(
             '<a href="{{url}}" {{- attrs|wg_attributes }}>{{label}}</a>',
             url=url,
@@ -400,6 +468,7 @@ class LinkColumnBase(Column):
         )
 
     def render_html(self, record, hah):
+        """Renderer override for HTML to set up a link rather than using the raw data value."""
         url = self.create_url(record)
         if self.link_label is not None:
             label = self.link_label
@@ -408,10 +477,23 @@ class LinkColumnBase(Column):
         return self.link_to(label, url, **self.link_attrs)
 
     def create_url(self, record):
+        """Generate a URL from the given record.
+
+        Expected to be overridden in subclass.
+        """
         raise NotImplementedError('create_url() must be defined on a subclass')
 
 
 class BoolColumn(Column):
+    """Column rendering values as True/False (or the given labels).
+
+    Notable args:
+        reverse (bool, optional): Switch true/false cases.
+
+        true_label (str, optional): String to use for the true case.
+
+        false_label (str, optional): String to use for the false case.
+    """
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
                  reverse=False, true_label=_('True'), false_label=_('False'),
@@ -433,6 +515,12 @@ class BoolColumn(Column):
 
 
 class YesNoColumn(BoolColumn):
+    """BoolColumn rendering values as Yes/No.
+
+    Notable args:
+        reverse (bool, optional): Switch true/false cases.
+
+    """
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
                  reverse=False, xls_width=None, xls_style=None, xls_num_format=None,
@@ -443,6 +531,18 @@ class YesNoColumn(BoolColumn):
 
 
 class DateColumnBase(Column):
+    """Base column for rendering date values in specified formats.
+
+    Designed to work with Python date/datetime/time and Arrow.
+
+    Notable args/attributes:
+        html_format (str, optional): Date format string for HTML.
+
+        csv_format (str, optional): Date format string for CSV.
+
+        xls_num_format (str, optional): Date format string for Excel.
+
+    """
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
                  html_format=None, csv_format=None, xls_width=None, xls_style=None,
@@ -493,11 +593,14 @@ class DateColumnBase(Column):
         return self._format_datetime(data, self.csv_format)
 
     def xls_width_calc(self, value):
+        """Determine approximate width from value.
+
+        Value will be a date or datetime object, format as if it was going
+        to be in HTML as an approximation of its format in Excel.
+        """
         if self.xls_width:
             return self.xls_width
         try:
-            # value will be a date or datetime object, format as if it was going
-            # to be in HTML as an approximation of its format in excel
             html_version = value.strftime(self.html_format)
             return len(html_version)
         except AttributeError as e:
@@ -508,6 +611,18 @@ class DateColumnBase(Column):
 
 
 class DateColumn(DateColumnBase):
+    """Column for rendering date values in specified formats.
+
+    Designed to work with Python date and Arrow.
+
+    Notable args/attributes:
+        html_format (str, optional): Date format string for HTML.
+
+        csv_format (str, optional): Date format string for CSV.
+
+        xls_num_format (str, optional): Date format string for Excel.
+
+    """
     # !!!: localize
     html_format = '%m/%d/%Y'
     csv_format = '%Y-%m-%d'
@@ -515,6 +630,18 @@ class DateColumn(DateColumnBase):
 
 
 class DateTimeColumn(DateColumnBase):
+    """Column for rendering datetime values in specified formats.
+
+    Designed to work with Python datetime and Arrow.
+
+    Notable args/attributes:
+        html_format (str, optional): Date format string for HTML.
+
+        csv_format (str, optional): Date format string for CSV.
+
+        xls_num_format (str, optional): Date format string for Excel.
+
+    """
     # !!!: localize
     html_format = '%m/%d/%Y %I:%M %p'
     csv_format = '%Y-%m-%d %H:%M:%S%z'
@@ -522,6 +649,18 @@ class DateTimeColumn(DateColumnBase):
 
 
 class TimeColumn(DateColumnBase):
+    """Column for rendering time values in specified formats.
+
+    Designed to work with Python time and Arrow.
+
+    Notable args/attributes:
+        html_format (str, optional): Date format string for HTML.
+
+        csv_format (str, optional): Date format string for CSV.
+
+        xls_num_format (str, optional): Date format string for Excel.
+
+    """
     # !!!: localize
     html_format = '%I:%M %p'
     csv_format = '%H:%M'
@@ -529,6 +668,34 @@ class TimeColumn(DateColumnBase):
 
 
 class NumericColumn(Column):
+    """Column for rendering formatted number values.
+
+    Notable args:
+        format_as (str, optional): Generic formats. Default "general".
+        - general: thousands separator and decimal point
+        - accounting: currency symbol, etc.
+        - percent: percentage symbol, etc.
+
+        places (int, optional): Decimal places to round to for general. Default 2.
+
+        curr (str, optional): Currency symbol for general. Default empty string.
+
+        sep (str, optional): Thousands separator. Default empty string.
+
+        dp (str, optional): Decimal separator. Default empty string.
+
+        pos (str, optional): Positive number indicator. Default empty string.
+
+        neg (str, optional): Negative number indicator for general. Default empty string.
+
+        trailneg (str, optional): Negative number suffix. Default empty string.
+
+        xls_neg_red (bool, optional): Renders negatives in red for Excel. Default True.
+
+    Class attributes:
+        `xls_fmt_general`, `xls_fmt_accounting`, `xls_fmt_percent` are Excel number
+        formats used for the corresponding `format_as` setting.
+    """
     # !!!: localize
     xls_fmt_general = '#,##0{dec_places};{neg_prefix}-#,##0{dec_places}'
     xls_fmt_accounting = '_($* #,##0{dec_places}_);{neg_prefix}_($* (#,##0{dec_places})' + \
@@ -554,6 +721,11 @@ class NumericColumn(Column):
         self.format_as = format_as
 
     def html_decimal_format_opts(self, data):
+        """Return tuple of options to expand for decimalfmt arguments.
+
+        `places`, `curr`, `neg`, and `trailneg` attributes are passed through unless `format_as`
+        is "accounting".
+        """
         return (
             2 if self.format_as == 'accounting' else self.places,
             '$' if self.format_as == 'accounting' else self.curr,
@@ -565,6 +737,12 @@ class NumericColumn(Column):
         )
 
     def render_html(self, record, hah):
+        """HTML render override for numbers.
+
+        If format is percent, the value is multiplied by 100 to get the render value.
+
+        Negative values are given a "negative" CSS class in the render.
+        """
         data = self.extract_and_format_data(record)
         if not data and data != 0:
             return data
@@ -583,11 +761,13 @@ class NumericColumn(Column):
         return formatted
 
     def xls_construct_format(self, fmt_str):
+        """Apply places and xls_neg_red settings to the given number format string."""
         neg_prefix = '[RED]' if self.xls_neg_red else ''
         dec_places = '.'.ljust(self.places + 1, '0') if self.places else ''
         return fmt_str.format(dec_places=dec_places, neg_prefix=neg_prefix)
 
     def get_num_format(self):
+        """Match format_as setting to one of the format strings in class attributes."""
         if self.format_as == 'general':
             return self.xls_construct_format(self.xls_fmt_general)
         if self.format_as == 'percent':
@@ -598,6 +778,7 @@ class NumericColumn(Column):
 
     @property
     def xlsx_style(self):
+        """Number format for XLSX target."""
         return {
             'num_format': self.get_num_format()
         }
@@ -625,8 +806,8 @@ class ColumnGroup(object):
 
     Args:
         label (str): Grouping label to be rendered for the column set.
-        class_ (str): CSS class name to apply in HTML rendering.
-    """
+        class\_ (str): CSS class name to apply in HTML rendering.
+    """  # noqa: W605
     label = None
     class_ = None
 
@@ -657,7 +838,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         qs_prefix (str, optional): Arg name prefix to apply in query string. Useful for having
         multiple unconnected grids on a single page. Defaults to ''.
 
-        class_ (str, optional): CSS class name for main grid div. Defaults to 'datagrid'.
+        class\_ (str, optional): CSS class name for main grid div. Defaults to 'datagrid'.
 
     Class Attributes:
         identifier (str): Optional string identifier used for the ident property.
@@ -703,7 +884,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         are not set on the grid.
         Note, relationship attributes must be referenced within tuples, due to SQLAlchemy magic.
 
-    """
+    """  # noqa: W605
     __cls_cols__ = ()
     identifier = None
     sorter_on = True

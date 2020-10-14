@@ -22,3 +22,5 @@ Built-in Filters
 .. autoclass:: webgrid.filters.YesNoFilter
     :members:
 
+.. autoclass:: webgrid.filters.OptionsEnumFilter
+    :members:
