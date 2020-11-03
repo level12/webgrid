@@ -61,15 +61,29 @@ class RenderLimitExceeded(Exception):
 
 
 class Renderer(ABC):
+    """Abstract interface for a WebGrid renderer.
+
+    If the renderer has an `init` callable, it will be called by the constructor.
+
+    Renderers are callable, which will trigger the `render` method::
+
+        renderer = HTML(my_grid)
+        output = renderer()
+
+    Args:
+        grid (BaseGrid): Parent grid of this renderer instance.
+    """
     _columns = None
 
     @property
     @abstractmethod
     def name(self):
+        """Identifier used to find columns that will render on this target."""
         pass
 
     @property
     def columns(self):
+        """Cache a set of columns from the grid that will render on this target."""
         if not self._columns:
             self._columns = list(self.grid.iter_columns(self.name))
         return self._columns
@@ -82,13 +96,27 @@ class Renderer(ABC):
     def __call__(self):
         return self.render()
 
+    def can_render(self):
+        """Guard method for preventing a renderer from overflowing the target format.
+
+        For instance, spreadsheets have limitation in the number of possible rows. A
+        renderer to that format should check that the record count does not exceed
+        that limit.
+
+        Returns:
+            bool: True if the renderer can proceed.
+        """
+        return True
+
     @abstractmethod
     def render(self):
+        """Main renderer method returning the output."""
         pass
 
 
 class GroupMixin:
     def has_groups(self):
+        """Returns True if any of the renderer's columns is part of a column group."""
         for col in self.columns:
             if col.group:
                 return True
@@ -96,6 +124,11 @@ class GroupMixin:
         return False
 
     def get_group_heading_colspans(self):
+        """Computes the number of columns spanned by various groups.
+
+        Note, this may not be the number of columns in the group in the grid definition,
+        because some of those columns may not render in this target.
+        """
         heading_colspans = []
         buffer_colspan = 0
         group_colspan = 0
@@ -139,6 +172,7 @@ def _safe_id(idstring):
 
 
 def render_html_attributes(attrs):
+    """Escapes attrs for HTML markup."""
     if not attrs:
         return Markup('')
 
@@ -155,6 +189,7 @@ def render_html_attributes(attrs):
 
 
 class HTML(GroupMixin, Renderer):
+    """Renderer for HTML output."""
     # by default, the renderer will use the display value from the operator,
     # but that can be overriden by subclassing and setting this dictionary
     # like:
@@ -188,26 +223,23 @@ class HTML(GroupMixin, Renderer):
         template = self.jinja_env.from_string(source)
         return Markup(template.render(**kwargs))
 
-    def __call__(self):
-        return self.render()
-
-    def can_render(self):
-        return True
-
     def render(self):
         if not self.can_render():
             raise RenderLimitExceeded('Unable to render HTML table')
         return self.load_content('grid.html')
 
     def grid_attrs(self):
+        """HTML attributes to render on the main grid div element."""
         return self.grid.hah
 
     def header(self):
+        """Return content for the grid header area. Used by the grid template."""
         if self.grid.hide_controls_box:
             return ''
         return self.load_content('grid_header.html')
 
     def header_form_attrs(self, **kwargs):
+        """HTML attributes to render on the grid header form element."""
         return {
             'method': 'get',
             'action': self.form_action_url(),
@@ -215,23 +247,28 @@ class HTML(GroupMixin, Renderer):
         }
 
     def form_action_url(self):
+        """URL target for the grid header form."""
         return self.reset_url(session_reset=False)
 
     def header_filtering(self):
+        """Return content for the grid filter area. Used by the header template."""
         return self.load_content('header_filtering.html')
 
     def filtering_table_attrs(self, **kwargs):
+        """HTML attributes to render on the grid filter table element."""
         kwargs.setdefault('cellpadding', 1)
         kwargs.setdefault('cellspacing', 0)
         return kwargs
 
     def filtering_session_key(self):
+        """Hidden input to preserve the session key on form submission."""
         return self._render_jinja(
             '<input type="hidden" name="session_key" value="{{value}}" />',
             value=self.grid.session_key
         )
 
     def filtering_fields(self):
+        """Table rows for the filter area."""
         rows = []
         for col in six.itervalues(self.grid.filtered_cols):
             rows.append(self.filtering_table_row(col))
@@ -244,6 +281,7 @@ class HTML(GroupMixin, Renderer):
         return Markup('\n'.join([search_row, rows]))
 
     def filtering_table_row(self, col):
+        """Single filter row with op and inputs."""
         extra = getattr(col.filter, 'html_extra', {})
         return self._render_jinja(
             '''
@@ -266,9 +304,11 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_col_label(self, col):
+        """Label getter for filter column."""
         return col.label
 
     def filtering_col_op_select(self, col):
+        """Render select box for filter Operator options."""
         filter = col.filter
         if not filter.is_display_active:
             current_selected = ''
@@ -288,6 +328,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_col_inputs1(self, col):
+        """Render the first input, which can be freeform or select."""
         filter = col.filter
         field_name = 'v1({0})'.format(col.key)
         field_name = self.grid.prefix_qs_arg_key(field_name)
@@ -323,6 +364,12 @@ class HTML(GroupMixin, Renderer):
         return inputs
 
     def filtering_multiselect(self, field_name, current_selected, options):
+        """Almost all selects are rendered with multiselect UI. Render that here.
+
+        Structure is based on the jQuery Multiselect plugin. For efficiency of render with
+        large numbers of options, we customized the plugin for WebGrid use and offloaded the
+        main render/transform here.
+        """
         return self._render_jinja(
             '''
             <div class="ms-parent">
@@ -360,6 +407,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_filter_options_multi(self, filter, field_name):
+        """Render the multiselect options."""
         # Assume the multiselect filter has been set up with OptionsFilterBase.setup_validator
         selected = filter.value1 or []
         return self._render_jinja(
@@ -385,6 +433,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_col_inputs2(self, col):
+        """Render the second filter input, currently only a freeform."""
         filter = col.filter
         field_name = 'v2({0})'.format(col.key)
         field_name = self.grid.prefix_qs_arg_key(field_name)
@@ -405,12 +454,14 @@ class HTML(GroupMixin, Renderer):
         )
 
     def filtering_add_filter_select(self):
+        """Render the select box for adding a new filter. Used by the filter template."""
         return self.render_select(
             [(col.key, col.label) for col in self.grid.filtered_cols.values()],
             name='datagrid-add-filter'
         )
 
     def filtering_json_data(self):
+        """Export certain filter data as a JSON object for use by the JS asset."""
         for_js = {}
         for col_key, col in six.iteritems(self.grid.filtered_cols):
             for_js[col_key] = opdict = {}
@@ -425,6 +476,7 @@ class HTML(GroupMixin, Renderer):
         return jsonmod.dumps(for_js)
 
     def confirm_export(self):
+        """Export confirmation data as a JSON object for use by the JS asset."""
         count = self.grid.record_count
         if self.grid.unconfirmed_export_limit is None:
             confirmation_required = False
@@ -436,10 +488,31 @@ class HTML(GroupMixin, Renderer):
         })
 
     def header_sorting(self):
+        """Render the sort area. Used by the header template."""
         return self.load_content('header_sorting.html')
 
     def render_select(self, options, current_selection=None, placeholder=('', Markup('&nbsp;')),
                       name=None, id=None, **kwargs):
+        """Generalized select box renderer.
+
+        Args:
+            options (iterable): Option tuples (value, label) or (value, label, data).
+            If the data piece is present, it will be rendered as the value
+            of a "data-render" attribute on the option tag.
+
+            current_selection (iterable, optional): Option values to be marked as selected.
+            Defaults to None.
+
+            placeholder (tuple(str), optional): Option to use as a "blank" value.
+
+            name (str, optional): Value for HTML name attribute. Defaults to None.
+
+            id (str, optional): Value for HTML id attribute. Defaults to a sanitized value
+            derived from `name`.
+
+            kwargs: Passed as HTML attributes on the select tag.
+
+        """
         current_selection = tolist(current_selection) if current_selection is not None else []
         if placeholder:
             options = [placeholder, *options]
@@ -470,6 +543,11 @@ class HTML(GroupMixin, Renderer):
         )
 
     def sorting_select_options(self):
+        """Generate list of tuple pairs (key, label) and (-key, label DESC) for sort options.
+
+        Returns:
+            list: List of tuple pairs.
+        """
         options = []
         for col in self.grid.columns:
             if col.can_sort:
@@ -480,6 +558,14 @@ class HTML(GroupMixin, Renderer):
         return options
 
     def sorting_select(self, number):
+        """Render the dropdown select of sorting options.
+
+        Args:
+            number (int): Priority of ordering option.
+
+        Returns:
+            str: Jinja-rendered string.
+        """
         key = 'sort{0}'.format(number)
         sort_qsk = self.grid.prefix_qs_arg_key(key)
 
@@ -498,18 +584,23 @@ class HTML(GroupMixin, Renderer):
         )
 
     def sorting_select1(self):
+        """Render the first sort select."""
         return self.sorting_select(1)
 
     def sorting_select2(self):
+        """Render the second sort select."""
         return self.sorting_select(2)
 
     def sorting_select3(self):
+        """Render the third sort select."""
         return self.sorting_select(3)
 
     def header_paging(self):
+        """Render the paging area of the grid header."""
         return self.load_content('header_paging.html')
 
     def paging_select(self):
+        """Render the page selection input."""
         op_qsk = self.grid.prefix_qs_arg_key('onpage')
         return self._render_jinja(
             '''
@@ -523,6 +614,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def paging_input(self):
+        """Render the per-page input."""
         pp_qsk = self.grid.prefix_qs_arg_key('perpage')
         return self._render_jinja(
             '<input type="number" min="1" name="{{name}}" value="{{value}}" />',
@@ -531,6 +623,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def paging_url_first(self):
+        """Generate a URL for the first page of the grid."""
         return self.current_url(onpage=1, perpage=self.grid.per_page)
 
     def _page_image(self, url, width, height, alt):
@@ -543,62 +636,82 @@ class HTML(GroupMixin, Renderer):
         )
 
     def paging_img_first(self):
+        """Render the footer icon for the first page of the grid."""
         img_url = self.manager.static_url('b_firstpage.png')
         return self._page_image(img_url, width=16, height=13, alt='<<')
 
     def paging_img_first_dead(self):
+        """Render the footer disabled icon for the first page of the grid."""
         img_url = self.manager.static_url('bd_firstpage.png')
         return self._page_image(img_url, width=16, height=13, alt='<<')
 
     def paging_url_prev(self):
+        """Generate a URL for the previous page of the grid."""
         prev_page = self.grid.on_page - 1
         return self.current_url(onpage=prev_page, perpage=self.grid.per_page)
 
     def paging_img_prev(self):
+        """Render the footer icon for the previous page of the grid."""
         img_url = self.manager.static_url('b_prevpage.png')
         return self._page_image(img_url, width=8, height=13, alt='<')
 
     def paging_img_prev_dead(self):
+        """Render the footer disabled icon for the previous page of the grid."""
         img_url = self.manager.static_url('bd_prevpage.png')
         return self._page_image(img_url, width=8, height=13, alt='<')
 
     def paging_url_next(self):
+        """Generate a URL for the next page of the grid."""
         next_page = self.grid.on_page + 1
         return self.current_url(onpage=next_page, perpage=self.grid.per_page)
 
     def paging_img_next(self):
+        """Render the footer icon for the next page of the grid."""
         img_url = self.manager.static_url('b_nextpage.png')
         return self._page_image(img_url, width=8, height=13, alt='>')
 
     def paging_img_next_dead(self):
+        """Render the footer disabled icon for the next page of the grid."""
         img_url = self.manager.static_url('bd_nextpage.png')
         return self._page_image(img_url, width=8, height=13, alt='>')
 
     def paging_url_last(self):
+        """Generate a URL for the last page of the grid."""
         return self.current_url(onpage=self.grid.page_count, perpage=self.grid.per_page)
 
     def paging_img_last(self):
+        """Render the footer icon for the last page of the grid."""
         img_url = self.manager.static_url('b_lastpage.png')
         return self._page_image(img_url, width=16, height=13, alt='>>')
 
     def paging_img_last_dead(self):
+        """Render the footer disabled icon for the last page of the grid."""
         img_url = self.manager.static_url('bd_lastpage.png')
         return self._page_image(img_url, width=16, height=13, alt='>>')
 
     def table(self):
+        """Render the table area of the grid from template."""
         return self.load_content('grid_table.html')
 
     def no_records(self):
+        """Render a message paragraph indicating the current filters
+        return no records."""
         return self._render_jinja(
             '<p class="no-records">{{msg}}</p>',
             msg=_('No records to display')
         )
 
     def table_attrs(self, **kwargs):
+        """Apply default HTML table attributes to the supplied kwargs.
+
+        Returns:
+            dict: keys/values to be rendered as attributes
+        """
         kwargs.setdefault('class', 'records')
         return kwargs
 
     def table_column_headings(self):
+        """Combine all rendered column headings and return as Markup."""
         headings = []
         for col in self.columns:
             headings.append(self.table_th(col))
@@ -607,6 +720,7 @@ class HTML(GroupMixin, Renderer):
         return Markup(th_str)
 
     def table_group_headings(self):
+        """Combine all rendered column group headings and return as Markup."""
         group_headings = [
             self.group_th(group, colspan)
             for group, colspan in self.get_group_heading_colspans()
@@ -616,6 +730,7 @@ class HTML(GroupMixin, Renderer):
         return Markup(th_str)
 
     def buffer_th(self, colspan, **kwargs):
+        """Render a placeholder TH tag for spacing between column groups."""
         kwargs.setdefault('class', 'buffer')
         kwargs['colspan'] = colspan
         return self._render_jinja(
@@ -624,6 +739,9 @@ class HTML(GroupMixin, Renderer):
         )
 
     def group_th(self, group, colspan, **kwargs):
+        """Render a column group heading with the needed span.
+
+        Note, will render an empty placeholder if the column has no group."""
         if group is None:
             return self.buffer_th(colspan)
 
@@ -636,6 +754,9 @@ class HTML(GroupMixin, Renderer):
         )
 
     def table_th(self, col):
+        """Render a single column heading TH tag.
+
+        Sortable columns are rendered as links with the needed URL args."""
         label = col.label
         if self.grid.sorter_on and col.can_sort:
             url_args = {}
@@ -666,6 +787,9 @@ class HTML(GroupMixin, Renderer):
         )
 
     def table_rows(self):
+        """Combine rows rendered from grid records, return as Markup.
+
+        Page/Grand totals are included here as rows if enabled in the grid."""
         rows = []
         # loop through rows
         for rownum, record in enumerate(self.grid.records):
@@ -685,6 +809,18 @@ class HTML(GroupMixin, Renderer):
         return Markup(rows_str)
 
     def table_tr_styler(self, rownum, record):
+        """Compile the styling to be used on a given HTML grid row.
+
+        Applies odd/even class based on the row number. Adds in any row stylers
+        present in grid configuration.
+
+        Args:
+            rownum (int): row number in the rendered grid.
+            record (Any): result record.
+
+        Returns:
+            HTMLAttributes: attributes collection to be applied on a TR.
+        """
         # handle row styling
         row_hah = HTMLAttributes()
 
@@ -700,6 +836,7 @@ class HTML(GroupMixin, Renderer):
         return row_hah
 
     def table_tr_output(self, cells, row_hah):
+        """Combine rendered cells and output a TR tag."""
         # do some formatting so that the source code is properly indented
         tds_str = u'\n'.join(cells)
         tds_str = reindent(tds_str, 12)
@@ -712,6 +849,7 @@ class HTML(GroupMixin, Renderer):
         )
 
     def table_tr(self, rownum, record):
+        """Generate rendered cells and pass to table_tr_output for rendered result."""
         row_hah = self.table_tr_styler(rownum, record)
 
         # get the <td>s for this row
@@ -722,6 +860,7 @@ class HTML(GroupMixin, Renderer):
         return self.table_tr_output(cells, row_hah)
 
     def table_totals(self, rownum, record, label, numrecords):
+        """Render a totals row based on subtotal columns defined in the grid."""
         row_hah = self.table_tr_styler(rownum, record)
         row_hah.class_ += 'totals'
 
@@ -758,13 +897,20 @@ class HTML(GroupMixin, Renderer):
         return self.table_tr_output(cells, row_hah)
 
     def table_pagetotals(self, rownum, record):
+        """Render a Page totals row based on subtotal columns defined in the grid."""
         return self.table_totals(rownum, record, _('Page Totals'), rownum)
 
     def table_grandtotals(self, rownum, record):
+        """Render a Grand totals row based on subtotal columns defined in the grid."""
         count = self.grid.record_count
         return self.table_totals(rownum, record, _('Grand Totals'), count)
 
     def table_td(self, col, record):
+        """Render a table data cell.
+
+        Value is obtained for render from the grid column's `render` method. To
+        override how a column's data is rendered specifically for HTML, supply a
+        `render_html` method on the column."""
         col_hah = HTMLAttributes(col.body.hah)
 
         # allow column stylers to set attributes
@@ -792,9 +938,15 @@ class HTML(GroupMixin, Renderer):
         )
 
     def footer(self):
+        """Render the grid footer area from template."""
         return self.load_content('grid_footer.html')
 
     def load_content(self, endpoint, **kwargs):
+        """Load content via Jinja templates.
+
+        Gives the grid manager a chance to render the template, in order to allow for
+        application-level overrides on the grid templates. Otherwise, defaults to the
+        internal Jinja environment set up for this renderer."""
         kwargs['renderer'] = self
         kwargs['grid'] = self.grid
 
@@ -811,6 +963,7 @@ class HTML(GroupMixin, Renderer):
         return template.render(**kwargs)
 
     def current_url(self, **kwargs):
+        """Generate a URL from current request args and the given kwargs."""
         curl = current_url(self.grid.manager, strip_querystring=True, strip_host=True)
         href = Href(curl, sort=True)
 
@@ -840,6 +993,7 @@ class HTML(GroupMixin, Renderer):
         return href(req_args)
 
     def reset_url(self, session_reset=True):
+        """Generate a URL that will trigger a reset of the grid's UI options."""
         url_args = {}
         url_args['perpage'] = None
         url_args['onpage'] = None
@@ -861,6 +1015,10 @@ class HTML(GroupMixin, Renderer):
         return self.current_url(**url_args)
 
     def export_url(self, renderer):
+        """Generate a URL that will trigger an export to one of the grid's renderers.
+
+        Args:
+            renderer (str): Export key (e.g. xlsx, csv) for rendering target."""
         return self.current_url(export_to=renderer)
 
     def xls_url(self):
@@ -868,6 +1026,7 @@ class HTML(GroupMixin, Renderer):
         return self.export_url('xls')
 
     def get_search_row(self):
+        """Render the single-search input."""
         return self._render_jinja(
             '''
             <tr class="search">
@@ -1045,6 +1204,7 @@ class XLS(Renderer):
 
 
 class XLSX(GroupMixin, Renderer):
+    """Renderer for Excel XLSX output."""
     mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
     @property
@@ -1076,6 +1236,7 @@ class XLSX(GroupMixin, Renderer):
         return self._xlsx_format_cache[key]
 
     def style_for_column(self, wb, col):
+        """Return a column's style from cached information."""
         if col.key not in self.styles_cache:
             style_dict = getattr(col, 'xlsx_style', self.default_style).copy()
             if col.xls_num_format:
@@ -1084,15 +1245,30 @@ class XLSX(GroupMixin, Renderer):
         return self.styles_cache[col.key]
 
     def update_column_width(self, col, data):
+        """Compute and store a column width from length of current data."""
         width = max((col.xls_width_calc(data), self.col_widths.get(col.key, 0)))
         self.col_widths[col.key] = width
 
     def adjust_column_widths(self, writer):
+        """Apply stored column widths to the XLSX worksheet."""
         for idx, col in enumerate(self.columns):
             if col.key in self.col_widths:
                 writer.ws.set_column(idx, idx, self.col_widths[col.key])
 
     def build_sheet(self, wb=None, sheet_name=None):
+        """Create and populate a worksheet for the current grid.
+
+        Args:
+            wb (Workbook, optional): xlsxwriter Workbook. Defaults to None (create one).
+            sheet_name (str, optional): Sheet name. Defaults to None (use grid identity).
+
+        Raises:
+            ImportError: No suitable XLSX library installed.
+            RenderLimitExceeded: Too many records to render to the target.
+
+        Returns:
+            Workbook: Created/supplied workbook with the rendered worksheet added.
+        """
         if xlsxwriter is None:
             raise ImportError('you must have xlsxwriter installed to use the XLSX renderer')
 
@@ -1125,19 +1301,44 @@ class XLSX(GroupMixin, Renderer):
         return total_rows <= 1048576 and sum(1 for _ in self.columns) <= 16384
 
     def sanitize_sheet_name(self, sheet_name):
+        """Work around Excel limitations on names of worksheets."""
         return sheet_name if len(sheet_name) <= 30 else (sheet_name[:27] + '...')
 
     def sheet_header(self, xlh, wb):
+        """Placeholder method for app-specific sheet header rendering.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         pass
 
     def sheet_body(self, xlh, wb):
+        """Render the headings/records area of the worksheet.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         self.body_headings(xlh, wb)
         self.body_records(xlh, wb)
 
     def sheet_footer(self, xlh, wb):
+        """Placeholder method for app-specific sheet footer rendering.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         pass
 
     def body_headings(self, xlh, wb):
+        """Render group and column label rows.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         heading_style = wb.add_format({'bold': True})
 
         # Render group labels above column headings.
@@ -1165,6 +1366,12 @@ class XLSX(GroupMixin, Renderer):
         xlh.nextrow()
 
     def body_records(self, xlh, wb):
+        """Render records and totals rows.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         # turn off paging
         self.grid.set_paging(None, None)
 
@@ -1177,6 +1384,18 @@ class XLSX(GroupMixin, Renderer):
             self.totals_row(xlh, rownum + 1, self.grid.grand_totals, wb)
 
     def record_row(self, xlh, rownum, record, wb):
+        """Render a single row from data record.
+
+        Value is obtained for render from the grid column's `render` method. To
+        override how a column's data is rendered specifically for XLSX, supply a
+        `render_xlsx` method on the column.
+
+        Args:
+            xlh (WriterX): Helper for writing worksheet cells.
+            rownum (int): Not used by default, but helpful for style overrides.
+            record (Any): Object containing row data.
+            wb (Workbook): xlsxwriter Workbook object for direct usage.
+        """
         for col in self.columns:
             value = col.render('xlsx', record)
             style = self.style_for_column(wb, col)
@@ -1185,6 +1404,7 @@ class XLSX(GroupMixin, Renderer):
         xlh.nextrow()
 
     def totals_row(self, xlh, rownum, record, wb):
+        """Render a totals row based on subtotal columns defined in the grid."""
         colspan = 0
         firstcol = True
         base_style_attrs = {
@@ -1231,9 +1451,16 @@ class XLSX(GroupMixin, Renderer):
         xlh.nextrow()
 
     def file_name(self):
+        """Return an output filename based on grid identifier.
+
+        A random numeric suffix is added. This is due to Excel's limitation to having
+        only one workbook open with a given name. Excel will not allow a second file
+        with the same name to open, even if the files are in different paths.
+        """
         return '{0}_{1}.xlsx'.format(self.grid.ident, randnumerics(6))
 
     def as_response(self, wb=None, sheet_name=None):
+        """Return an attachment file via the grid's manager."""
         wb = self.build_sheet(wb, sheet_name)
         if not wb.fileclosed:
             wb.close()
@@ -1255,21 +1482,37 @@ class CSV(Renderer):
         self.body_records()
 
     def file_name(self):
+        """Return an output filename based on grid identifier.
+
+        A random numeric suffix is added. This is due to Excel's limitation to having
+        only one workbook open with a given name. Excel will not allow a second file
+        with the same name to open, even if the files are in different paths.
+        """
         return '{0}_{1}.csv'.format(self.grid.ident, randnumerics(6))
 
     def build_csv(self):
+        """Render grid output as CSV and return the contents in an IO stream."""
         self.render()
         byte_data = six.BytesIO()
         byte_data.write(self.output.getvalue().encode('utf-8'))
         return byte_data
 
     def body_headings(self):
+        """Render the column headers.
+
+        Note, column groups do not have real meaning in the CSV context, so
+        they are left out here."""
         headings = []
         for col in self.columns:
             headings.append(col.label)
         self.writer.writerow(headings)
 
     def body_records(self):
+        """Render all rows from grid records.
+
+        Value is obtained for render from each grid column's `render` method. To
+        override how a column's data is rendered specifically for CSV, supply a
+        `render_csv` method on the column."""
         # turn off paging
         self.grid.set_paging(None, None)
 
@@ -1280,6 +1523,7 @@ class CSV(Renderer):
             self.writer.writerow(row)
 
     def as_response(self):
+        """Return an attachment file via the grid's manager."""
         buffer = self.build_csv()
         buffer.seek(0)
         return self.grid.manager.file_as_response(buffer, self.file_name(), self.mime_type)

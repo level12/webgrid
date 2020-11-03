@@ -8,12 +8,16 @@ With a grid configured from one or more entities, WebGrid provides these feature
 
 - Automated SQL query construction based on specified columns and query join/filter/sort options
 - Renderers to various targets/formats
+
   - HTML output paired with JS (jQuery) for dynamic features
   - Excel (XLSX)
   - CSV
+
 - User-controlled data filters
+
   - Per-column selection of filter operator and value(s)
   - Generic single-entry search
+
 - Session storage/retrieval of selected filter options, sorting, and paging
 
 .. toctree::
