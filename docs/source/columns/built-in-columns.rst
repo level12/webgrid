@@ -1,8 +1,5 @@
-Columns
-================
-
-.. autoclass:: webgrid.Column
-    :members:
+Built-in Specialized Columns
+============================
 
 .. autoclass:: webgrid.LinkColumnBase
     :members:
@@ -29,7 +26,4 @@ Columns
     :members:
 
 .. autoclass:: webgrid.EnumColumn
-    :members:
-
-.. autoclass:: webgrid.ColumnGroup
     :members:

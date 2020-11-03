@@ -1,3 +1,5 @@
+.. _custom-filters:
+
 Custom Filters
 ==============
 
