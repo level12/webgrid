@@ -1,3 +1,5 @@
+.. _base-grid:
+
 Grid Class
 ==========
 

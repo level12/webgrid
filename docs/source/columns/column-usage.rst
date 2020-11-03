@@ -1,3 +1,5 @@
+.. _column-usage:
+
 General Column Usage
 ====================
 
