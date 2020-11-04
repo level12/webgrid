@@ -1039,6 +1039,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             bool: Indicates whether key/index is in the grid columns.
 
         """
+        if ident is None:
+            return False
         if isinstance(ident, six.string_types):
             return ident in self.key_column_map
         return 0 <= ident < len(self.columns)

@@ -7,7 +7,13 @@ Built-in Filters
 .. autoclass:: webgrid.filters.IntFilter
     :members:
 
+.. autoclass:: webgrid.filters.AggregateIntFilter
+    :members:
+
 .. autoclass:: webgrid.filters.NumberFilter
+    :members:
+
+.. autoclass:: webgrid.filters.AggregateNumberFilter
     :members:
 
 .. autoclass:: webgrid.filters.DateFilter

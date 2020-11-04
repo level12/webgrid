@@ -10,7 +10,7 @@ from .helpers import query_to_str
 
 from webgrid.filters import Operator
 from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilter, DateFilter, \
-    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter
+    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter, AggregateIntFilter
 from webgrid_ta.model.entities import ArrowRecord, Person, db, AccountType
 
 from .helpers import ModelBase
@@ -215,6 +215,11 @@ class TestNumberFilters(CheckFilterBase):
         filter = IntFilter(Person.numericcol)
         filter.set('eq', '1')
         self.assert_filter_query(filter, "WHERE persons.numericcol = 1")
+
+    def test_aggregate_int_eq(self):
+        filter = AggregateIntFilter(Person.numericcol)
+        filter.set('eq', '1')
+        self.assert_filter_query(filter, "HAVING persons.numericcol = 1")
 
     def test_int_lte(self):
         filter = IntFilter(Person.numericcol)

@@ -117,6 +117,8 @@ class FilterBase(object):
 
         receives_list (bool): Filter takes a list of values in its `set` method. Defaults to False.
 
+        is_aggregate (bool): Filter applies to HAVING clause instead of WHERE
+
     Instance attributes:
         op (str): Operator key set by the user or programmatically.
 
@@ -142,6 +144,8 @@ class FilterBase(object):
     input_types = 'input',
     # does this filter take a list of values in it's set() method
     receives_list = False
+    # does this filter apply to the HAVING clause
+    is_aggregate = False
 
     def __init__(self, sa_col, default_op=None, default_value1=None, default_value2=None,
                  dialect=None):
@@ -250,20 +254,21 @@ class FilterBase(object):
 
     def apply(self, query):
         """Query modifier to apply the needed clauses for filter inputs."""
+        filter_method = query.filter if not self.is_aggregate else query.having
         if self.op == self.default_op and self.value1 is None:
             return query
         if self.op == ops.eq:
-            return query.filter(self.sa_col == self.value1)
+            return filter_method(self.sa_col == self.value1)
         if self.op == ops.not_eq:
-            return query.filter(self.sa_col != self.value1)
+            return filter_method(self.sa_col != self.value1)
         if self.op == ops.empty:
-            return query.filter(self.sa_col.is_(None))
+            return filter_method(self.sa_col.is_(None))
         if self.op == ops.not_empty:
-            return query.filter(self.sa_col.isnot(None))
+            return filter_method(self.sa_col.isnot(None))
         if self.op == ops.less_than_equal:
-            return query.filter(self.sa_col <= self.value1)
+            return filter_method(self.sa_col <= self.value1)
         if self.op == ops.greater_than_equal:
-            return query.filter(self.sa_col >= self.value1)
+            return filter_method(self.sa_col >= self.value1)
 
         self.raise_unrecognized_op()
 
@@ -660,16 +665,22 @@ class NumberFilterBase(FilterBase):
         return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
 
     def apply(self, query):
+        filter_method = query.filter if not self.is_aggregate else query.having
         if self.op == ops.between:
-            return query.filter(self.sa_col.between(self.value1, self.value2))
+            return filter_method(self.sa_col.between(self.value1, self.value2))
         if self.op == ops.not_between:
-            return query.filter(~self.sa_col.between(self.value1, self.value2))
+            return filter_method(~self.sa_col.between(self.value1, self.value2))
         return super().apply(query)
 
 
 class IntFilter(NumberFilterBase):
     """Number filter validating inputs as integers."""
     validator = feval.Int
+
+
+class AggregateIntFilter(IntFilter):
+    """Number filter validating inputs as integers, for use on aggregate columns."""
+    is_aggregate = True
 
 
 class NumberFilter(NumberFilterBase):
@@ -687,6 +698,11 @@ class NumberFilter(NumberFilterBase):
         if value is None or (isinstance(value, six.string_types) and not len(value)):
             return None
         return D(value)
+
+
+class AggregateNumberFilter(NumberFilter):
+    """Number filter validating inputs as Decimal, for use on aggregate columns."""
+    is_aggregate = True
 
 
 class _DateMixin(object):

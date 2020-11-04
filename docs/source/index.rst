@@ -24,10 +24,10 @@ With a grid configured from one or more entities, WebGrid provides these feature
    :maxdepth: 2
    :caption: Documentation:
 
-   grid/getting-started
+   getting-started
    grid/grid
    grid/managers
    columns/index
    filters/index
    renderers/index
-
+   gotchas
