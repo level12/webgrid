@@ -26,6 +26,24 @@ class UnrecognizedOperator(ValueError):
 
 
 class Operator(object):
+    """Filter operator representing name and potential inputs.
+
+    See webgrid.filters.ops for a collection of predefined operators.
+
+    Args:
+        key (str): Internal identifier to be used in code and in request args.
+
+        display (str): Label for rendering the operator.
+
+        field_type (str): Input field spec. Can be:
+        - None: no input fields
+        - input: single freeform text input
+        - 2inputs: two freeform text inputs
+        - select: single select box
+        - select+input: select box as first input, freeform text as second
+
+        hint (str, optional): Input field hint to show in UI. Defaults to None.
+    """
     def __init__(self, key, display, field_type, hint=None):
         self.key = key
         self.display = display
@@ -67,6 +85,53 @@ class ops(object):
 
 
 class FilterBase(object):
+    """Base filter class interface for webgrid filters.
+
+    Contains filter operators, inputs, render information, and the inner workings to apply
+    the filter to the database query as needed.
+
+    Args:
+        sa_col (Expression): SQLAlchemy expression to which we apply operator/values.
+
+        default_op (str, optional): UI shortcut to enable filter with the specified op if
+        none is given by the user. Defaults to None.
+
+        default_value1 (str, optional): Use with `default_op` to set input. Defaults to None.
+
+        default_value2 (str, optional): Use with `default_op` to set input. Defaults to None.
+
+        dialect (str, optional): DB dialect in use, for filters supporting multiple DBMS platforms.
+        Defaults to None.
+
+    Class attributes:
+        operators (tuple(Operator)): Available filter operators in the order they should appear.
+
+        primary_op (str, optional): Key of operator to be selected automatically when the filter
+        is added in UI. Defaults to first available filter op.
+
+        init_attrs_for_instance (tuple(str)): Attributes to set when copying filter instance.
+        Should not normally need to be set.
+
+        input_types (tuple(str)): Possible input types for renderer to make available. Can be
+        "input", "input2", and/or "select". Defaults to `("input", )`.
+
+        receives_list (bool): Filter takes a list of values in its `set` method. Defaults to False.
+
+        is_aggregate (bool): Filter applies to HAVING clause instead of WHERE
+
+    Instance attributes:
+        op (str): Operator key set by the user or programmatically.
+
+        value1 (Any): First input value following validation processing.
+
+        value2 (Any): Second input value following validation processing.
+
+        value1_set_with (str): First input value raw from `set` call.
+
+        value2_set_with (str): Second input value raw from `set` call.
+
+        error (bool): True if input processing encountered a validation error.
+    """
     operators = ops.eq, ops.not_eq, ops.empty, ops.not_empty
     # one operator may be specified as the "primary", i.e. the one to select when filter is added
     # note, the renderer is responsible for using this operator
@@ -79,6 +144,8 @@ class FilterBase(object):
     input_types = 'input',
     # does this filter take a list of values in it's set() method
     receives_list = False
+    # does this filter apply to the HAVING clause
+    is_aggregate = False
 
     def __init__(self, sa_col, default_op=None, default_value1=None, default_value2=None,
                  dialect=None):
@@ -119,6 +186,7 @@ class FilterBase(object):
 
     @property
     def is_active(self):
+        """Filter is active if op is set and input requirements are met."""
         operator_by_key = {op.key: op for op in self.operators}
         return self.op is not None and not self.error and (
             operator_by_key[self.op].field_type is None or self.value1 is not None
@@ -126,10 +194,12 @@ class FilterBase(object):
 
     @property
     def is_display_active(self):
+        """Filter display is active (i.e. show as a selected filter in UI) if op is set."""
         return self.op is not None
 
     @property
     def op_keys(self):
+        """List of Operator keys used by this filter."""
         if self._op_keys is None:
             self._op_keys = [op.key for op in self.operators]
         return self._op_keys
@@ -140,6 +210,19 @@ class FilterBase(object):
         return value
 
     def set(self, op, value1, value2=None):
+        """Set filter operator and input values.
+
+        Stores the raw inputs, then processes the inputs for validation. Applies the default
+        operator if needed.
+
+        Args:
+            op (str): Operator key.
+            value1 (Any): First filter input value. Pass None if the operator takes no input.
+            value2 (Any, optional): Second filter input value. Defaults to None.
+
+        Raises:
+            formencode.Invalid: One or more inputs did not validate.
+        """
         if not op:
             self.default_op = self._default_op() if callable(self._default_op) else self._default_op
             self.op = self.default_op
@@ -166,23 +249,26 @@ class FilterBase(object):
             raise
 
     def raise_unrecognized_op(self):
+        """Specified operator was not in the filter's list."""
         raise UnrecognizedOperator(_('unrecognized operator: {op}', op=self.op))
 
     def apply(self, query):
+        """Query modifier to apply the needed clauses for filter inputs."""
+        filter_method = query.filter if not self.is_aggregate else query.having
         if self.op == self.default_op and self.value1 is None:
             return query
         if self.op == ops.eq:
-            return query.filter(self.sa_col == self.value1)
+            return filter_method(self.sa_col == self.value1)
         if self.op == ops.not_eq:
-            return query.filter(self.sa_col != self.value1)
+            return filter_method(self.sa_col != self.value1)
         if self.op == ops.empty:
-            return query.filter(self.sa_col.is_(None))
+            return filter_method(self.sa_col.is_(None))
         if self.op == ops.not_empty:
-            return query.filter(self.sa_col.isnot(None))
+            return filter_method(self.sa_col.isnot(None))
         if self.op == ops.less_than_equal:
-            return query.filter(self.sa_col <= self.value1)
+            return filter_method(self.sa_col <= self.value1)
         if self.op == ops.greater_than_equal:
-            return query.filter(self.sa_col >= self.value1)
+            return filter_method(self.sa_col >= self.value1)
 
         self.raise_unrecognized_op()
 
@@ -194,6 +280,7 @@ class FilterBase(object):
         return value
 
     def format_invalid(self, exc, col):
+        """Wrapper for generating a validation error string."""
         return '{0}: {1}'.format(
             col.label,
             str(exc)
@@ -233,6 +320,27 @@ class _NoValue(object):
 
 
 class OptionsFilterBase(FilterBase):
+    """Base class for filters having a list of options.
+
+    UI for these is a single select box. By default, these are all shown with a search
+    box within the filter, and checkboxes to pick multiple items.
+
+    Notable args:
+        value_modifier (Union(str, callable, Validator), optional): modifier to apply to
+        the input value(s) in the request. Generally, the options list in the filter will
+        have the "true" type in the identifier, but the request will come in with strings.
+        If `value_modifier` is "auto", we'll check one of the options IDs with some known
+        types to pick a FormEncode validator. Or, a FormEncode validator can be passed in.
+        Or, pass a callable, and it will be wrapped as a validator. Defaults to "auto".
+
+    Class attributes:
+        options_from (tuple): Iterable of options available to the filter. Defined here as a
+        class attribute, but can be overridden as an instance attribute, property, or method.
+        Options are expected to be tuples of the form (key, value). `key` is the part that will
+        be validated on input and used in the filter query clause. `value` is displayed in UI.
+
+    """
+
     operators = ops.is_, ops.not_is, ops.empty, ops.not_empty
     primary_op = ops.is_
     input_types = 'select'
@@ -257,6 +365,11 @@ class OptionsFilterBase(FilterBase):
 
     @property
     def options_seq(self):
+        """Resolver for `options_from` that caches the options values.
+
+        Tries to treat `options_from` as a callable first, and if that fails, refers to it
+        as an attribute/property value instead.
+        """
         if self._options_seq is None:
             try:
                 self._options_seq = self.options_from()
@@ -268,11 +381,13 @@ class OptionsFilterBase(FilterBase):
 
     @property
     def option_keys(self):
+        """Extract a keys list from the options tuples."""
         if self._options_keys is None:
             self._options_keys = [k for k, v in self.options_seq]
         return self._options_keys
 
     def setup_validator(self):
+        """Select a validator by type if `value_modifier` is "auto", or wrap a callable."""
         # make an educated guess about what type the unicode values sent in on
         # a set() operation should be converted to
         if self.value_modifier == 'auto' or self.value_modifier is None:
@@ -306,6 +421,18 @@ class OptionsFilterBase(FilterBase):
                 self.value_modifier = feval.Wrapper(to_python=self.value_modifier)
 
     def set(self, op, values, value2=None):
+        """Set the filter op/values to be used by query modifiers.
+
+        Since this type of filter has only one input box, `value2` is ignored (present here for
+        consistent API). Each of the items passed in the first filter value is processed with
+        the selected/given validator. Any items that do not pass validation are ignored and left
+        out of the query.
+
+        Args:
+            op (str): Operator key.
+            values (iterable): List/tuple/iterable of values to be validated.
+            value2 (Any, optional): Ignored. Defaults to None.
+        """
         self.default_op = self._default_op() if callable(self._default_op) else self._default_op
         if not op and not self.default_op:
             return
@@ -338,6 +465,7 @@ class OptionsFilterBase(FilterBase):
             self.op = None
 
     def process(self, value):
+        """Apply the `value_modifier` to a value."""
         if self.value_modifier is not None:
             value = self.value_modifier.to_python(value)
             if value not in self.option_keys:
@@ -347,6 +475,7 @@ class OptionsFilterBase(FilterBase):
         return value
 
     def match_keys_for_value(self, value):
+        """Used for single-search to match search value to part of an option's display string."""
         return [
             key for (key, _) in filter(
                 lambda item: value.lower() in str(item[1]).lower(),
@@ -355,6 +484,7 @@ class OptionsFilterBase(FilterBase):
         ]
 
     def get_search_expr(self):
+        """Match up a search value to option display, grab the corresponding keys, and search."""
         # The important thing to remember here is that a user will be searching for the displayed
         # value, not the key that generated it. We need to do some prep work to search options
         # to get the keys needed for lookup into the data source.
@@ -364,6 +494,7 @@ class OptionsFilterBase(FilterBase):
         return search
 
     def apply(self, query):
+        """Query modifier to apply the needed clauses for filter inputs."""
         if self.op == ops.is_:
             if len(self.value1) == 1:
                 return query.filter(self.sa_col == self.value1[0])
@@ -382,6 +513,12 @@ class OptionsFilterBase(FilterBase):
 
 
 class OptionsIntFilterBase(OptionsFilterBase):
+    """Base class for filters having a list of options with integer keys.
+
+    Shortcut for using `OptionsFilterBase` and supplying `formencode.validators.Int`
+    as the `value_modifier`.
+
+    """
     def __init__(self, sa_col, value_modifier=feval.Int, default_op=None, default_value1=None,
                  default_value2=None):
         OptionsFilterBase.__init__(self, sa_col, value_modifier, default_op, default_value1,
@@ -389,6 +526,14 @@ class OptionsIntFilterBase(OptionsFilterBase):
 
 
 class OptionsEnumFilter(OptionsFilterBase):
+    """Options filter that pulls options from a python Enum.
+
+    Most filters can be used in column definitions as a class or an instance. With
+    this filter, an instance must be given, so the `enum_type` can be specified.
+
+    Notable args:
+        enum_type (Enum): Python Enum type to use for options list.
+    """
     def __init__(
             self,
             sa_col,
@@ -415,6 +560,7 @@ class OptionsEnumFilter(OptionsFilterBase):
         )
 
     def default_modifier(self, value):
+        """Generic `value_modifier` that validates an item in the given Enum."""
         if isinstance(value, self.enum_type):
             return value
 
@@ -424,6 +570,7 @@ class OptionsEnumFilter(OptionsFilterBase):
             raise ValueError('Not a valid selection')
 
     def options_from(self):
+        """Override as an instance method here, returns the options tuples from the Enum."""
         return [(x.name, x.value) for x in self.enum_type]
 
     def new_instance(self, **kwargs):
@@ -432,6 +579,7 @@ class OptionsEnumFilter(OptionsFilterBase):
         return new_inst
 
     def process(self, value):
+        """Validate value using `value_modifier`."""
         if self.value_modifier is None:
             return value
 
@@ -439,11 +587,23 @@ class OptionsEnumFilter(OptionsFilterBase):
 
 
 class TextFilter(FilterBase):
+    """Filter with single freeform text input."""
     operators = (ops.eq, ops.not_eq, ops.contains, ops.not_contains, ops.empty, ops.not_empty)
     primary_op = ops.contains
 
     @property
     def comparisons(self):
+        """Handles the dialect-specific job of text comparisons.
+
+        In a functional text filter, we want to be case-insensitive. The default behavior
+        of some databases (such as postgresql) is to be case-sensitive for LIKE operations.
+        We work around that for dialects known to have that complexity, and compare
+        upper-case values or use the ILIKE operator.
+
+        Some, like mssql, are normally case-insensitive for string comparisons, and we assume
+        that is the case here. Obviously, the database can be set up differently. If it is,
+        that case would need to be handled separately in a custom filter.
+        """
         if self.dialect and self.dialect.name in ('postgresql', 'sqlite'):
             return {
                 ops.eq: lambda col, value: sa.func.upper(col) == sa.func.upper(value),
@@ -481,6 +641,11 @@ class TextFilter(FilterBase):
 
 
 class NumberFilterBase(FilterBase):
+    """Base class for filters taking one or two freeform inputs as numbers.
+
+    Class attributes:
+        validator (Validator): FormEncode validator to use on input values.
+    """
     operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
                  ops.not_between, ops.empty, ops.not_empty)
 
@@ -500,15 +665,22 @@ class NumberFilterBase(FilterBase):
         return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
 
     def apply(self, query):
+        filter_method = query.filter if not self.is_aggregate else query.having
         if self.op == ops.between:
-            return query.filter(self.sa_col.between(self.value1, self.value2))
+            return filter_method(self.sa_col.between(self.value1, self.value2))
         if self.op == ops.not_between:
-            return query.filter(~self.sa_col.between(self.value1, self.value2))
+            return filter_method(~self.sa_col.between(self.value1, self.value2))
         return super().apply(query)
 
 
 class IntFilter(NumberFilterBase):
+    """Number filter validating inputs as integers."""
     validator = feval.Int
+
+
+class AggregateIntFilter(IntFilter):
+    """Number filter validating inputs as integers, for use on aggregate columns."""
+    is_aggregate = True
 
 
 class NumberFilter(NumberFilterBase):
@@ -526,6 +698,11 @@ class NumberFilter(NumberFilterBase):
         if value is None or (isinstance(value, six.string_types) and not len(value)):
             return None
         return D(value)
+
+
+class AggregateNumberFilter(NumberFilter):
+    """Number filter validating inputs as Decimal, for use on aggregate columns."""
+    is_aggregate = True
 
 
 class _DateMixin(object):
@@ -821,6 +998,14 @@ class _DateOpQueryMixin:
 
 
 class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
+    """Complex date filter.
+
+    Depending on the operator, inputs could be one or two freeform, or a select and freeform.
+
+    Notable args:
+        _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
+        of the true `datetime.now()`. Defaults to None.
+    """
     operators = (
         ops.eq, ops.not_eq, ops.less_than_equal,
         ops.greater_than_equal, ops.between, ops.not_between,
@@ -954,6 +1139,14 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
 
 
 class DateTimeFilter(DateFilter):
+    """Complex datetime filter.
+
+    Depending on the operator, inputs could be one or two freeform, or a select and freeform.
+
+    Notable args:
+        _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
+        of the true `datetime.now()`. Defaults to None.
+    """
     op_to_query = ImmutableDict({**DateFilter.op_to_query, **{
         ops.today: lambda self, query, today: query.filter(self.sa_col.between(
             ensure_datetime(today),
@@ -1142,6 +1335,7 @@ class DateTimeFilter(DateFilter):
 
 
 class TimeFilter(FilterBase):
+    """Time filter with one or two freeform inputs."""
     operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
                  ops.not_between, ops.empty, ops.not_empty)
     input_types = 'input', 'input2'
@@ -1196,6 +1390,10 @@ class TimeFilter(FilterBase):
 
 
 class YesNoFilter(FilterBase):
+    """Simple "bool" filter designed for use with the YesNoColumn.
+
+    No inputs, just the all/yes/no operators.
+    """
     class ops(object):
         all = Operator('a', _('all'), None)
         yes = Operator('y', _('yes'), None)
