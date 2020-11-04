@@ -119,7 +119,7 @@ function datagrid_activate_filter(filter_key) {
         // move user-selected filter to the end of the list, so it shows up right where it was selected
         // note, we don't preserve this ordering through page refresh
         var detached_row = jq_tr.detach();
-        detached_row.insertBefore('.datagrid .filters tr.add-filter');
+        detached_row.appendTo('.datagrid .filters tbody');
     }
 
     // show the filter's row of controls

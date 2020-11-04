@@ -74,11 +74,16 @@
     padding: 1px;
 }
 
-.datagrid tr.add-filter th {
+.datagrid tr.add-filter th, .datagrid div.add-filter label {
     font-weight: normal;
     font-style: italic;
     /* keep "Add Filter" from wrapping in mobile */
     white-space: nowrap;
+}
+
+.datagrid div.add-filter {
+    margin-left: 2em;
+    display: inline;
 }
 
 .datagrid .paging {

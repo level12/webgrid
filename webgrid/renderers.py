@@ -274,11 +274,13 @@ class HTML(GroupMixin, Renderer):
             rows.append(self.filtering_table_row(col))
         rows = Markup('\n'.join(rows))
 
-        search_row = ''
+        top_row = ''
         if self.grid.can_search():
-            search_row = self.get_search_row()
+            top_row = self.get_search_row()
+        else:
+            top_row = self.get_add_filter_row()
 
-        return Markup('\n'.join([search_row, rows]))
+        return Markup('\n'.join([top_row, rows]))
 
     def filtering_table_row(self, col):
         """Single filter row with op and inputs."""
@@ -1025,19 +1027,47 @@ class HTML(GroupMixin, Renderer):
         warnings.warn('xls_url is deprecated. Use export_url instead.', DeprecationWarning)
         return self.export_url('xls')
 
+    def _get_filter_select_info(self):
+        return _('Add Filter:'), self.filtering_add_filter_select()
+
     def get_search_row(self):
-        """Render the single-search input."""
+        """Render the single-search input, along with filter select."""
+        filter_label, filter_select = self._get_filter_select_info()
         return self._render_jinja(
             '''
             <tr class="search">
                 <th>{{label}}</th>
                 <td colspan="2">
                     <input name="search" type="text" value="{{search_value}}" id="search_input" />
+                    <div class="add-filter">
+                        <label>{{filter_label}}</label>
+                        {{filter_select}}
+                    </div>
                 </td>
             </tr>
             ''',
             label=_('Search'),
-            search_value=self.grid.search_value
+            search_value=self.grid.search_value,
+            filter_label=filter_label,
+            filter_select=filter_select,
+        )
+
+    def get_add_filter_row(self):
+        """Render just the Add Filter area on a row."""
+        filter_label, filter_select = self._get_filter_select_info()
+        return self._render_jinja(
+            '''
+            <tr class="add-filter">
+                <th>
+                    {{ filter_label }}
+                </th>
+                <td colspan="3">
+                    {{ filter_select }}
+                </td>
+            </tr>
+            ''',
+            filter_label=filter_label,
+            filter_select=filter_select,
         )
 
 
