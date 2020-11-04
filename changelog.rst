@@ -1,6 +1,40 @@
 Changelog
 =========
 
+0.3.0 released 2020-11-04
+-------------------------
+
+- Set up documentation for use on readthedocs.io (d0a486b_)
+- Move Add Filter select to top, combine with search row when applicable (4e0a502_)
+- Create documentation with sphinx (6dbe96a_)
+- Use openpyxl for testing XLSX output (xlrd is deprecated) (51bc80f_)
+- Add helper classes for testing grids (3d5867f_)
+- Run test suite against multiple databases (SQLite, PostgreSQL, MSSQL) (69ce644_)
+- Assign unique keys when multiple columns have the same name (d34fc89_)
+- Reduce clicks required to add a filter (c76320f_)
+- Reduce vertical spacing used in the hader (54f8eb9_)
+- Deprecate the XLS renderer (6e450f1_)
+- Clarify removal of python 3.5 support (2f58762_)
+- Pass all filter values through grid set_filter method (af06abe_)
+- Add between ops to numeric filters (7736069_)
+- Ensure grid reset clears search value (b8012d2_)
+
+.. _d0a486b: https://github.com/level12/webgrid/commit/d0a486b
+.. _4e0a502: https://github.com/level12/webgrid/commit/4e0a502
+.. _6dbe96a: https://github.com/level12/webgrid/commit/6dbe96a
+.. _51bc80f: https://github.com/level12/webgrid/commit/51bc80f
+.. _3d5867f: https://github.com/level12/webgrid/commit/3d5867f
+.. _69ce644: https://github.com/level12/webgrid/commit/69ce644
+.. _d34fc89: https://github.com/level12/webgrid/commit/d34fc89
+.. _c76320f: https://github.com/level12/webgrid/commit/c76320f
+.. _54f8eb9: https://github.com/level12/webgrid/commit/54f8eb9
+.. _6e450f1: https://github.com/level12/webgrid/commit/6e450f1
+.. _2f58762: https://github.com/level12/webgrid/commit/2f58762
+.. _af06abe: https://github.com/level12/webgrid/commit/af06abe
+.. _7736069: https://github.com/level12/webgrid/commit/7736069
+.. _b8012d2: https://github.com/level12/webgrid/commit/b8012d2
+
+
 0.2.13 released 2020-07-21
 --------------------------
 
