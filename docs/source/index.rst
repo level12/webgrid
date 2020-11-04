@@ -31,4 +31,5 @@ With a grid configured from one or more entities, WebGrid provides these feature
    columns/index
    filters/index
    renderers/index
+   testing/index
    gotchas

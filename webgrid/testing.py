@@ -61,7 +61,6 @@ def assert_rendered_xls_matches(rendered_xls, xls_headers, xls_rows):
     :param rendered_xls: binary data passed to xlrd as file_contents
     :param xls_headers: iterable with length, represents single row of column headers
     :param xls_rows: list of rows in order as they will appear in the worksheet
-    :return:
     """
     warnings.warn(
         "XLS support is deprecated and will be removed in a future version",
@@ -120,7 +119,6 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
     :param rendered_xlsx: binary data passed to openpyxl as file contents
     :param xlsx_headers: list of rows of column headers
     :param xlsx_rows: list of rows in order as they will appear in the worksheet
-    :return:
     """
     assert rendered_xlsx
     rendered_xlsx.filename.seek(0)
@@ -156,7 +154,19 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
 
 
 class GridBase:
-    """ Test base for Flask or Keg apps """
+    """Base test class for Flask or Keg apps.
+
+    Class Attributes:
+        grid_cls: Application grid class to use during testing
+
+        filters: Iterable of (name, op, value, expected) tuples to check for filter logic,
+        or a callable returning such an iterable. `name` is the column key. `op` and `value`
+        set the filter parameters. `expected` is either a SQL string or compiled regex to
+        find when the filter is enabled.
+
+        sort_tests: Iterable of (name, expected) tuples to check for sort logic. `name` is
+        the column key. `expected` is a SQL string to find when the sort is enabled.
+    """
     grid_cls = None
     filters = ()
     sort_tests = ()
@@ -167,17 +177,48 @@ class GridBase:
             cls.init()
 
     def query_to_str(self, statement, bind=None):
+        """Render a SQLAlchemy query to a string."""
         return helpers.query_to_str(statement, bind=bind)
 
     def assert_in_query(self, look_for, grid=None, **kwargs):
+        """Verify the given SQL string is in the grid's query.
+
+        Args:
+            look_for (str): SQL string to find.
+
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+        """
         grid = grid or self.get_session_grid(**kwargs)
         helpers.assert_in_query(grid, look_for)
 
     def assert_not_in_query(self, look_for, grid=None, **kwargs):
+        """Verify the given SQL string is not in the grid's query.
+
+        Args:
+            look_for (str): SQL string to find.
+
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+        """
         grid = grid or self.get_session_grid(**kwargs)
         helpers.assert_not_in_query(grid, look_for)
 
     def assert_regex_in_query(self, look_for, grid=None, **kwargs):
+        """Verify the given regex matches the grid's query.
+
+        Args:
+            look_for (str or regex): Regex to search (can be compiled or provided as string).
+
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+        """
         grid = grid or self.get_session_grid(**kwargs)
         query_str = self.query_to_str(grid.build_query())
 
@@ -189,16 +230,40 @@ class GridBase:
                 '"{0}" not found in: {1}'.format(look_for, query_str)
 
     def get_session_grid(self, *args, **kwargs):
+        """Construct grid from args and kwargs, and apply query string.
+
+        Returns:
+            grid instance
+        """
         grid = self.grid_cls(*args, **kwargs)
         grid.apply_qs_args()
         return grid
 
     def get_pyq(self, grid=None, **kwargs):
+        """Turn provided/constructed grid into a rendered PyQuery object.
+
+        Args:
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+
+        Returns:
+            PyQuery object
+        """
         session_grid = grid or self.get_session_grid(**kwargs)
         html = session_grid.html()
         return PyQuery('<html>{0}</html>'.format(html))
 
     def check_filter(self, name, op, value, expected):
+        """Assertions to perform on a filter test.
+
+        Args:
+            name (str): Column key to filter.
+            op (str): Filter operator to enable.
+            value (Any): Filter value to assign.
+            expected (str or regex): SQL string or compiled regex to find.
+        """
         qs_args = [('op({0})'.format(name), op)]
         if isinstance(value, (list, tuple)):
             for v in value:
@@ -228,6 +293,7 @@ class GridBase:
         return sub_func(expected)
 
     def test_filters(self):
+        """Use filters attribute/property/method to run assertions."""
         if callable(self.filters):
             cases = self.filters()
         else:
@@ -236,6 +302,13 @@ class GridBase:
             self.check_filter(name, op, value, expected)
 
     def check_sort(self, k, ex, asc):
+        """Assertions to perform on a sort test.
+
+        Args:
+            k (str): Column key to sort.
+            ex (str or regex): SQL string to find.
+            asc (bool): Flag indicating ascending/descending order.
+        """
         if not asc:
             k = '-' + k
         d = {'sort1': k}
@@ -248,6 +321,7 @@ class GridBase:
         return sub_func()
 
     def test_sort(self):
+        """Use sort_tests attribute/property to run assertions."""
         for col, expect in self.sort_tests:
             self.check_sort(col, expect, True)
             self.check_sort(col, expect, False)
@@ -264,6 +338,16 @@ class GridBase:
                 assert read == val, 'row {} col {} {} != {}'.format(row_idx, col_idx, read, val)
 
     def expect_table_header(self, expect, grid=None, **kwargs):
+        """Run assertions to compare rendered headings with expected data.
+
+        Args:
+            expect (list): List representation of expected table data.
+
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+        """
         d = self.get_pyq(grid, **kwargs)
         self._compare_table_block(
             d.find('table.records thead tr'),
@@ -272,6 +356,16 @@ class GridBase:
         )
 
     def expect_table_contents(self, expect, grid=None, **kwargs):
+        """Run assertions to compare rendered data rows with expected data.
+
+        Args:
+            expect (list): List representation of expected table data.
+
+            grid (BaseGrid, optional): Grid to use instead of `self.get_session_grid`.
+            Defaults to None.
+
+            kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
+        """
         d = self.get_pyq(grid, **kwargs)
         self._compare_table_block(
             d.find('table.records tbody tr'),
@@ -280,7 +374,7 @@ class GridBase:
         )
 
     def test_search_expr_passes(self, grid=None):
-        # not concerned with the query contents here, just that the query executes without error
+        """Assert that a single-search query executes without error."""
         grid = grid or self.get_session_grid()
         if grid.enable_search:
             grid.records
@@ -293,6 +387,7 @@ class MSSQLGridBase(GridBase):
         look_for will match whether it has the N-prefix or not.
     """
     def query_to_str_replace_type(self, compiled_query):
+        """Same as query_to_str, but accounts for pyodbc type-specific rendering."""
         query_str = self.query_to_str(compiled_query)
         # pyodbc rendering includes an additional character for some strings,
         # like N'foo' instead of 'foo'. This is not relevant to what we're testing.
