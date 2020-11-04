@@ -1499,6 +1499,7 @@ class XLSX(GroupMixin, Renderer):
 
 
 class CSV(Renderer):
+    """Renderer for CSV output."""
     mime_type = 'text/csv'
 
     @property
