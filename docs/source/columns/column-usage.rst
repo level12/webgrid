@@ -3,8 +3,6 @@
 General Column Usage
 ====================
 
-normal column usage: subtotals
-
 Columns make up the grid's definition, as columns specify the data, layout, and formatting
 of the grid table. In WebGrid, a column knows how to render itself to any output target and how
 to apply sorting. In addition, the column is responsible for configuration of subtotals,

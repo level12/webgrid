@@ -2,7 +2,7 @@ Getting Started
 ===============
 
 .. contents::
-    :local: 1
+    :local:
 
 .. _gs-install:
 

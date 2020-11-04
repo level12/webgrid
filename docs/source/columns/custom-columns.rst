@@ -56,3 +56,13 @@ XLSX formula::
 
         def render_xlsx(self, record, rownum=0):
             return self.xlsx_formula.format(rownum)
+
+
+Value links to another view::
+
+    class ProjectColumn(LinkColumnBase):
+        def create_url(self, record):
+            return flask.url_for(
+                'admin.project-view',
+                objid=record.id,
+            )

@@ -20,9 +20,10 @@ With a grid configured from one or more entities, WebGrid provides these feature
 
 - Session storage/retrieval of selected filter options, sorting, and paging
 
+**Table of Contents**
+
 .. toctree::
    :maxdepth: 2
-   :caption: Documentation:
 
    getting-started
    grid/grid
