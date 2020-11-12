@@ -12,7 +12,7 @@ import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 
 from webgrid import Column, BoolColumn, YesNoColumn
-from webgrid.filters import FilterBase, TextFilter, IntFilter
+from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
 from .helpers import assert_in_query, assert_not_in_query, query_to_str, inrequest
@@ -465,6 +465,33 @@ class TestGrid(object):
             search_where = ("WHERE persons.firstname LIKE '%foo%'"
                             " OR persons.last_name LIKE '%foo%'")
         assert_in_query(g, search_where)
+
+    def test_search_query_with_aggregate_column(self):
+        class TG(Grid):
+            Column('First Name', Person.firstname, TextFilter)
+            Column('Count', sasql.func.count(Person.id).label('num_people'), AggregateIntFilter)
+
+            def query_prep(self, query, has_sort, has_filters):
+                return query.group_by(Person.firstname)
+
+        g = TG()
+        g.search_value = 'foo'
+
+        search_expr = {
+            'sqlite': (
+                "HAVING lower(persons.firstname) LIKE lower('%foo%') OR "
+                "CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+            ),
+            'postgresql': (
+                "HAVING persons.firstname ILIKE '%foo%' OR "
+                "CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+            ),
+            'mssql': (
+                "HAVING persons.firstname LIKE '%foo%' OR "
+                "CAST(count(persons.id) AS NVARCHAR(max)) LIKE N'%foo%'"
+            )
+        }[db.engine.dialect.name]
+        assert_in_query(g, search_expr)
 
     def test_column_keys_unique(self):
         grid = self.KeyGrid()
