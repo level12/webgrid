@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.3.1 released 2020-11-13
+-------------------------
+
+- Fix single-search from aggregate filters (33d772e_)
+
+.. _33d772e: https://github.com/level12/webgrid/commit/33d772e
+
+
 0.3.0 released 2020-11-04
 -------------------------
 
