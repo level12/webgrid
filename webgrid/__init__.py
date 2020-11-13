@@ -1478,7 +1478,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Returns:
             Query: SQLAlchemy query
         """
-        return query.filter(sa.or_(*filter(
+        any_aggregate = any(c.filter.is_aggregate for c in self.filtered_cols.values())
+        filter_method = query.having if any_aggregate else query.filter
+
+        return filter_method(sa.or_(*filter(
             lambda item: item is not None,
             (expr(value) for expr in self.search_expression_generators)
         )))
