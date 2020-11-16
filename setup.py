@@ -83,7 +83,7 @@ setup(
         'SQLAlchemy',
         'jinja2',
         'python-dateutil',
-        'Werkzeug<1.0.0',
+        'Werkzeug',
     ],
     entry_points="""
         [console_scripts]
