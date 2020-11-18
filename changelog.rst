@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.3.2 released 2020-11-18
+-------------------------
+
+- remove werkzeug version pin (8082a46_)
+
+.. _8082a46: https://github.com/level12/webgrid/commit/8082a46
+
+
 0.3.1 released 2020-11-13
 -------------------------
 
