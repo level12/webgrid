@@ -74,6 +74,11 @@
     padding: 1px;
 }
 
+.datagrid table.filters div.inputs1,
+.datagrid table.filters div.inputs2 {
+    display: inline-block;
+}
+
 .datagrid tr.add-filter th, .datagrid div.add-filter label {
     font-weight: normal;
     font-style: italic;
