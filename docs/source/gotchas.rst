@@ -167,6 +167,22 @@ This is a known limitation to the way that columns are instantiated for grids. B
 need for custom constructors is minimal in practice, this arrangement will likely stay in
 place for the foreseeable future.
 
+**Column only for filter, no display**
+
+For summary-level tables, it can be desirable to filter the recordset on values that are not
+in the rendered result. One must be careful when dealing with aggregations and grouping,
+however, because having the column in the SELECT list may require grouping and affect data
+granularity for the result.
+
+To avoid inclusion in SELECT, pass the column expression directly to the filter rather than
+the column itself::
+
+    Column('Last Name', 'no_expr', TextFilter(Person.lastname), visible=False, can_sort=False)
+
+In the above case, `Person.lastname` will not be in SELECT. But, it will be included in the
+WHERE clause if the filter is set or search is used. The other keyword arguments remove the
+column from rendering and sorting, so the column is useful only for filtering.
+
 Filter
 ------
 
@@ -204,6 +220,22 @@ When constructing a grid column from an aggregate, remember that filters for tha
 allowed in the SQL WHERE clause. Instead, they need to be in the HAVING clause.
 
 Because of this, use the `Aggregate` filters instead of `IntFilter` and `NumberFilter`.
+
+Using aggregate filters will require having a GROUP BY clause set on the grid query.
+
+**Aggregate filters and search**
+
+Search will only include aggregate filters if all searchable filters are aggregate.
+
+The search box assumes that all search expressions can be combined with OR to generate a complete
+search expression. Because of this, search can use the WHERE clause or the HAVING clause, but not
+both. Using columns in HAVING requires they be in the GROUP BY, which will affect data granularity
+for some reports.
+
+If search should include columns computed with aggregate functions, build a wrapping select
+query that includes the necessary aggregation and grouping in a nested select or CTE. Then, build
+the grid with the results of the wrapping query, which will not involve the need for aggregate
+filters.
 
 
 File Exports
