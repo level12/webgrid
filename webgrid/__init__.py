@@ -1098,6 +1098,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Returns:
             tuple(callable): search expression callables from grid filters
         """
+        is_aggregate = self.search_uses_aggregate
+
         # We filter out None here so as to disregard filters that don't support the search feature.
         def check_expression_generator(expr_gen):
             if expr_gen is not None and not callable(expr_gen):
@@ -1105,10 +1107,33 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                     'bad filter search expression: {} is not callable'.format(str(expr_gen))
                 )
             return expr_gen is not None
+
+        # Also conditionally filter aggregate/non-aggregate so we're not mixing expression types.
         return tuple(filter(
             check_expression_generator,
-            [col.filter.get_search_expr() for col in self.filtered_cols.values()]
+            [col.filter.get_search_expr() for col in self.filtered_cols.values()
+             if col.filter.is_aggregate is is_aggregate]
         ))
+
+    @property
+    def search_uses_aggregate(self):
+        """Determine whether search should use aggregate filtering.
+
+        By default, only use the HAVING clause if all search-enabled filters are marked
+        as aggregate. Otherwise, we'd be requiring all grid columns to be in query
+        grouping. If there are filters for search that are not aggregate, the grid will
+        only search on the non-aggregate columns.
+
+        Returns:
+            bool: search aggregate usage determined from filter info
+        """
+        has_search = False
+        for col in self.filtered_cols.values():
+            if col.filter.get_search_expr() is not None:
+                has_search = True
+                if not col.filter.is_aggregate:
+                    return False
+        return has_search
 
     def set_renderers(self):
         """Renderers assigned as attributes on the grid instance, named by render target.
@@ -1478,8 +1503,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Returns:
             Query: SQLAlchemy query
         """
-        any_aggregate = any(c.filter.is_aggregate for c in self.filtered_cols.values())
-        filter_method = query.having if any_aggregate else query.filter
+        filter_method = query.having if self.search_uses_aggregate else query.filter
 
         return filter_method(sa.or_(*filter(
             lambda item: item is not None,

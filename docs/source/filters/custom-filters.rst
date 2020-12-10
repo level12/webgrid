@@ -48,3 +48,12 @@ Options filter for INT foreign key lookup::
             ).order_by(
                 Vendor.label
             ).all()
+
+
+Aggregate filters, i.e. those using the HAVING clause instead of WHERE, must be marked with the
+`is_aggregate` flag. Single-search via expressions will only address aggregate filters if all
+search filters are aggregate. Using an aggregate filter will require a GROUP BY clause be set.
+
+    class AggregateTextFilter(TextFilter):
+        is_aggregate = True
+

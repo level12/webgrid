@@ -471,6 +471,9 @@ class TestGrid(object):
             Column('First Name', Person.firstname, TextFilter)
             Column('Count', sasql.func.count(Person.id).label('num_people'), AggregateIntFilter)
 
+            # Column in set for filtering only. Not in select, so not needed in grouping.
+            Column('Last Name', Person.lastname, TextFilter, visible=False)
+
             def query_prep(self, query, has_sort, has_filters):
                 return query.group_by(Person.firstname)
 
@@ -479,19 +482,37 @@ class TestGrid(object):
 
         search_expr = {
             'sqlite': (
-                "HAVING lower(persons.firstname) LIKE lower('%foo%') OR "
-                "CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+                "WHERE lower(persons.firstname) LIKE lower('%foo%')"
+                " OR lower(persons.last_name) LIKE lower('%foo%')"
             ),
             'postgresql': (
-                "HAVING persons.firstname ILIKE '%foo%' OR "
-                "CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+                "WHERE persons.firstname ILIKE '%foo%'"
+                " OR persons.last_name ILIKE '%foo%'"
             ),
             'mssql': (
-                "HAVING persons.firstname LIKE '%foo%' OR "
-                "CAST(count(persons.id) AS NVARCHAR(max)) LIKE N'%foo%'"
+                "WHERE persons.firstname LIKE '%foo%'"
+                " OR persons.last_name LIKE '%foo%'"
             )
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
+        g.records
+
+        g.clear_record_cache()
+        g.filtered_cols.pop('firstname')
+        g.filtered_cols.pop('lastname')
+        search_expr = {
+            'sqlite': (
+                "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+            ),
+            'postgresql': (
+                "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
+            ),
+            'mssql': (
+                "HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE N'%foo%'"
+            )
+        }[db.engine.dialect.name]
+        assert_in_query(g, search_expr)
+        g.records
 
     def test_column_keys_unique(self):
         grid = self.KeyGrid()

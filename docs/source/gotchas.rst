@@ -205,6 +205,19 @@ allowed in the SQL WHERE clause. Instead, they need to be in the HAVING clause.
 
 Because of this, use the `Aggregate` filters instead of `IntFilter` and `NumberFilter`.
 
+Using aggregate filters will require having a GROUP BY clause set on the grid query.
+
+**Aggregate filters and search**
+
+Search will only include aggregate filters if all searchable filters are aggregate.
+
+The search box assumes that all search expressions can be combined with OR to generate a complete
+search expression. Because of this, search can use the WHERE clause or the HAVING clause, but not
+both. Using columns in HAVING requires they be in the GROUP BY, which will affect data granularity
+for some reports.
+
+So, webgrid will default to use all non-aggregate search expressions.
+
 
 File Exports
 ------------
