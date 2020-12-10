@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.3.3 released 2020-12-10
+-------------------------
+
+- Exclude aggregate filters from search unless all are aggregate (8381960_)
+- Set 2-part filter values next to each other (0ef2a99_)
+
+.. _8381960: https://github.com/level12/webgrid/commit/8381960
+.. _0ef2a99: https://github.com/level12/webgrid/commit/0ef2a99
+
+
 0.3.2 released 2020-11-18
 -------------------------
 
