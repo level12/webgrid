@@ -472,7 +472,7 @@ class TestGrid(object):
             Column('Count', sasql.func.count(Person.id).label('num_people'), AggregateIntFilter)
 
             # Column in set for filtering only. Not in select, so not needed in grouping.
-            Column('Last Name', Person.lastname, TextFilter, visible=False)
+            Column('Last Name', Person.lastname, TextFilter, render_in=None)
 
             def query_prep(self, query, has_sort, has_filters):
                 return query.group_by(Person.firstname)
