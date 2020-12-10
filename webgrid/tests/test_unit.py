@@ -472,7 +472,7 @@ class TestGrid(object):
             Column('Count', sasql.func.count(Person.id).label('num_people'), AggregateIntFilter)
 
             # Column in set for filtering only. Not in select, so not needed in grouping.
-            Column('Last Name', Person.lastname, TextFilter, render_in=None)
+            Column('Last Name', 'no_expr', TextFilter(Person.lastname), visible=False)
 
             def query_prep(self, query, has_sort, has_filters):
                 return query.group_by(Person.firstname)
@@ -499,7 +499,7 @@ class TestGrid(object):
 
         g.clear_record_cache()
         g.filtered_cols.pop('firstname')
-        g.filtered_cols.pop('lastname')
+        g.filtered_cols.pop('no_expr')
         search_expr = {
             'sqlite': (
                 "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
