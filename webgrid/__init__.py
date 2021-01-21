@@ -1,9 +1,7 @@
 from __future__ import absolute_import
 import datetime as dt
 import inspect
-import json
 import logging
-import re
 import sys
 import six
 import time
@@ -19,7 +17,6 @@ from formencode import Invalid
 import formencode.validators as fev
 import sqlalchemy as sa
 import sqlalchemy.sql as sasql
-from werkzeug.datastructures import MultiDict
 
 from .extensions import gettext as _
 from .renderers import HTML, XLS, XLSX
@@ -1206,6 +1203,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             or case_cw2us(self.__class__.__name__)
 
     @property
+    def default_session_key(self):
+        return f'_{self.__class__.__name__}'
+
+    @property
     def has_filters(self):
         """Indicates whether filters will be applied in `build_query`.
 
@@ -1577,120 +1578,20 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'
         )
 
-    def args_have_op(self, args):
-        """Check args for containing any filter operators with the grid's `qs_prefix`.
-
-        Args:
-            args (MultiDict): Request args.
-
-        Returns:
-            bool: True if at least one op is present.
-        """
-        # any of the grid's query string args can be used to
-        #   override the session behavior (except export_to)
-        r = re.compile(
-            self.qs_prefix + r'(op\(.*\))'
-        )
-        return any(r.match(a) for a in args.keys())
-
-    def args_have_session_override(self, args):
-        """Check args for containing a session override with the grid's `qs_prefix`.
-
-        Args:
-            args (MultiDict): Request args.
-
-        Returns:
-            bool: True if session_override is present.
-        """
-        r = re.compile(
-            self.qs_prefix + 'session_override'
-        )
-        return any(r.match(a) for a in args.keys())
-
-    def args_have_page(self, args):
-        """Check args for containing any page args with the grid's `qs_prefix`.
-
-        Args:
-            args (MultiDict): Request args.
-
-        Returns:
-            bool: True if at least one page arg is present.
-        """
-        r = re.compile(
-            self.qs_prefix + '(onpage|perpage)'
-        )
-        return any(r.match(a) for a in args.keys())
-
-    def args_have_sort(self, args):
-        """Check args for containing any sort keys with the grid's `qs_prefix`.
-
-        Args:
-            args (MultiDict): Request args.
-
-        Returns:
-            bool: True if at least one sort key is present.
-        """
-        r = re.compile(
-            self.qs_prefix + '(sort[1-3])'
-        )
-        return any(r.match(a) for a in args.keys())
-
     def apply_qs_args(self, add_user_warnings=True):
-        """Process query string arguments and session store for filter/page/sort/export.
-
-        Session/args precedence applies as follows:
-        - if session_override or no filter ops, load args from session store
-        - having filter ops present will reset session store unless session_override is present
-        - page/sort args will always take precedence over stored args, but not reset the store
-        - export argument is handled outside of the session store
+        """Process args from manager for filter/page/sort/export.
 
         Args:
             add_user_warnings (bool, optional): Add flash messages for warnings. Defaults to True.
         """
-        args = MultiDict(self.manager.request_args())
-        if (
-            'search' in args
-            and self.can_search()
-            and self.prefix_qs_arg_key('dgreset') not in args
-        ):
-            self.search_value = args['search'].strip()
+        args = self.manager.get_args(self)
 
-        # args are pulled first from the request. If the session feature
-        #   is enabled and the request doesn't include grid-related args,
-        #   check for either the session key or a default set in the
-        #   session args store
         if self.session_on:
-            # if session key is in request, set the unique key
-            self.session_key = args.get(
-                self.prefix_qs_arg_key('session_key'),
-                self.session_key
-            )
-            session_override = self.args_have_session_override(args)
-            # apply arg indicates that filtering/paging/sorting form was submitted
-            apply = self.prefix_qs_arg_key('apply') in args
-            args.pop(self.prefix_qs_arg_key('apply'), None)
-            if (not self.args_have_op(args) and not apply) or session_override:
-                session_args = self.get_session_store(args, session_override)
-                # override paging if it exists in the query
-                if self.args_have_page(args):
-                    session_args['onpage'] = args.get('onpage')
-                    session_args['perpage'] = args.get('perpage')
-                # override sorting if it exists in the query
-                if self.args_have_sort(args):
-                    session_args['sort1'] = args.get('sort1')
-                    session_args['sort2'] = args.get('sort2')
-                    session_args['sort3'] = args.get('sort3')
-                # flag a foreign session if loading from another grid's session
-                grid_key = self.__class__.__name__
-                if session_args.get('datagrid', grid_key) != grid_key:
-                    self.foreign_session_loaded = True
-                args = session_args
+            self.session_key = args.get('session_key') or self.session_key
+            self.foreign_session_loaded = args.get('__foreign_session_loaded__', False)
 
-            req_args = self.manager.request_args()
-            if self.prefix_qs_arg_key('export_to') in req_args:
-                args[self.prefix_qs_arg_key('export_to')] = \
-                    req_args[self.prefix_qs_arg_key('export_to')]
-            self.save_session_store(args)
+        # search
+        self._apply_search(args)
 
         # filtering (make sure this is above paging otherwise self.page_count
         # used in the paging section below won't work)
@@ -1702,9 +1603,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # sorting
         self._apply_sorting(args)
 
+        # export
+        self._apply_export(args)
+
         if add_user_warnings:
             for msg in self.user_warnings:
                 self.manager.flash_message('warning', msg)
+
+    def _apply_search(self, args):
+        if (
+            'search' in args
+            and self.can_search()
+        ):
+            self.search_value = args['search'].strip()
 
     def _apply_filtering(self, args):
         """Turn request/session args into filter settings.
@@ -1714,9 +1625,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         for col in six.itervalues(self.filtered_cols):
             filter = col.filter
-            filter_op_qsk = self.prefix_qs_arg_key('op({0})'.format(col.key))
-            filter_v1_qsk = self.prefix_qs_arg_key('v1({0})'.format(col.key))
-            filter_v2_qsk = self.prefix_qs_arg_key('v2({0})'.format(col.key))
+            filter_op_qsk = 'op({0})'.format(col.key)
+            filter_v1_qsk = 'v1({0})'.format(col.key)
+            filter_v2_qsk = 'v2({0})'.format(col.key)
 
             filter_op_value = args.get(filter_op_qsk, None)
 
@@ -1747,14 +1658,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Args:
             args (MultiDict): Full arguments to search for paging.
         """
-        pp_qsk = self.prefix_qs_arg_key('perpage')
+        pp_qsk = 'perpage'
         if pp_qsk in args:
             per_page = self.apply_validator(fev.Int, args[pp_qsk], pp_qsk)
             if per_page is None or per_page < 1:
                 per_page = 1
             self.per_page = per_page
 
-        op_qsk = self.prefix_qs_arg_key('onpage')
+        op_qsk = 'onpage'
         if op_qsk in args:
             on_page = self.apply_validator(fev.Int, args[op_qsk], op_qsk)
             if on_page is None or on_page < 1:
@@ -1769,21 +1680,21 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Args:
             args (MultiDict): Full arguments to search for sort keys.
         """
-        sort_qs_keys = [
-            self.prefix_qs_arg_key('sort1'),
-            self.prefix_qs_arg_key('sort2'),
-            self.prefix_qs_arg_key('sort3'),
-        ]
+        sort_qs_keys = ['sort1', 'sort2', 'sort3']
         sort_qs_values = [args[sort_qsk] for sort_qsk in sort_qs_keys if sort_qsk in args]
         if sort_qs_values:
             self.set_sort(*sort_qs_values)
 
+    def _apply_export(self, args):
         # handle other file formats
-        export_qsk = self.prefix_qs_arg_key('export_to')
-        self.set_export_to(args.get(export_qsk, None))
+        self.set_export_to(args.get('export_to', None))
 
     def prefix_qs_arg_key(self, key):
         """Given a bare arg key, return the prefixed version that will actually be in the request.
+
+        This is necessary for render targets that will construct ensuing requests. Prefixing is
+        not needed for incoming args on internal grid ops, as long as the grid manager's
+        args loaders sanitize the args properly.
 
         Args:
             key (str): Bare arg key.
@@ -1839,80 +1750,6 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         if self.export_to in ['xls', 'xlsx']:
             return exporter.as_response(wb, sheet_name)
         return exporter.as_response()
-
-    def get_session_store(self, args, session_override=False):
-        """Load args from session by session_key, and return as MultiDict.
-
-        If session_override, adjust args list before returning.
-
-        If reset arg is provided, pass back the given args instead.
-
-        Args:
-            args (MultiDict): Request args used for session key, reset, and overrides.
-            session_override (bool, optional): Adjust storage using args. Defaults to False.
-
-        Returns:
-            MultiDict: Args to be used in grid operations.
-        """
-        # check args for a session key. If the key is present,
-        #   look it up in the session and use the saved args
-        #   (if they have been saved under that key). If not,
-        #   look up the class name for a default arg store.
-        web_session = self.manager.web_session()
-        if 'dgsessions' not in web_session:
-            return args
-        dgsessions = web_session['dgsessions']
-        stored_args = None
-        # if dgreset is in args, store the session key if present
-        #   and then pass back the incoming args
-        reset = self.prefix_qs_arg_key('dgreset') in args
-
-        # session is stored as a JSON-serialized list of tuples, which we can turn into MultiDict
-        session_key = '_{0}'.format(self.__class__.__name__)
-        if args.get(self.prefix_qs_arg_key('session_key'), None):
-            if dgsessions.get(self.session_key, None):
-                session_key = self.session_key
-        stored_args_json = dgsessions.get(session_key, '[]')
-        if isinstance(stored_args_json, MultiDict):
-            stored_args_json = json.dumps(list(stored_args_json.items(multi=True)))
-        elif isinstance(stored_args_json, dict):
-            stored_args_json = json.dumps(list(stored_args_json.items()))
-        stored_args = MultiDict(json.loads(stored_args_json))
-
-        if stored_args and session_override:
-            for arg, value in args.items():
-                stored_args[arg] = value
-            stored_args.pop('session_override')
-        return stored_args if (stored_args and not reset) else args
-
-    def save_session_store(self, args):
-        """Save the args in the session under the session key and as defaults for this grid.
-
-        Note, export and reset args are ignored for storage.
-
-        Args:
-            args (MultiDict): Request args to be loaded in next session store retrieval.
-        """
-        # save the args in the session under the session key
-        #   and also as the default args for this grid
-        web_session = self.manager.web_session()
-        if 'dgsessions' not in web_session:
-            web_session['dgsessions'] = dict()
-        dgsessions = web_session['dgsessions']
-        # work with a copy here
-        args = MultiDict(args)
-        # remove keys that should not be stored
-        args.pop(self.prefix_qs_arg_key('export_to'), None)
-        args.pop(self.prefix_qs_arg_key('dgreset'), None)
-        args['datagrid'] = self.__class__.__name__
-        # serialize the args so we can enforce the correct MultiDict type on the other side
-        args_json = json.dumps(list(args.items(multi=True)))
-        # save in store under grid default and session key
-        dgsessions[self.session_key] = args_json
-        dgsessions['_{0}'.format(self.__class__.__name__)] = args_json
-
-        # some frameworks/sessions need these changes manually persisted
-        self.manager.persist_web_session()
 
     def __repr__(self):
         return '<Grid "{0}">'.format(self.__class__.__name__)
