@@ -4,6 +4,7 @@ import re
 from decimal import Decimal
 from os import path
 
+import arrow
 import flask
 import pytest
 from mock import mock
@@ -839,6 +840,26 @@ class TestWebSessionArgsLoader:
             ('__foreign_session_loaded__', False),
         ])
 
+    @inrequest('/foo')
+    def test_empty_session_not_stored(self):
+        source_args = MultiDict([])
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        loader.get_args(grid, source_args)
+        assert '_PeopleGrid' not in flask.session['dgsessions']
+        assert grid.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob')
+    def test_matching_session_not_stored(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        pg2 = PeopleGrid()
+        loader.get_args(pg2, flask.request.args)
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+        assert pg2.session_key not in flask.session['dgsessions']
+
     @inrequest('/foo?dgreset=1&op(firstname)=eq&v1(firstname)=bob')
     def test_reset_result(self):
         pg = PeopleGrid()
@@ -900,9 +921,6 @@ class TestWebSessionArgsLoader:
         loader = WebSessionArgsLoader(pg2.manager)
         args = loader.get_args(pg2, MultiDict())
         assert args['op(firstname)'] == 'eq'
-        assert '_PeopleGrid' in flask.session['dgsessions']
-        assert pg.session_key in flask.session['dgsessions']
-        assert pg2.session_key in flask.session['dgsessions']
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session(self):
@@ -1020,3 +1038,58 @@ class TestWebSessionArgsLoader:
         assert 'op(firstname)' not in args
         assert 'v1(firstname)' not in args
         assert 'apply' not in flask.session['dgsessions'][pg.session_key]
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_expired_session_cleaned_up(self):
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-05 15:14:13')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, flask.request.args)
+
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-06 03:14:15')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, MultiDict([]))
+
+        assert '_PeopleGrid' not in flask.session['dgsessions']
+        assert pg.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo')
+    def test_expired_session_no_stamp(self):
+        flask.session['dgsessions'] = {
+            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
+        }
+
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.cleanup_expired_sessions()
+        assert flask.session['dgsessions']['_PeopleGrid'] == MultiDict([('a', 'b'), ('a', 'c')])
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_expired_session_no_max_hours(self):
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-05 15:14:13')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, flask.request.args)
+
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+
+        pg = PeopleGrid()
+        pg.manager.session_max_hours = None
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, MultiDict([]))
+
+        assert '_PeopleGrid' in flask.session['dgsessions']

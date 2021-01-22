@@ -25,6 +25,12 @@ class WebGrid(FrameworkManager):
     Class Attributes:
         jinja_loader (jinja.Loader): Template loader to use for HTML rendering.
 
+        args_loaders (ArgsLoader[]): Iterable of classes to use for loading grid args, in order
+        of priority
+
+        session_max_hours (int): Hours to hold a given grid session in storage. Set to None to
+        disable. Default 12.
+
     """
     def init_db(self, db):
         """Set the db connector."""

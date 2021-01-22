@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import re
 
+import arrow
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
 
@@ -110,6 +111,14 @@ class WebSessionArgsLoader(ArgsLoader):
     In the reset case, ignore most args, and return only the reset flag and session key (if any).
     And clear the session store for the given grid.
     """
+    _session_exclude_keys = (
+        '__foreign_session_loaded__',
+        'apply',
+        'dgreset',
+        'export_to',
+        'session_override',
+    )
+
     def args_have_op(self, args):
         """Check args for containing any filter operators.
 
@@ -198,6 +207,28 @@ class WebSessionArgsLoader(ArgsLoader):
 
         return session_args
 
+    def cleanup_expired_sessions(self):
+        """Remove sessions older than a certain number of hours.
+
+        Configurable at the manager level, with the session_max_hours attribute. If
+        None, cleanup is disabled.
+        """
+        if self.manager.session_max_hours is None:
+            return
+
+        cutoff = arrow.utcnow().shift(hours=-self.manager.session_max_hours)
+        modified = False
+
+        web_session = self.manager.web_session()
+        for session_key in tuple(web_session.get('dgsessions', {}).keys()):
+            grid_session = self.get_session_store(None, {'session_key': session_key})
+            if arrow.get(grid_session.get('session_timestamp', cutoff)) < cutoff:
+                modified = True
+                web_session['dgsessions'].pop(session_key, None)
+
+        if modified:
+            self.manager.persist_web_session()
+
     def get_session_store(self, grid, args):
         """Load args from session by session_key, and return as MultiDict.
 
@@ -218,7 +249,7 @@ class WebSessionArgsLoader(ArgsLoader):
         dgsessions = web_session['dgsessions']
 
         # session is stored as a JSON-serialized list of tuples, which we can turn into MultiDict
-        session_key = grid.default_session_key
+        session_key = grid.default_session_key if grid else None
         grid_session_key = args.get('session_key', None)
         if grid_session_key and dgsessions.get(grid_session_key):
             session_key = grid_session_key
@@ -247,16 +278,27 @@ class WebSessionArgsLoader(ArgsLoader):
         # work with a copy here
         args = MultiDict(args)
         # remove keys that should not be stored
-        exclude_keys = (
-            '__foreign_session_loaded__',
-            'apply',
-            'dgreset',
-            'export_to',
-            'session_override',
-        )
-        for key in exclude_keys:
+        for key in self._session_exclude_keys:
             args.pop(key, None)
+
+        existing_default_store = self.get_session_store(grid, MultiDict([]))
+
+        # if we're only storing the bare minimal case, remove the store, including the default
+        if not args:
+            dgsessions.pop(grid_session_key, None)
+            dgsessions.pop(grid.default_session_key, None)
+            return self.manager.persist_web_session()
+
         args['datagrid'] = grid.default_session_key
+        args['session_timestamp'] = existing_default_store['session_timestamp'] \
+            = arrow.utcnow().isoformat()
+
+        # if we're pulling a grid matching the default session, but with a different key,
+        # no need to store the sepearate session
+        if args == existing_default_store:
+            dgsessions.pop(grid_session_key, None)
+            return self.manager.persist_web_session()
+
         # serialize the args so we can enforce the correct MultiDict type on the other side
         args_json = json.dumps(list(args.items(multi=True)))
         # save in store under grid default and session key
@@ -286,6 +328,8 @@ class WebSessionArgsLoader(ArgsLoader):
         Returns:
             MultiDict: Args to be used in grid operations.
         """
+        self.cleanup_expired_sessions()
+
         if not grid.session_on:
             # Shouldn't be a normal case anymore. But if the grid has session store disabled,
             # honor that and just return the args that came in.
@@ -332,12 +376,16 @@ class FrameworkManager:
         args_loaders (ArgsLoader[]): Iterable of classes to use for loading grid args, in order
         of priority
 
+        session_max_hours (int): Hours to hold a given grid session in storage. Set to None to
+        disable. Default 12.
+
     """
     jinja_loader = jinja.PackageLoader('webgrid', 'templates')
     args_loaders = (
         RequestArgsLoader,
         WebSessionArgsLoader,
     )
+    session_max_hours = 12
 
     def __init__(self, db=None):
         self.init_db(db)
