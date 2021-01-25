@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
 import re
-from datetime import datetime
 from decimal import Decimal
 from os import path
 
+import arrow
 import flask
 import pytest
 from mock import mock
@@ -12,6 +12,7 @@ import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 
 from webgrid import Column, BoolColumn, YesNoColumn
+from webgrid.extensions import RequestArgsLoader, WebSessionArgsLoader
 from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
@@ -694,18 +695,6 @@ class TestQueryStringArgs(object):
         assert pg.column('firstname').filter.op is None
 
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
-    def test_qs_default_session(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
-        flask.request.args = MultiDict()
-        pg2 = PeopleGrid()
-        pg2.apply_qs_args()
-        assert pg2.column('firstname').filter.op == 'eq'
-        assert '_PeopleGrid' in flask.session['dgsessions']
-        assert pg.session_key in flask.session['dgsessions']
-        assert pg2.session_key in flask.session['dgsessions']
-
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_keyed_session(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -718,95 +707,15 @@ class TestQueryStringArgs(object):
         pg.apply_qs_args()
         assert pg.column('firstname').filter.op == 'eq'
 
-    @inrequest('/foo')
-    def test_session_load_from_none(self):
-        # test backwards compatibility for multidict load
-        flask.session['dgsessions'] = {}
-        pg = PeopleGrid()
-        args = pg.get_session_store(MultiDict())
-        assert args == MultiDict([])
-
-    @inrequest('/foo')
-    def test_session_load_from_multidict(self):
-        # test backwards compatibility for multidict load
-        flask.session['dgsessions'] = {
-            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
-        }
-        pg = PeopleGrid()
-        args = pg.get_session_store(MultiDict())
-        assert args == MultiDict([('a', 'b'), ('a', 'c')])
-
-    @inrequest('/foo')
-    def test_session_load_from_dict(self):
-        # test backwards compatibility for dict load
-        flask.session['dgsessions'] = {
-            '_PeopleGrid': {'a': 'b', 'c': 'd'}
-        }
-        pg = PeopleGrid()
-        args = pg.get_session_store(MultiDict())
-        assert args == MultiDict([('a', 'b'), ('c', 'd')])
-
     @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
-    def test_qs_keyed_session_with_export(self):
+    def test_grid_args_ignores_url(self):
         pg = PeopleGrid()
-        pg.apply_qs_args()
-        flask.request.args['op(firstname)'] = '!eq'
-        pg2 = PeopleGrid()
-        pg2.apply_qs_args()
-        assert pg2.column('firstname').filter.op == '!eq'
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('export_to', 'xls'),
-        ])
-        pg = PeopleGrid()
-        pg.apply_qs_args()
-        assert pg.column('firstname').filter.op == 'eq'
-
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
-    def test_qs_keyed_session_with_override(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('session_override', 1),
-            ('op(createdts)', '!eq'),
-            ('v1(createdts)', '2017-05-06'),
-        ])
-        pg2 = PeopleGrid()
-        pg2.apply_qs_args()
-        assert pg2.column('firstname').filter.op == 'eq'
-        assert pg2.column('firstname').filter.value1 == 'bob'
-        assert pg2.column('createdts').filter.op == '!eq'
-        assert pg2.column('createdts').filter.value1 == datetime(2017, 5, 6)
-
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
-    def test_qs_keyed_session_without_override(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('op(createdts)', '!eq'),
-            ('v1(createdts)', '2017-05-06'),
-        ])
-        pg2 = PeopleGrid()
-        pg2.apply_qs_args()
-        assert not pg2.column('firstname').filter.op
-        assert not pg2.column('firstname').filter.value1
-        assert pg2.column('createdts').filter.op == '!eq'
-        assert pg2.column('createdts').filter.value1 == datetime(2017, 5, 6)
-
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
-    def test_qs_apply_prevents_session_load(self):
-        pg = PeopleGrid()
-        pg.apply_qs_args()
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('apply', None),
-        ])
-        pg2 = PeopleGrid()
-        pg2.apply_qs_args()
-        assert not pg2.column('firstname').filter.op
-        assert not pg2.column('firstname').filter.value1
+        pg.apply_qs_args(grid_args=MultiDict({
+            'op(firstname)': 'contains',
+            'v1(firstname)': 'bill',
+        }))
+        assert pg.column('firstname').filter.op == 'contains'
+        assert pg.column('firstname').filter.value1 == 'bill'
 
     @inrequest('/foo?op(firstname)=&v1(firstname)=foo&op(status)=&v1(status)=1')
     def test_qs_blank_operator(self):
@@ -889,3 +798,308 @@ class TestQueryStringArgs(object):
         g.enable_search = True
         g.apply_qs_args()
         assert g.search_value is None
+
+
+class TestRequestArgsLoader:
+    def test_passthru(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin')])
+        source_args_copy = source_args.copy()
+        grid = PeopleGrid()
+        loader = RequestArgsLoader(grid.manager)
+        result = loader.get_args(grid, source_args)
+        assert result == source_args == source_args_copy
+
+    def test_qs_prefix_filter(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('boo', 'hoo'),
+                                 ('baz', 'bid')])
+        source_args_copy = source_args.copy()
+        grid = PeopleGrid(qs_prefix='b')
+        loader = RequestArgsLoader(grid.manager)
+        result = loader.get_args(grid, source_args)
+        assert source_args == source_args_copy
+        assert result == MultiDict([('az', 'bin'), ('az', 'bid'), ('oo', 'hoo')])
+
+    def test_reset(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1')])
+        grid = PeopleGrid()
+        loader = RequestArgsLoader(grid.manager)
+        result = loader.get_args(grid, source_args)
+        assert result == MultiDict([('dgreset', 1)])
+
+    def test_reset_with_session_key(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1'),
+                                 ('session_key', '123')])
+        grid = PeopleGrid()
+        loader = RequestArgsLoader(grid.manager)
+        result = loader.get_args(grid, source_args)
+        assert result == MultiDict([('dgreset', 1), ('session_key', '123')])
+
+
+class TestWebSessionArgsLoader:
+    @inrequest('/foo')
+    def test_no_session_present(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin')])
+        source_args_copy = source_args.copy()
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        result = loader.get_args(grid, source_args)
+        assert source_args == source_args_copy
+        assert result == MultiDict([
+            ('foo', 'bar'),
+            ('baz', 'bin'),
+            ('__foreign_session_loaded__', False),
+        ])
+
+    @inrequest('/foo')
+    def test_empty_session_not_stored(self):
+        source_args = MultiDict([])
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        loader.get_args(grid, source_args)
+        assert '_PeopleGrid' not in flask.session['dgsessions']
+        assert grid.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob')
+    def test_matching_session_not_stored(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        pg2 = PeopleGrid()
+        loader.get_args(pg2, flask.request.args)
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+        assert pg2.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo?dgreset=1&op(firstname)=eq&v1(firstname)=bob')
+    def test_reset_result(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        args = loader.get_args(pg, flask.request.args)
+        assert args == MultiDict([('dgreset', 1), ('session_key', None)])
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_reset_removes_session(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('dgreset', '1'),
+        ])
+        pg = PeopleGrid()
+        loader.get_args(pg, flask.request.args)
+        assert '_PeopleGrid' not in flask.session['dgsessions']
+        assert pg.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo')
+    def test_session_load_from_none(self):
+        # test backwards compatibility for multidict load
+        flask.session['dgsessions'] = {}
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        args = loader.get_session_store(grid, MultiDict())
+        assert args == MultiDict([])
+
+    @inrequest('/foo')
+    def test_session_load_from_multidict(self):
+        # test backwards compatibility for multidict load
+        flask.session['dgsessions'] = {
+            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
+        }
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        args = loader.get_session_store(grid, MultiDict())
+        assert args == MultiDict([('a', 'b'), ('a', 'c')])
+
+    @inrequest('/foo')
+    def test_session_load_from_dict(self):
+        # test backwards compatibility for dict load
+        flask.session['dgsessions'] = {
+            '_PeopleGrid': {'a': 'b', 'c': 'd'}
+        }
+        grid = PeopleGrid()
+        loader = WebSessionArgsLoader(grid.manager)
+        args = loader.get_session_store(grid, MultiDict())
+        assert args == MultiDict([('a', 'b'), ('c', 'd')])
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_default_session(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        pg2 = PeopleGrid()
+        loader = WebSessionArgsLoader(pg2.manager)
+        args = loader.get_args(pg2, MultiDict())
+        assert args['op(firstname)'] == 'eq'
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_keyed_session(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args['op(firstname)'] = '!eq'
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert args['op(firstname)'] == '!eq'
+        flask.request.args = MultiDict([('session_key', pg.session_key)])
+        pg = PeopleGrid()
+        args = loader.get_args(pg, flask.request.args)
+        assert args['op(firstname)'] == 'eq'
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
+    def test_page_args_always_applied(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('perpage', '15'),
+            ('onpage', '100'),
+        ])
+        pg = PeopleGrid()
+        args = loader.get_args(pg, flask.request.args)
+        assert args['op(firstname)'] == 'eq'
+        assert args['perpage'] == '15'
+        assert args['onpage'] == '100'
+        assert args['sort1'] == 'foo'
+        assert '["perpage", "15"]' in flask.session['dgsessions'][pg.session_key]
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
+    def test_sort_args_always_applied(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('sort1', 'bar'),
+        ])
+        pg = PeopleGrid()
+        args = loader.get_args(pg, flask.request.args)
+        assert args['op(firstname)'] == 'eq'
+        assert args['perpage'] == '1'
+        assert args['sort1'] == 'bar'
+        assert '["sort1", "bar"]' in flask.session['dgsessions'][pg.session_key]
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_keyed_session_with_export(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args['op(firstname)'] = '!eq'
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert args['op(firstname)'] == '!eq'
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('export_to', 'xls'),
+        ])
+        pg = PeopleGrid()
+        args = loader.get_args(pg, flask.request.args)
+        assert args['op(firstname)'] == 'eq'
+        assert args['export_to'] == 'xls'
+        assert 'export_to' not in flask.session['dgsessions'][pg.session_key]
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_keyed_session_with_override(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('session_override', 1),
+            ('op(createdts)', '!eq'),
+            ('v1(createdts)', '2017-05-06'),
+        ])
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert args['op(firstname)'] == 'eq'
+        assert args['v1(firstname)'] == 'bob'
+        assert args['op(createdts)'] == '!eq'
+        assert args['v1(createdts)'] == '2017-05-06'
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_keyed_session_without_override(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('op(createdts)', '!eq'),
+            ('v1(createdts)', '2017-05-06'),
+        ])
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert 'op(firstname)' not in args
+        assert 'v1(firstname)' not in args
+        assert args['op(createdts)'] == '!eq'
+        assert args['v1(createdts)'] == '2017-05-06'
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_apply_prevents_session_load(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('apply', None),
+        ])
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert 'op(firstname)' not in args
+        assert 'v1(firstname)' not in args
+        assert 'apply' not in flask.session['dgsessions'][pg.session_key]
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_expired_session_cleaned_up(self):
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-05 15:14:13')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, flask.request.args)
+
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-06 03:14:15')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, MultiDict([]))
+
+        assert '_PeopleGrid' not in flask.session['dgsessions']
+        assert pg.session_key not in flask.session['dgsessions']
+
+    @inrequest('/foo')
+    def test_expired_session_no_stamp(self):
+        flask.session['dgsessions'] = {
+            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
+        }
+
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.cleanup_expired_sessions()
+        assert flask.session['dgsessions']['_PeopleGrid'] == MultiDict([('a', 'b'), ('a', 'c')])
+
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_expired_session_no_max_hours(self):
+        with mock.patch(
+            'webgrid.extensions.arrow.utcnow',
+            lambda *args: arrow.get('2021-01-05 15:14:13')
+        ):
+            pg = PeopleGrid()
+            loader = WebSessionArgsLoader(pg.manager)
+            loader.get_args(pg, flask.request.args)
+
+        assert '_PeopleGrid' in flask.session['dgsessions']
+        assert pg.session_key in flask.session['dgsessions']
+
+        pg = PeopleGrid()
+        pg.manager.session_max_hours = None
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, MultiDict([]))
+
+        assert '_PeopleGrid' in flask.session['dgsessions']
