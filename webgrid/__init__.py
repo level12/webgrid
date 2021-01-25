@@ -995,13 +995,13 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         pass
 
-    def build(self):
+    def build(self, grid_args=None):
         """Apply query args, run `before_query_hook`, and execute a record count query.
 
         Calling `build` is preferred to simply calling `apply_qs_args` in a view. Otherwise,
         AttributeErrors can be hidden when the grid is used in Jinja templates.
         """
-        self.apply_qs_args()
+        self.apply_qs_args(grid_args=grid_args)
         self.before_query_hook()
         # this will force the query to execute.  We used to wait to evaluate this but it ended
         # up causing AttributeErrors to be hidden when the grid was used in Jinja.
@@ -1578,13 +1578,13 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'
         )
 
-    def apply_qs_args(self, add_user_warnings=True):
+    def apply_qs_args(self, add_user_warnings=True, grid_args=None):
         """Process args from manager for filter/page/sort/export.
 
         Args:
             add_user_warnings (bool, optional): Add flash messages for warnings. Defaults to True.
         """
-        args = self.manager.get_args(self)
+        args = grid_args if grid_args is not None else self.manager.get_args(self)
 
         if self.session_on:
             self.session_key = args.get('session_key') or self.session_key

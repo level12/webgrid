@@ -707,6 +707,16 @@ class TestQueryStringArgs(object):
         pg.apply_qs_args()
         assert pg.column('firstname').filter.op == 'eq'
 
+    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    def test_grid_args_ignores_url(self):
+        pg = PeopleGrid()
+        pg.apply_qs_args(grid_args=MultiDict({
+            'op(firstname)': 'contains',
+            'v1(firstname)': 'bill',
+        }))
+        assert pg.column('firstname').filter.op == 'contains'
+        assert pg.column('firstname').filter.value1 == 'bill'
+
     @inrequest('/foo?op(firstname)=&v1(firstname)=foo&op(status)=&v1(status)=1')
     def test_qs_blank_operator(self):
         pg = PeopleGrid()
