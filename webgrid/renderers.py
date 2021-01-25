@@ -190,12 +190,6 @@ def render_html_attributes(attrs):
 
 class HTML(GroupMixin, Renderer):
     """Renderer for HTML output."""
-    # by default, the renderer will use the display value from the operator,
-    # but that can be overriden by subclassing and setting this dictionary
-    # like:
-    #
-    #   filtering_operator_labels['eq'] = 'equals'
-    filtering_operator_labels = {}
 
     @property
     def name(self):

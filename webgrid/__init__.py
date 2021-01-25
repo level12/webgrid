@@ -75,14 +75,6 @@ class ExtractionError(TypeError):
     pass
 
 
-class DuplicateQueryNameError(TypeError):
-    """
-        Raised when an SQ query is used that has more than one column with
-        the same name
-    """
-    pass
-
-
 class _DeclarativeMeta(type):
 
     def __new__(cls, name, bases, class_dict):
@@ -155,7 +147,6 @@ class Column(object):
 
         xls_style (Any): Deprecated, used for XLS exports.
     """
-    _creation_counter = 0
     xls_width = None
     xls_num_format = None
     xls_style = None
