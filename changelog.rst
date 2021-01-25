@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.3.4 released 2021-01-25
+-------------------------
+
+- Move request/session args loading to manager, prevent cookie overflow (9b4b39e_)
+- Shift deprecated raises decorator usage to pytest.raises (42cf416_)
+- Remove unused code objects/attributes (f6e2160_)
+
+.. _9b4b39e: https://github.com/level12/webgrid/commit/9b4b39e
+.. _42cf416: https://github.com/level12/webgrid/commit/42cf416
+.. _f6e2160: https://github.com/level12/webgrid/commit/f6e2160
+
+
 0.3.3 released 2020-12-10
 -------------------------
 
