@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 import datetime as dt
 from decimal import Decimal as D
+
 from blazeutils.containers import HTMLAttributes
-from blazeutils.testing import raises
 import mock
+import pytest
 
 from webgrid import Column, LinkColumnBase, \
     BoolColumn, YesNoColumn, DateTimeColumn, DateColumn, NumericColumn
@@ -92,19 +93,21 @@ class TestColumn(object):
         col = g.columns[0]
         assert col.can_sort is False
 
-    @raises(ValueError, 'no column-like object is available')
     def test_filter_without_column_key(self):
-        class TG(Grid):
-            Column('ID', 'id', TextFilter)
-        TG()
+        with pytest.raises(ValueError, match='no column-like object is available'):
+            class TG(Grid):
+                Column('ID', 'id', TextFilter)
 
-    @raises(ValueError, 'expected.+column-like object', re_esc=False)
-    def test_fitler_of_wrong_type(self):
-        class TG(Grid):
-            Column('ID', Person, TextFilter)
-        TG()
+            TG()
 
-    def test_fitlers_are_new_instances(self):
+    def test_filter_of_wrong_type(self):
+        with pytest.raises(ValueError, match=r'expected.+column-like object'):
+            class TG(Grid):
+                Column('ID', Person, TextFilter)
+
+            TG()
+
+    def test_filters_are_new_instances(self):
         tf = TextFilter
 
         class TG(Grid):
@@ -371,6 +374,6 @@ class TestColumn(object):
         g = TG()
         assert g.column('numericcol').render_in == ('foo',)
 
-    @raises(ValueError, 'expected group to be a subclass of ColumnGroup')
     def test_group_attr_error(self):
-        Column('label', Person.id, group='not a ColumnGroup')
+        with pytest.raises(ValueError, match='expected group to be a subclass of ColumnGroup'):
+            Column('label', Person.id, group='not a ColumnGroup')

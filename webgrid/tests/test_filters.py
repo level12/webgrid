@@ -4,7 +4,6 @@ from collections import namedtuple
 from decimal import Decimal as D
 
 import pytest
-from blazeutils.testing import raises
 import formencode
 from .helpers import query_to_str
 
@@ -251,35 +250,35 @@ class TestNumberFilters(CheckFilterBase):
         filter.set('eq', '1.5')
         self.assert_filter_query(filter, "WHERE persons.numericcol = 1.5")
 
-    @raises(formencode.Invalid, 'Please enter an integer value')
     def test_int_invalid(self):
         filter = IntFilter(Person.numericcol)
-        filter.set('eq', 'a')
+        with pytest.raises(formencode.Invalid, match='Please enter an integer value'):
+            filter.set('eq', 'a')
 
-    @raises(formencode.Invalid, 'Please enter a number')
     def test_number_invalid(self):
         filter = NumberFilter(Person.numericcol)
-        filter.set('eq', 'a')
+        with pytest.raises(formencode.Invalid, match='Please enter a number'):
+            filter.set('eq', 'a')
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_number_lte_null(self):
         filter = NumberFilter(Person.numericcol)
-        filter.set('lte', None)
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('lte', None)
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_number_gte_null(self):
         filter = NumberFilter(Person.numericcol)
-        filter.set('gte', None)
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('gte', None)
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_number_eq_null(self):
         filter = NumberFilter(Person.numericcol)
-        filter.set('eq', None)
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('eq', None)
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_number_neq_null(self):
         filter = NumberFilter(Person.numericcol)
-        filter.set('!eq', None)
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('!eq', None)
 
     def test_number_empty(self):
         filter = NumberFilter(Person.numericcol)
@@ -626,10 +625,10 @@ class TestDateFilter(CheckFilterBase):
         self.assert_filter_query(filter, self.between_week_sql)
         assert filter.description == '01/01/2012 - 01/07/2012'
 
-    @raises(formencode.Invalid, 'Please enter a value')
     def test_days_operator_with_blank_value(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('ind', '')
+        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+            filter.set('ind', '')
 
     def test_this_month(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 4))
@@ -723,35 +722,35 @@ class TestDateFilter(CheckFilterBase):
         assert filter.error is True
         assert filter.description == 'invalid'
 
-    @raises(formencode.Invalid, 'date filter given is out of range')
     def test_days_ago_overflow(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('da', '10142015')
+        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+            filter.set('da', '10142015')
 
-    @raises(formencode.Invalid, 'date filter given is out of range')
     def test_in_days_overflow(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('ind', '10000000')
+        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+            filter.set('ind', '10000000')
 
     def test_in_days_empty_value2(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
         filter.set('ind', '10', '')
         self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-11'")
 
-    @raises(formencode.Invalid, 'invalid date')
     def test_invalid_date(self):
         filter = DateFilter(Person.due_date)
-        filter.set('eq', '7/45/2007')
+        with pytest.raises(formencode.Invalid, match='invalid date'):
+            filter.set('eq', '7/45/2007')
 
-    @raises(formencode.Invalid, 'invalid date')
     def test_overflow_date(self):
         filter = DateFilter(Person.due_date)
-        filter.set('eq', '12345678901234567890')
+        with pytest.raises(formencode.Invalid, match='invalid date'):
+            filter.set('eq', '12345678901234567890')
 
-    @raises(formencode.Invalid, 'Please enter an integer value')
     def test_days_operator_with_invalid_value(self):
         filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        filter.set('ind', 'a')
+        with pytest.raises(formencode.Invalid, match='Please enter an integer value'):
+            filter.set('ind', 'a')
 
     def test_default(self):
         filter = DateFilter(Person.due_date, default_op='between', default_value1='1/31/2010',
@@ -880,10 +879,10 @@ class TestDateTimeFilter(CheckFilterBase):
         with pytest.raises(formencode.Invalid):
             filter.set('eq', None)
 
-    @raises(formencode.Invalid, 'invalid date')
     def test_overflow_date(self):
         filter = DateTimeFilter(Person.createdts)
-        filter.set('eq', '12345678901234567890')
+        with pytest.raises(formencode.Invalid, match='invalid date'):
+            filter.set('eq', '12345678901234567890')
 
     def test_eq_with_time(self):
         filter = DateTimeFilter(Person.createdts)
@@ -1529,10 +1528,12 @@ class TestOptionsFilter(CheckFilterBase):
         filter.set('is', ['1'])
         self.assert_filter_query(filter, "WHERE persons.boolcol = 1")
 
-    @raises(TypeError, "can't use value_modifier='auto' when option keys are <(class|type) 'list'>",
-            re_esc=False)
     def test_unknown_type(self):
-        BadTypeFilter(Person.boolcol).new_instance()
+        with pytest.raises(
+            TypeError,
+            match="can't use value_modifier='auto' when option keys are <(class|type) 'list'>"
+        ):
+            BadTypeFilter(Person.boolcol).new_instance()
 
     def test_value_not_in_options_makes_inactive(self):
         filter = StateFilter(Person.state).new_instance()
@@ -1543,19 +1544,23 @@ class TestOptionsFilter(CheckFilterBase):
         filter.set('!is', ['foo'])
         assert not filter.is_active
 
-    @raises(ValueError,
-            'value_modifier argument set to "auto", but the options set is empty and '
-            'the type can therefore not be determined for NoOptionsFilter')
     def test_auto_validation_with_no_options(self):
-        class NoOptionsFilter(OptionsFilterBase):
-            pass
-        NoOptionsFilter(Person.numericcol).new_instance()
+        with pytest.raises(
+            ValueError,
+            match='value_modifier argument set to "auto", but the options set is empty and '
+            'the type can therefore not be determined for NoOptionsFilter'
+        ):
+            class NoOptionsFilter(OptionsFilterBase):
+                pass
+            NoOptionsFilter(Person.numericcol).new_instance()
 
-    @raises(TypeError,
-            'value_modifier must be the string "auto", have a "to_python" attribute, '
-            'or be a callable')
     def test_modifier_wrong_type(self):
-        StateFilter(Person.state, value_modifier=1).new_instance()
+        with pytest.raises(
+            TypeError,
+            match='value_modifier must be the string "auto", have a "to_python" attribute, '
+            'or be a callable'
+        ):
+            StateFilter(Person.state, value_modifier=1).new_instance()
 
     def test_default(self):
         filter = SortOrderFilter(Person.sortorder, default_op='is',
