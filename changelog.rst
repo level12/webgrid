@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.3.5 released 2021-02-01
+-------------------------
+
+- Update readme to point at documentation (083df65_)
+- Fix imports in testing helpers (dcc96c9_)
+
+.. _083df65: https://github.com/level12/webgrid/commit/083df65
+.. _dcc96c9: https://github.com/level12/webgrid/commit/dcc96c9
+
+
 0.3.4 released 2021-01-25
 -------------------------
 
