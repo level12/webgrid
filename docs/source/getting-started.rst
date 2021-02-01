@@ -140,3 +140,25 @@ To use this feature, specify the extra requirements on install::
     pip install webgrid[i18n]
 
 Currently, English (default) and Spanish are the supported languages in the UI.
+
+Helpful links
+=============
+
+ * https://www.gnu.org/software/gettext/manual/html_node/Mark-Keywords.html
+ * https://www.gnu.org/software/gettext/manual/html_node/Preparing-Strings.html
+
+
+Message management
+==================
+
+The ``setup.cfg`` file is configured to handle the standard message extraction commands. For ease of development
+and ensuring that all marked strings have translations, a tox environment is defined for testing i18n. This will
+run commands to update and compile the catalogs, and specify any strings which need to be added.
+
+The desired workflow here is to run tox, update strings in the PO files as necessary, run tox again
+(until it passes), and then commit the changes to the catalog files.
+
+.. code::
+
+    tox -e i18n
+
