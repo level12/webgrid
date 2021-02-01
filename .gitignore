@@ -11,3 +11,4 @@ coverage.xml
 *.nose.xml
 *.py~
 .eggs
+.ci/*
