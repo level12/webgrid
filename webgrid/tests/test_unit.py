@@ -14,9 +14,10 @@ from werkzeug.datastructures import MultiDict
 from webgrid import Column, BoolColumn, YesNoColumn
 from webgrid.extensions import RequestArgsLoader, WebSessionArgsLoader
 from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
+from webgrid.testing import assert_in_query, assert_not_in_query, query_to_str
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
-from .helpers import assert_in_query, assert_not_in_query, query_to_str, inrequest
+from .helpers import inrequest
 from webgrid.renderers import CSV
 
 
