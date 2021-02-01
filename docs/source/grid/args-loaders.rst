@@ -43,7 +43,7 @@ Supplying arguments directly
 ----------------------------
 
 Arguments may be provided directly to `apply_qs_args` or `build` as a MultiDict. If arguments
-are supplied in this fashion, other sources are ignored.
+are supplied in this fashion, other sources are ignored::
 
     from werkzeug.datastructures import MultiDict
 
