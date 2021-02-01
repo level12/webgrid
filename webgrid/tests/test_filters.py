@@ -5,11 +5,11 @@ from decimal import Decimal as D
 
 import pytest
 import formencode
-from .helpers import query_to_str
 
 from webgrid.filters import Operator
 from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilter, DateFilter, \
     DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter, AggregateIntFilter
+from webgrid.testing import query_to_str
 from webgrid_ta.model.entities import ArrowRecord, Person, db, AccountType
 
 from .helpers import ModelBase
