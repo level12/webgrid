@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.3.6 released 2021-02-15
+-------------------------
+
+- Fix reset arg inclusion in grid url (2064aa8_)
+
+.. _2064aa8: https://github.com/level12/webgrid/commit/2064aa8
+
+
 0.3.5 released 2021-02-01
 -------------------------
 
