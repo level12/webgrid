@@ -316,6 +316,22 @@ class TestHtmlRenderer(object):
         g = self.get_grid(qs_prefix='dg_')
         assert '/thepage?dg_perpage=10' == g.html.current_url(perpage=10)
 
+    @inrequest('/thepage?perpage=5&onpage=1&dgreset=1')
+    def test_current_url_reset_removed(self):
+        g = self.get_grid()
+        assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
+        assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
+
+    @inrequest('/thepage?foo_dgreset=1')
+    def test_current_url_reset_removed_prefix(self):
+        g = self.get_grid(qs_prefix='foo_')
+        assert '/thepage?foo_perpage=5' == g.html.current_url(perpage=5)
+
+    @inrequest('/thepage?perpage=5&onpage=1')
+    def test_current_url_reset_added(self):
+        g = self.get_grid()
+        assert '/thepage?dgreset=1&onpage=1&perpage=5' == g.html.current_url(dgreset=1)
+
     @inrequest('/thepage?perpage=5&onpage=1')
     def test_xls_url(self):
         g = self.get_grid()

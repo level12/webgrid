@@ -965,6 +965,11 @@ class HTML(GroupMixin, Renderer):
 
         req_args = MultiDict(self.grid.manager.request_args())
 
+        # reset key should not be retained from request for url generation. If we really
+        # want it, we'll see it in kwargs.
+        reset_key = (self.grid.qs_prefix or '') + 'dgreset'
+        req_args.pop(reset_key, None)
+
         # kwargs will be modified with new keys if there is a prefix, so copy the original set
         # of keys first. Otherwise, the loop may pick up new keys and apply the prefix again
         key_list = list(kwargs.keys())
