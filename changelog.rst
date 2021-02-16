@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.3.7 released 2021-02-16
+-------------------------
+
+- enhance performance by compiling jinja template strings once per renderer instance (d8815ea_)
+
+.. _d8815ea: https://github.com/level12/webgrid/commit/d8815ea
+
+
 0.3.6 released 2021-02-15
 -------------------------
 
