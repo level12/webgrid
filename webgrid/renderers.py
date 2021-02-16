@@ -210,11 +210,14 @@ class HTML(GroupMixin, Renderer):
         self.jinja_env.filters['wg_safe'] = jinja.filters.do_mark_safe
         self.jinja_env.filters['wg_attributes'] = render_html_attributes
         self.jinja_env.filters['wg_gettext'] = _
+        self._template_cache = {}
 
         configure_jinja_environment(self.jinja_env, translation_manager)
 
     def _render_jinja(self, source, **kwargs):
-        template = self.jinja_env.from_string(source)
+        if source not in self._template_cache:
+            self._template_cache[source] = self.jinja_env.from_string(source)
+        template = self._template_cache[source]
         return Markup(template.render(**kwargs))
 
     def render(self):
