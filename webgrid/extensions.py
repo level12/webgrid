@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import json
 from pathlib import Path
 import re
@@ -47,7 +48,7 @@ else:
     lazy_ngettext = ngettext
 
 
-class ArgsLoader:
+class ArgsLoader(ABC):
     """ Base args loader class.
 
     When a grid calls for its args, it requests them from the manager. The manager will have one
@@ -57,27 +58,23 @@ class ArgsLoader:
     def __init__(self, manager):
         self.manager = manager
 
+    @property
+    @abstractmethod
+    def http_method(self):
+        pass
+
+    @abstractmethod
     def get_args(self, grid, request_args):
-        # Override this method for loader-specific processing of request_args
-        raise Exception('subclass must override get_args')
+        pass
 
 
-class RequestArgsLoader(ArgsLoader):
-    """ Simple args loader for web request.
-
-    Args are usually passed through directly from the request. If the grid has a query string
-    prefix, the relevant args will be namespaced - sanitize them here and return the subset
-    needed for the given grid.
-
-    In the reset case, ignore most args, and return only the reset flag and session key (if any).
-    """
+class GridPrefixMixin:
     def sanitize_arg_name(self, arg_name, qs_prefix):
         if qs_prefix and arg_name.startswith(qs_prefix):
             return arg_name[len(qs_prefix):]
         return arg_name
 
-    def get_args(self, grid, request_args):
-        # Start with request args, filtered by query string prefix if there is one
+    def get_sanitized_args(self, grid, request_args):
         incoming_args = []
         if grid.qs_prefix:
             for key, values in MultiDict(request_args).lists():
@@ -90,12 +87,35 @@ class RequestArgsLoader(ArgsLoader):
         else:
             incoming_args = request_args
 
+        return MultiDict(incoming_args)
+
+
+class RequestBodyLoader(GridPrefixMixin, ArgsLoader):
+    http_method = 'POST'
+
+    def get_args(self, grid, request_args):
+        return self.get_sanitized_args(grid, request_args)
+
+
+class RequestArgsLoader(GridPrefixMixin, ArgsLoader):
+    """ Simple args loader for web request.
+
+    Args are usually passed through directly from the request. If the grid has a query string
+    prefix, the relevant args will be namespaced - sanitize them here and return the subset
+    needed for the given grid.
+
+    In the reset case, ignore most args, and return only the reset flag and session key (if any).
+    """
+
+    http_method = 'GET'
+
+    def get_args(self, grid, request_args):
         if 'dgreset' in request_args:
             if 'session_key' in request_args:
                 return MultiDict(dict(dgreset=1, session_key=request_args['session_key']))
             return MultiDict(dict(dgreset=1))
 
-        return MultiDict(incoming_args)
+        return self.get_sanitized_args(grid, request_args)
 
 
 class WebSessionArgsLoader(ArgsLoader):
@@ -119,6 +139,7 @@ class WebSessionArgsLoader(ArgsLoader):
         'export_to',
         'session_override',
     )
+    http_method = 'GET'
 
     def args_have_op(self, args):
         """Check args for containing any filter operators.
@@ -366,7 +387,7 @@ class WebSessionArgsLoader(ArgsLoader):
         return request_args
 
 
-class FrameworkManager:
+class FrameworkManager(ABC):
     """Grid manager base class for connecting grids to webapps.
 
     Provides common framework-related properties and methods.
@@ -414,7 +435,28 @@ class FrameworkManager:
     def get_args(self, grid):
         """Run request args through manager's args loaders, and return the result."""
         args = self.request_args()
+        method = self.request_method()
         for loader in self.args_loaders:
-            args = loader(self).get_args(grid, args)
+            if loader.http_method == method:
+                args = loader(self).get_args(grid, args)
 
         return args
+
+    def request_args(self):
+        method = self.request_method()
+        if method == 'GET':
+            return self.get_url_args()
+        else:
+            return self.get_body_args()
+
+    @abstractmethod
+    def request_body_args(self):
+        pass
+
+    @abstractmethod
+    def request_method(self):
+        pass
+
+    @abstractmethod
+    def request_url_args(self):
+        pass

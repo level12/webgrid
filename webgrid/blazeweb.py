@@ -29,6 +29,9 @@ class WebGrid(FrameworkManager):
     def request_args(self):
         return rg.request.args
 
+    def request_method(self):
+        return rg.request.method
+
     def web_session(self):
         return user
 

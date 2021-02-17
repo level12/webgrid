@@ -40,7 +40,17 @@ class WebGrid(FrameworkManager):
         """Wrap SQLAlchemy query instantiation."""
         return self.db.session.query(*args, **kwargs)
 
-    def request_args(self):
+    def request_body_args(self):
+        """Return POST request args."""
+        if request.is_json():
+            return request.json
+        else:
+            return request.form
+
+    def request_method(self):
+        return request.method
+
+    def request_url_args(self):
         """Return GET request args."""
         return request.args
 
