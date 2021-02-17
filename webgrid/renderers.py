@@ -6,6 +6,7 @@ import io
 from operator import itemgetter
 import warnings
 from collections import defaultdict
+import json
 
 import six
 from blazeutils.functional import identity
@@ -186,6 +187,52 @@ def render_html_attributes(attrs):
     attrs = sorted(attrs.items(), key=itemgetter(0))
     rendered_attrs = filter(identity, (render_attr(k, v) for k, v in attrs))
     return Markup(' ' + ' '.join(rendered_attrs))
+
+
+class JSON(Renderer):
+    """Renderer for JSON output"""
+
+    @property
+    def name(self):
+        return 'json'
+
+    def serialize_filter(self, filtered_column):
+        return {
+            'op': filtered_column.op,
+            'value1': filtered_column.value1,
+            'value2': filtered_column.value2,
+        }
+
+    def serialized_filters(self):
+        return {col.key: self.serialize_filter(col) for col in self.grid.filtered_cols}
+
+    def serialize_record(self, record):
+        return {col.key: col.render('json', record) for col in self.columns}
+
+    def serialized_records(self):
+        return [self.serialize_record(record) for record in self.grid.records]
+
+    def serialize_sort(self, sort):
+        key, flag_desc = sort
+        return {'key': key, 'flag_desc': flag_desc}
+
+    def serialized_order_by(self):
+        return [self.serialize_sort(sort) for sort in self.grid.order_by]
+
+    def render(self):
+        serialized = {
+            'meta': {
+                'search_expr': self.grid.search_value,
+                'filters': self.serialized_filters(),
+                'paging': {
+                    'per_page': self.grid.per_page,
+                    'on_page': self.grid.on_page,
+                },
+                'sort': self.serialized_order_by(),
+            },
+            'records': self.serialized_records(),
+        }
+        return json.dumps(serialized)
 
 
 class HTML(GroupMixin, Renderer):
