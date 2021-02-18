@@ -52,32 +52,27 @@ class ArgsLoader(ABC):
     """ Base args loader class.
 
     When a grid calls for its args, it requests them from the manager. The manager will have one
-    or more args loaders to be run in order. The first loader is given args from the request,
+    or more args loaders to be run in order. Each loader fetches its args from the request,
     then ensuing loaders have the opportunity to modify or perform other operations as needed.
     """
     def __init__(self, manager):
         self.manager = manager
 
-    @property
     @abstractmethod
-    def http_method(self):
-        pass
-
-    @abstractmethod
-    def get_args(self, grid, request_args):
+    def get_args(self, grid, previous_args):
         pass
 
 
-class GridPrefixMixin:
+class GridPrefixBase(ArgsLoader):
     def sanitize_arg_name(self, arg_name, qs_prefix):
         if qs_prefix and arg_name.startswith(qs_prefix):
             return arg_name[len(qs_prefix):]
         return arg_name
 
-    def get_sanitized_args(self, grid, request_args):
+    def get_sanitized_args(self, grid, args):
         incoming_args = []
         if grid.qs_prefix:
-            for key, values in MultiDict(request_args).lists():
+            for key, values in MultiDict(args).lists():
                 # Only include args that start with the grid's prefix
                 if not key.startswith(grid.qs_prefix):
                     continue
@@ -85,19 +80,32 @@ class GridPrefixMixin:
                 for single_val in values:
                     incoming_args.append((key, single_val))
         else:
-            incoming_args = request_args
+            incoming_args = args
 
         return MultiDict(incoming_args)
 
+    def get_args(self, grid, previous_args):
+        request_args = self.get_args_from_request()
+        if 'dgreset' in request_args:
+            if 'session_key' in request_args:
+                return MultiDict(dict(dgreset=1, session_key=request_args['session_key']))
+            return MultiDict(dict(dgreset=1))
 
-class RequestBodyLoader(GridPrefixMixin, ArgsLoader):
-    http_method = 'POST'
+        request_args = self.get_sanitized_args(grid, request_args)
+        request_args.update(previous_args)
+        return request_args
 
-    def get_args(self, grid, request_args):
-        return self.get_sanitized_args(grid, request_args)
+    @abstractmethod
+    def get_args_from_request(self):
+        pass
 
 
-class RequestArgsLoader(GridPrefixMixin, ArgsLoader):
+class RequestFormLoader(GridPrefixBase, ArgsLoader):
+    def get_args_from_request(self):
+        return self.manager.request_form_args()
+
+
+class RequestArgsLoader(GridPrefixBase, ArgsLoader):
     """ Simple args loader for web request.
 
     Args are usually passed through directly from the request. If the grid has a query string
@@ -106,16 +114,8 @@ class RequestArgsLoader(GridPrefixMixin, ArgsLoader):
 
     In the reset case, ignore most args, and return only the reset flag and session key (if any).
     """
-
-    http_method = 'GET'
-
-    def get_args(self, grid, request_args):
-        if 'dgreset' in request_args:
-            if 'session_key' in request_args:
-                return MultiDict(dict(dgreset=1, session_key=request_args['session_key']))
-            return MultiDict(dict(dgreset=1))
-
-        return self.get_sanitized_args(grid, request_args)
+    def get_args_from_request(self):
+        return self.manager.request_url_args()
 
 
 class WebSessionArgsLoader(ArgsLoader):
@@ -139,7 +139,6 @@ class WebSessionArgsLoader(ArgsLoader):
         'export_to',
         'session_override',
     )
-    http_method = 'GET'
 
     def args_have_op(self, args):
         """Check args for containing any filter operators.
@@ -187,7 +186,7 @@ class WebSessionArgsLoader(ArgsLoader):
         self.manager.web_session()['dgsessions'].pop(session_key)
         self.manager.persist_web_session()
 
-    def apply_session_overrides(self, session_args, request_args):
+    def apply_session_overrides(self, session_args, previous_args):
         """ Update session args as needed from the incoming request.
 
         If session override case, wholesale update from the incoming request. This
@@ -201,31 +200,31 @@ class WebSessionArgsLoader(ArgsLoader):
 
         Args:
             session_args (MultiDict): Args loaded from the session store.
-            request_args (MultiDict): Args that came into this args loader.
+            previous_args (MultiDict): Args that came into this args loader.
 
         Returns:
             MultiDict: Args to be used in grid operations.
         """
-        is_override = 'session_override' in request_args
+        is_override = 'session_override' in previous_args
 
         if is_override:
-            session_args.update(request_args)
+            session_args.update(previous_args)
         else:
             # Some types of args always get passed through from request_args.
             # Override paging if it exists in the query
-            if self.args_have_page(request_args):
-                session_args['onpage'] = request_args.get('onpage')
-                session_args['perpage'] = request_args.get('perpage')
+            if self.args_have_page(previous_args):
+                session_args['onpage'] = previous_args.get('onpage')
+                session_args['perpage'] = previous_args.get('perpage')
             # Override sorting if it exists in the query
-            if self.args_have_sort(request_args):
-                session_args['sort1'] = request_args.get('sort1')
-                session_args['sort2'] = request_args.get('sort2')
-                session_args['sort3'] = request_args.get('sort3')
+            if self.args_have_sort(previous_args):
+                session_args['sort1'] = previous_args.get('sort1')
+                session_args['sort2'] = previous_args.get('sort2')
+                session_args['sort3'] = previous_args.get('sort3')
 
-        if 'export_to' in request_args:
+        if 'export_to' in previous_args:
             # Export directive gets left out of the session storage, since a request may
             # have session key and export, and filter/sort must be loaded.
-            session_args['export_to'] = request_args['export_to']
+            session_args['export_to'] = previous_args['export_to']
 
         return session_args
 
@@ -330,7 +329,7 @@ class WebSessionArgsLoader(ArgsLoader):
         # some frameworks/sessions need these changes manually persisted
         self.manager.persist_web_session()
 
-    def get_args(self, grid, request_args):
+    def get_args(self, grid, previous_args):
         """ Retrieve args from session and override as appropriate.
 
         Submitting the header form flushes all args to the URL, so no need to load them
@@ -345,7 +344,7 @@ class WebSessionArgsLoader(ArgsLoader):
 
         Args:
             grid (BaseGrid): Grid used to get default grid key (based on grid class name).
-            request_args (MultiDict): Incoming args, assumed to be sanitized already.
+            previous_args (MultiDict): Incoming args, assumed to be sanitized already.
 
         Returns:
             MultiDict: Args to be used in grid operations.
@@ -355,17 +354,17 @@ class WebSessionArgsLoader(ArgsLoader):
         if not grid.session_on:
             # Shouldn't be a normal case anymore. But if the grid has session store disabled,
             # honor that and just return the args that came in.
-            return request_args
+            return previous_args
 
-        if 'dgreset' in request_args:
+        if 'dgreset' in previous_args:
             # Request has a reset. Do nothing else.
             if grid.session_on:
-                self.remove_grid_session(request_args.get('session_key') or grid.session_key)
+                self.remove_grid_session(previous_args.get('session_key') or grid.session_key)
                 self.remove_grid_session(grid.default_session_key)
-            return MultiDict(dict(dgreset=1, session_key=request_args.get('session_key')))
+            return MultiDict(dict(dgreset=1, session_key=previous_args.get('session_key')))
 
         # From here on, work with a copy so as not to mutate the incoming args
-        request_args = request_args.copy()
+        request_args = previous_args.copy()
 
         is_override = 'session_override' in request_args
         is_apply = 'apply' in request_args
@@ -433,30 +432,17 @@ class FrameworkManager(ABC):
         return str(Path(__file__).resolve().parent / 'static')
 
     def get_args(self, grid):
+        args = MultiDict()
         """Run request args through manager's args loaders, and return the result."""
-        args = self.request_args()
-        method = self.request_method()
         for loader in self.args_loaders:
-            if loader.http_method == method:
-                args = loader(self).get_args(grid, args)
+            args = loader(self).get_args(grid, args)
 
         return args
 
-    def request_args(self):
-        method = self.request_method()
-        if method == 'GET':
-            return self.request_url_args()
-        else:
-            return self.request_body_args()
-
     @abstractmethod
-    def request_body_args(self):
-        pass
-
-    @abstractmethod
-    def request_method(self):
-        pass
+    def request_form_args(self):
+        """Return GET request args."""
 
     @abstractmethod
     def request_url_args(self):
-        pass
+        """Return POST request args."""

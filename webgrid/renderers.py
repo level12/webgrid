@@ -1015,7 +1015,7 @@ class HTML(GroupMixin, Renderer):
         curl = current_url(self.grid.manager, strip_querystring=True, strip_host=True)
         href = Href(curl, sort=True)
 
-        req_args = MultiDict(self.grid.manager.request_args())
+        req_args = MultiDict(self.grid.manager.request_url_args())
 
         # reset key should not be retained from request for url generation. If we really
         # want it, we'll see it in kwargs.

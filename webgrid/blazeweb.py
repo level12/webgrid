@@ -26,16 +26,13 @@ class WebGrid(FrameworkManager):
     def sa_query(self, *args, **kwargs):
         return self.db.sess.query(*args, **kwargs)
 
-    def request_body_args(self):
-        if rg.request.json:
-            return rg.request.json
+    def request_form_args(self):
+        """Return POST request args."""
         return rg.request.form
 
     def request_url_args(self):
+        """Return GET request args."""
         return rg.request.args
-
-    def request_method(self):
-        return rg.request.method
 
     def web_session(self):
         return user
