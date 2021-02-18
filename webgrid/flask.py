@@ -44,8 +44,7 @@ class WebGrid(FrameworkManager):
         """Return POST request args."""
         if request.is_json():
             return request.json
-        else:
-            return request.form
+        return request.form
 
     def request_method(self):
         return request.method

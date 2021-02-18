@@ -445,9 +445,9 @@ class FrameworkManager(ABC):
     def request_args(self):
         method = self.request_method()
         if method == 'GET':
-            return self.get_url_args()
+            return self.request_url_args()
         else:
-            return self.get_body_args()
+            return self.request_body_args()
 
     @abstractmethod
     def request_body_args(self):

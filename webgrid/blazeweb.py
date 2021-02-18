@@ -26,7 +26,12 @@ class WebGrid(FrameworkManager):
     def sa_query(self, *args, **kwargs):
         return self.db.sess.query(*args, **kwargs)
 
-    def request_args(self):
+    def request_body_args(self):
+        if rg.request.json:
+            return rg.request.json
+        return rg.request.form
+
+    def request_url_args(self):
         return rg.request.args
 
     def request_method(self):
