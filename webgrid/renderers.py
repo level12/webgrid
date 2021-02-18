@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import re
 from abc import ABC, abstractmethod
+from dataclasses import asdict
 import io
 from operator import itemgetter
 import warnings
@@ -28,6 +29,7 @@ from .extensions import (
     translation_manager
 )
 from .utils import current_url
+from . import types
 import csv
 
 try:
@@ -197,11 +199,11 @@ class JSON(Renderer):
         return 'json'
 
     def serialize_filter(self, filtered_column):
-        return {
-            'op': filtered_column.op,
-            'value1': filtered_column.value1,
-            'value2': filtered_column.value2,
-        }
+        return types.Filter(
+            op=filtered_column.op,
+            value1=filtered_column.value1,
+            value2=filtered_column.value2,
+        )
 
     def serialized_filters(self):
         return {col.key: self.serialize_filter(col) for col in self.grid.filtered_cols}
@@ -214,25 +216,25 @@ class JSON(Renderer):
 
     def serialize_sort(self, sort):
         key, flag_desc = sort
-        return {'key': key, 'flag_desc': flag_desc}
+        return types.Sort(key=key, flag_desc=flag_desc)
 
     def serialized_order_by(self):
         return [self.serialize_sort(sort) for sort in self.grid.order_by]
 
     def render(self):
-        serialized = {
-            'meta': {
-                'search_expr': self.grid.search_value,
-                'filters': self.serialized_filters(),
-                'paging': {
-                    'per_page': self.grid.per_page,
-                    'on_page': self.grid.on_page,
-                },
-                'sort': self.serialized_order_by(),
-            },
-            'records': self.serialized_records(),
-        }
-        return json.dumps(serialized)
+        grid = types.Grid(
+            meta=types.Meta(
+                search_expr=self.grid.search_value,
+                filters=self.serialized_filters(),
+                paging=types.Paging(
+                    per_page=self.grid.per_page,
+                    on_page=self.grid.on_page,
+                ),
+                sort=self.serialized_order_by(),
+            ),
+            records=self.serialized_records(),
+        )
+        return json.dumps(asdict(grid))
 
 
 class HTML(GroupMixin, Renderer):
