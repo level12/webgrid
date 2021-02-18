@@ -100,11 +100,6 @@ class GridPrefixBase(ArgsLoader):
         pass
 
 
-class RequestFormLoader(GridPrefixBase, ArgsLoader):
-    def get_args_from_request(self):
-        return self.manager.request_form_args()
-
-
 class RequestArgsLoader(GridPrefixBase, ArgsLoader):
     """ Simple args loader for web request.
 
@@ -116,6 +111,12 @@ class RequestArgsLoader(GridPrefixBase, ArgsLoader):
     """
     def get_args_from_request(self):
         return self.manager.request_url_args()
+
+
+class RequestFormLoader(GridPrefixBase, ArgsLoader):
+    # TODO: documentation
+    def get_args_from_request(self):
+        return self.manager.request_form_args()
 
 
 class WebSessionArgsLoader(ArgsLoader):

@@ -29,6 +29,7 @@ from webgrid.filters import TextFilter, OptionsEnumFilter
 from webgrid.renderers import (
     CSV,
     HTML,
+    JSON,
     XLS,
     XLSX,
     RenderLimitExceeded,
@@ -746,6 +747,13 @@ class TestStringExprTotals:
 
         assert_tag(html, 'td', text='Grand Totals (3 records):', class_='totals-label', colspan='7')
         assert_tag(html, 'td', text='Page Totals (3 records):', class_='totals-label', colspan='7')
+
+
+class TestJSONRenderer:
+    def test_foo(self):
+        grid = PeopleGrid()
+        renderer = JSON(grid)
+        assert renderer.asdict() == {}
 
 
 class TestXLSRenderer(object):

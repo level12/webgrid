@@ -198,15 +198,18 @@ class JSON(Renderer):
     def name(self):
         return 'json'
 
-    def serialize_filter(self, filtered_column):
+    def serialize_filter(self, filter):
         return types.Filter(
-            op=filtered_column.op,
-            value1=filtered_column.value1,
-            value2=filtered_column.value2,
+            op=filter.op,
+            value1=filter.value1,
+            value2=filter.value2,
         )
 
     def serialized_filters(self):
-        return {col.key: self.serialize_filter(col) for col in self.grid.filtered_cols}
+        return {
+            col.key: self.serialize_filter(col.filter)
+            for key, col in self.grid.filtered_cols.items()
+        }
 
     def serialize_record(self, record):
         return {col.key: col.render('json', record) for col in self.columns}
@@ -221,7 +224,7 @@ class JSON(Renderer):
     def serialized_order_by(self):
         return [self.serialize_sort(sort) for sort in self.grid.order_by]
 
-    def render(self):
+    def asdict(self):
         grid = types.Grid(
             meta=types.Meta(
                 search_expr=self.grid.search_value,
@@ -234,7 +237,10 @@ class JSON(Renderer):
             ),
             records=self.serialized_records(),
         )
-        return json.dumps(asdict(grid))
+        return asdict(grid)
+
+    def render(self):
+        return json.dumps(self.asdict())
 
 
 class HTML(GroupMixin, Renderer):
