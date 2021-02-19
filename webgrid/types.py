@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class Filter:
     op: str
     value1: str
-    value2: str
+    value2: Optional[str] = None
 
 
 @dataclass
@@ -24,18 +24,37 @@ class Sort:
 @dataclass
 class Meta:
     search_expr: str
-    filters: List[Filter]
+    filters: Dict[str, Filter]
     paging: Paging
-    sort: Dict[str, Sort]
+    sort: List[Sort]
 
     @classmethod
     def from_dict(cls, data):
         return cls(
             search_expr=data['search_expr'],
-            filters=[Filter(**filter) for filter in data['filters']],
+            filters={key: Filter(**filter_) for key, filter_ in data['filters'].items()},
             paging=Paging(**data['paging']),
-            sort={key: Sort(**sort) for (key, sort) in data['sort'].items()},
+            sort=[Sort(**sort) for sort in data['sort']],
         )
+
+    def to_args(self):
+        args = {
+            'search': self.search_expr,
+            'onpage': self.paging.on_page,
+            'perpage': self.paging.per_page,
+        }
+
+        for key, filter_ in self.filters.items():
+            args[f'op({key})'] = filter_.op
+            args[f'v1({key})'] = filter_.value1
+            if filter_.value2:
+                args[f'v2({key})'] = filter_.value2
+
+        for i, s in enumerate(self.sort, 1):
+            prefix = '-' if s.flag_desc else ''
+            args[f'sort{i}'] = f'{prefix}{s.key}'
+
+        return args
 
 
 @dataclass

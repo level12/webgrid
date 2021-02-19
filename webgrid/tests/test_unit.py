@@ -15,6 +15,7 @@ from webgrid import Column, BoolColumn, YesNoColumn
 from webgrid.extensions import (
     RequestArgsLoader,
     RequestFormLoader,
+    RequestJsonLoader,
     WebSessionArgsLoader,
     lazy_gettext as _
 )
@@ -874,6 +875,71 @@ class TestRequestFormLoader(GridPrefixTestBase):
 class TestRequestArgsLoader(GridPrefixTestBase):
     loader_cls = RequestArgsLoader
     manager_arg_method = 'request_url_args'
+
+
+class TestRequestJsonLoader:
+    def ok_values(self):
+        return {
+            'search_expr': 'foo',
+            'filters': {
+                'test': {'op': 'eq', 'value1': 'toast', 'value2': 'taft'},
+                'test2': {'op': 'in', 'value1': 'tarp', 'value2': None},
+            },
+            'paging': {'on_page': 2, 'per_page': 20},
+            'sort': [{'key': 'bar', 'flag_desc': False}, {'key': 'baz', 'flag_desc': True}],
+        }
+
+    def test_load(self):
+        data = self.ok_values()
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=data)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict())
+        assert result == MultiDict([
+            ('search', 'foo'),
+            ('op(test)', 'eq'),
+            ('v1(test)', 'toast'),
+            ('v2(test)', 'taft'),
+            ('op(test2)', 'in'),
+            ('v1(test2)', 'tarp'),
+            ('onpage', 2),
+            ('perpage', 20),
+            ('sort1', 'bar'),
+            ('sort2', '-baz'),
+        ])
+
+    def test_merge_with_previous(self):
+        data = self.ok_values()
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=data)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict([
+            ('search', 'oof'),
+            ('onpage', 1),
+            ('sort3', 'bong'),
+        ]))
+        assert result == MultiDict([
+            ('search', 'foo'),
+            ('search', 'oof'),
+            ('op(test)', 'eq'),
+            ('v1(test)', 'toast'),
+            ('v2(test)', 'taft'),
+            ('op(test2)', 'in'),
+            ('v1(test2)', 'tarp'),
+            ('onpage', 2),
+            ('onpage', 1),
+            ('perpage', 20),
+            ('sort1', 'bar'),
+            ('sort2', '-baz'),
+            ('sort3', 'bong'),
+        ])
+
+    def test_load_empty(self):
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=None)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict())
+        assert result == MultiDict()
 
 
 class TestWebSessionArgsLoader:

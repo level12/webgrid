@@ -30,6 +30,10 @@ class WebGrid(FrameworkManager):
         """Return POST request args."""
         return rg.request.form
 
+    def request_json(self):
+        """Return json body of request."""
+        return rg.request.json
+
     def request_url_args(self):
         """Return GET request args."""
         return rg.request.args

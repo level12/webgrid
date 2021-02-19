@@ -2,11 +2,14 @@ from abc import ABC, abstractmethod
 import json
 from pathlib import Path
 import re
+from typing import Any, Dict
 
 import arrow
 import datetime
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
+
+from . import types
 
 MORPHI_PACKAGE_NAME = 'webgrid'
 
@@ -129,6 +132,22 @@ class RequestFormLoader(GridPrefixBase, ArgsLoader):
     # TODO: documentation
     def get_args_from_request(self):
         return self.manager.request_form_args()
+
+
+class RequestJsonLoader(ArgsLoader):
+    # TODO: documentation
+    def json_to_args(self, data: Dict[str, Any]):
+        meta = types.Meta.from_dict(data)
+        return MultiDict(meta.to_args())
+
+    def get_args(self, grid, previous_args):
+        data = self.manager.request_json()
+        if data:
+            current_args = self.json_to_args(data)
+        else:
+            current_args = MultiDict()
+        current_args.update(previous_args)
+        return current_args
 
 
 class WebSessionArgsLoader(ArgsLoader):
@@ -451,6 +470,10 @@ class FrameworkManager(ABC):
             args = loader(self).get_args(grid, args)
 
         return args
+
+    @abstractmethod
+    def request_json(self):
+        """Return json body of request."""
 
     @abstractmethod
     def request_form_args(self):
