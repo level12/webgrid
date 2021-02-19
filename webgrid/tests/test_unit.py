@@ -16,6 +16,7 @@ from webgrid.extensions import (
     RequestArgsLoader,
     RequestFormLoader,
     WebSessionArgsLoader,
+    lazy_gettext as _
 )
 from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
 from webgrid.testing import assert_in_query, assert_not_in_query, query_to_str
@@ -33,6 +34,9 @@ class TestGrid(object):
         # demonstrate grid operations when multiple column expressions have the same key
         Column('Person ID', Person.id, IntFilter)
         Column('Stopwatch ID', Stopwatch.id, IntFilter)
+        Column('No Expression')
+        Column(_('No Expression'))
+        Column('')
 
         query_joins = [(Stopwatch, Stopwatch.id > 0)]
 
@@ -524,6 +528,13 @@ class TestGrid(object):
         grid = self.KeyGrid()
         assert grid.column('id').expr == Person.id
         assert grid.column('id_1').expr == Stopwatch.id
+
+    def test_no_expression_column_key(self):
+        """Test that columns without an expression get a key"""
+        grid = self.KeyGrid()
+        assert grid.column('no_expression')
+        assert grid.column('no_expression_1')
+        assert grid.column('unnamed_expression')
 
     def test_column_keys_unique_query_default_sort(self):
         grid = self.KeyGrid()

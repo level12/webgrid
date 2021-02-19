@@ -41,8 +41,11 @@ class Meta:
 @dataclass
 class Grid:
     meta: Meta
+    columns: List[Dict[str, str]]
     records: List[Dict[str, Any]]
 
     @classmethod
     def from_dict(cls, data):
-        return cls(meta=Meta.from_dict(data['meta']), records=data['records'])
+        return cls(
+            meta=Meta.from_dict(data['meta']), columns=data['columns'], records=data['records']
+        )

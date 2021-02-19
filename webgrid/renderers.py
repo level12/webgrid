@@ -24,6 +24,7 @@ from werkzeug.datastructures import MultiDict
 from werkzeug.urls import Href
 
 from .extensions import (
+    CustomJsonEncoder,
     gettext as _,
     ngettext,
     translation_manager
@@ -198,6 +199,9 @@ class JSON(Renderer):
     def name(self):
         return 'json'
 
+    def serialized_columns(self):
+        return {col.key: str(col.label) for col in self.columns}
+
     def serialize_filter(self, filter):
         return types.Filter(
             op=filter.op,
@@ -235,12 +239,13 @@ class JSON(Renderer):
                 ),
                 sort=self.serialized_order_by(),
             ),
+            columns=self.serialized_columns(),
             records=self.serialized_records(),
         )
         return asdict(grid)
 
     def render(self):
-        return json.dumps(self.asdict())
+        return json.dumps(self.asdict(), cls=CustomJsonEncoder)
 
 
 class HTML(GroupMixin, Renderer):

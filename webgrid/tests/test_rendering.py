@@ -750,10 +750,106 @@ class TestStringExprTotals:
 
 
 class TestJSONRenderer:
-    def test_foo(self):
+    def test_json_format_records(self):
         grid = PeopleGrid()
         renderer = JSON(grid)
-        assert renderer.asdict() == {}
+        expected = {
+            'meta': {
+                'filters': {
+                    'account_type': {'op': None, 'value1': None, 'value2': None},
+                    'createdts': {'op': None, 'value1': None, 'value2': None},
+                    'firstname': {'op': None, 'value1': None, 'value2': None},
+                    'status': {'op': None, 'value1': None, 'value2': None},
+                },
+                'paging': {'on_page': 1, 'per_page': 50},
+                'search_expr': None,
+                'sort': [],
+            },
+            'columns': {
+                'account_type': 'Account Type',
+                'createdts': 'Created',
+                'due_date': 'Due Date',
+                'emails': 'Emails',
+                'firstname': 'First Name',
+                'full_name': 'Full Name',
+                'inactive': 'Active',
+                'numericcol': 'Number',
+                'status': 'Status',
+            },
+            'records': [
+                {
+                    'account_type': None,
+                    'createdts': '2012-02-22T10:04:16',
+                    'due_date': '2012-02-04',
+                    'emails': 'email004@example.com, email004@gmail.com',
+                    'firstname': 'fn004',
+                    'full_name': 'fn004 ln004',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': None,
+                },
+                {
+                    'account_type': 'Employee',
+                    'createdts': None,
+                    'due_date': None,
+                    'emails': 'email002@example.com, email002@gmail.com',
+                    'firstname': 'fn002',
+                    'full_name': 'fn002 ln002',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': 'pending',
+                },
+                {
+                    'account_type': 'Admin',
+                    'createdts': '2012-02-22T10:01:16',
+                    'due_date': '2012-02-01',
+                    'emails': 'email001@example.com, email001@gmail.com',
+                    'firstname': 'fn001',
+                    'full_name': 'fn001 ln001',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': 'in process',
+                },
+            ],
+        }
+        assert json.loads(renderer.render()) == expected
+
+    def test_json_format_meta(self):
+        grid = PeopleGrid()
+        firstname = grid.column('firstname')
+        firstname.filter.op = 'eq'
+        firstname.filter.value1 = 'bar'
+        firstname.filter.value2 = 'baz'
+        grid.set_paging(20, 2)
+        grid.search_value = 'foo'
+        grid.set_sort('firstname', '-status')
+        renderer = JSON(grid)
+        assert json.loads(renderer.render())['meta'] == {
+            'filters': {
+                'account_type': {'op': None, 'value1': None, 'value2': None},
+                'createdts': {'op': None, 'value1': None, 'value2': None},
+                'firstname': {'op': 'eq', 'value1': 'bar', 'value2': 'baz'},
+                'status': {'op': None, 'value1': None, 'value2': None},
+            },
+            'paging': {'on_page': 2, 'per_page': 20},
+            'search_expr': 'foo',
+            'sort': [
+                {'key': 'firstname', 'flag_desc': False},
+                {'key': 'status', 'flag_desc': True},
+            ],
+        }
+
+    def test_json_format_arrow(self):
+        ArrowRecord.query.delete()
+        ArrowRecord.testing_create(
+            created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
+        )
+        grid = ArrowGrid()
+        renderer = JSON(grid)
+        reloaded = json.loads(renderer.render())
+        assert reloaded['records'] == [
+            {'created_utc': '2016-08-10T01:02:03+00:00'}
+        ]
 
 
 class TestXLSRenderer(object):

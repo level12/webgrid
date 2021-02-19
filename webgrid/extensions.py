@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 import arrow
+import datetime
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
 
@@ -46,6 +47,17 @@ else:
 
     lazy_gettext = gettext
     lazy_ngettext = ngettext
+
+
+class CustomJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.date) or isinstance(obj, arrow.Arrow):
+            return obj.isoformat()
+
+        try:
+            return super().default(obj)
+        except TypeError:
+            return str(obj)
 
 
 class ArgsLoader(ABC):

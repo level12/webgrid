@@ -147,7 +147,7 @@ class Column(object):
     xls_width = None
     xls_num_format = None
     xls_style = None
-    _render_in = 'html', 'xls', 'xlsx', 'csv'
+    _render_in = 'html', 'xls', 'xlsx', 'csv', 'json'
     _visible = True
 
     @property
@@ -269,7 +269,11 @@ class Column(object):
         along with it, to attach them to the grid instance.
         """
         cls = self.__class__
-        key = grid.get_unique_column_key(self.key)
+        key = grid.get_unique_column_key(
+            self.key
+            or case_cw2us(str(self.label).replace(' ', ''))
+            or 'unnamed_expression'
+        )
 
         column = cls(self.label, key, None, self.can_sort, group=self.group, _dont_assign=True)
         column.grid = grid
