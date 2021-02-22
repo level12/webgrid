@@ -29,7 +29,8 @@ class Meta:
     sort: List[Sort]
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: Dict[str, Any]) -> 'Meta':
+        """Create from deserialized json"""
         return cls(
             search_expr=data['search_expr'],
             filters={key: Filter(**filter_) for key, filter_ in data['filters'].items()},
@@ -37,7 +38,8 @@ class Meta:
             sort=[Sort(**sort) for sort in data['sort']],
         )
 
-    def to_args(self):
+    def to_args(self) -> Dict[str, Any]:
+        """Convert grid parameters to request args format"""
         args = {
             'search': self.search_expr,
             'onpage': self.paging.on_page,
@@ -62,9 +64,3 @@ class Grid:
     meta: Meta
     columns: List[Dict[str, str]]
     records: List[Dict[str, Any]]
-
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
-            meta=Meta.from_dict(data['meta']), columns=data['columns'], records=data['records']
-        )

@@ -129,13 +129,24 @@ class RequestArgsLoader(GridPrefixBase, ArgsLoader):
 
 
 class RequestFormLoader(GridPrefixBase, ArgsLoader):
-    # TODO: documentation
+    """ Simple form loader for web request.
+
+    Form values are usually passed through directly from the request. If the grid has a prefix, the
+    relevant args will be namespaced - sanitize them here and return the subset needed for the given
+    grid.
+
+    In the reset case, ignore most args, and return only the reset flag and session key (if any).
+    """
     def get_args_from_request(self):
         return self.manager.request_form_args()
 
 
 class RequestJsonLoader(ArgsLoader):
-    # TODO: documentation
+    """ JSON loader for web request.
+
+    See :meth:`webgrid.types.Meta` for the expected JSON structure. The parsed arguments are
+    converted to the querystring arg format and merged with any previous args.
+    """
     def json_to_args(self, data: Dict[str, Any]):
         meta = types.Meta.from_dict(data)
         return MultiDict(meta.to_args())

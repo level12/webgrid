@@ -5,6 +5,10 @@ Built-in Renderers
     :members:
     :inherited-members:
 
+.. autoclass:: webgrid.renderers.JSON
+    :members:
+    :inherited-members:
+
 .. autoclass:: webgrid.renderers.XLSX
     :members:
     :inherited-members:
