@@ -817,9 +817,10 @@ class TestJSONRenderer:
     def test_json_format_meta(self):
         grid = PeopleGrid()
         firstname = grid.column('firstname')
-        firstname.filter.op = 'eq'
-        firstname.filter.value1 = 'bar'
-        firstname.filter.value2 = 'baz'
+        firstname.filter.set('eq', 'bar', 'baz')
+        # Ensure that raw filter value is serialized
+        firstname.filter.value1 = 'bong'
+        firstname.filter.value2 = 'bing'
         grid.set_paging(20, 2)
         grid.search_value = 'foo'
         grid.set_sort('firstname', '-status')

@@ -205,8 +205,8 @@ class JSON(Renderer):
     def serialize_filter(self, filter):
         return types.Filter(
             op=filter.op,
-            value1=filter.value1,
-            value2=filter.value2,
+            value1=filter.value1_set_with,
+            value2=filter.value2_set_with,
         )
 
     def serialized_filters(self):
