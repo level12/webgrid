@@ -33,7 +33,7 @@ def eq_html(html, filename):
     assert_equal_txt(html, file_html)
 
 
-def inrequest(*req_args, **req_kwargs):
+def _inrequest(*req_args, **req_kwargs):
     @wrapt.decorator
     def wrapper(wrapped, instance, args, kwargs):
         with flask.current_app.test_request_context(*req_args, **req_kwargs):
