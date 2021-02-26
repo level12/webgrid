@@ -419,6 +419,6 @@ class FrameworkManager:
 
         return args
 
-    def request_context(self, url='/'):
+    def test_request_context(self, url='/'):
         """Get request context for tests."""
         raise NotImplementedError
