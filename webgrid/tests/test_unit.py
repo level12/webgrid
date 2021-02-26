@@ -23,7 +23,7 @@ from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilte
 from webgrid.testing import assert_in_query, assert_not_in_query
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
-from .helpers import inrequest
+from .helpers import _inrequest
 from webgrid.renderers import CSV
 
 
@@ -547,19 +547,19 @@ class TestGrid(object):
         grid.query_default_sort = Person.id
         assert_in_query(grid, 'ORDER BY persons.id')
 
-    @inrequest('/foo?op(id)=gte&v1(id)=0')
+    @_inrequest('/foo?op(id)=gte&v1(id)=0')
     def test_column_keys_unique_filter_persons(self):
         grid = self.KeyGrid()
         grid.apply_qs_args()
         assert_in_query(grid, 'WHERE persons.id >= 0')
 
-    @inrequest('/foo?op(id_1)=gte&v1(id_1)=0')
+    @_inrequest('/foo?op(id_1)=gte&v1(id_1)=0')
     def test_column_keys_unique_filter_stopwatches(self):
         grid = self.KeyGrid()
         grid.apply_qs_args()
         assert_in_query(grid, 'WHERE stopwatches.id >= 0')
 
-    @inrequest('/foo?sort1=id_1&sort2=id')
+    @_inrequest('/foo?sort1=id_1&sort2=id')
     def test_column_keys_unique_sort(self):
         grid = self.KeyGrid()
         grid.apply_qs_args()
@@ -578,7 +578,7 @@ class TestQueryStringArgs(object):
         Person.testing_create('bob')
         Person.testing_create()
 
-    @inrequest('/foo?dg_perpage=1&dg_onpage=2')
+    @_inrequest('/foo?dg_perpage=1&dg_onpage=2')
     @pytest.mark.parametrize('grid_cls', [PeopleGrid, PeopleGridByConfig])
     def test_qs_prefix(self, grid_cls):
         pg = grid_cls(qs_prefix='dg_')
@@ -586,7 +586,7 @@ class TestQueryStringArgs(object):
         assert pg.on_page == 2
         assert pg.per_page == 1
 
-    @inrequest('/foo?perpage=1&onpage=2')
+    @_inrequest('/foo?perpage=1&onpage=2')
     def test_qs_paging(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -600,7 +600,7 @@ class TestQueryStringArgs(object):
         else:
             assert_in_query(pg, 'LIMIT 1 OFFSET 1')
 
-    @inrequest('/foo?perpage=5&onpage=foo')
+    @_inrequest('/foo?perpage=5&onpage=foo')
     def test_qs_onpage_invalid(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -608,7 +608,7 @@ class TestQueryStringArgs(object):
         assert pg.per_page == 5
         assert pg.user_warnings[0] == '"onpage" grid argument invalid, ignoring'
 
-    @inrequest('/foo?perpage=5&onpage=-1')
+    @_inrequest('/foo?perpage=5&onpage=-1')
     def test_qs_onpage_negative(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -616,7 +616,7 @@ class TestQueryStringArgs(object):
         assert pg.per_page == 5
         assert len(pg.user_warnings) == 0
 
-    @inrequest('/foo?perpage=1&onpage=100')
+    @_inrequest('/foo?perpage=1&onpage=100')
     def test_qs_onpage_too_high(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -627,7 +627,7 @@ class TestQueryStringArgs(object):
         # the records should be the same as if we were on the last page
         assert len(pg.records) == 1
 
-    @inrequest('/foo?perpage=foo&onpage=2')
+    @_inrequest('/foo?perpage=foo&onpage=2')
     def test_qs_perpage_invalid(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -635,7 +635,7 @@ class TestQueryStringArgs(object):
         assert pg.per_page == 1
         assert pg.user_warnings[0] == '"perpage" grid argument invalid, ignoring'
 
-    @inrequest('/foo?perpage=-1&onpage=2')
+    @_inrequest('/foo?perpage=-1&onpage=2')
     def test_qs_perpage_negative(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -643,21 +643,21 @@ class TestQueryStringArgs(object):
         assert pg.per_page == 1
         assert len(pg.user_warnings) == 0
 
-    @inrequest('/foo?sort1=foo&sort2=firstname&sort3=-status')
+    @_inrequest('/foo?sort1=foo&sort2=firstname&sort3=-status')
     def test_qs_sorting(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
         assert pg.order_by == [('firstname', False), ('status', True)]
         assert pg.user_warnings[0] == 'can\'t sort on invalid key "foo"'
 
-    @inrequest('/foo?sort1=fullname&sort2=firstname&sort3=-status')
+    @_inrequest('/foo?sort1=fullname&sort2=firstname&sort3=-status')
     def test_qs_sorting_not_allowed(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
         assert pg.order_by == [('firstname', False), ('status', True)]
         assert pg.user_warnings[0] == 'can\'t sort on invalid key "fullname"'
 
-    @inrequest('/foo?sort1=')
+    @_inrequest('/foo?sort1=')
     def test_qs_sorting_ignores_emptystring(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -681,7 +681,7 @@ class TestQueryStringArgs(object):
         assert pg.columns[4].filter.value1 == [first_id, second_id]
         assert pg.columns[4].filter.value2 is None
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_qs_filtering_default_op(self):
         from webgrid_ta.grids import DefaultOpGrid
         pg = DefaultOpGrid()
@@ -689,7 +689,7 @@ class TestQueryStringArgs(object):
         assert pg.columns[0].filter.op == 'eq'
         assert pg.columns[0].filter.value1 is None
 
-    @inrequest('/foo?op(firstname)=!eq&v1(firstname)=bob')
+    @_inrequest('/foo?op(firstname)=!eq&v1(firstname)=bob')
     def test_qs_filtering_default_op_override(self):
         from webgrid_ta.grids import DefaultOpGrid
         pg = DefaultOpGrid()
@@ -697,7 +697,7 @@ class TestQueryStringArgs(object):
         assert pg.columns[0].filter.op == '!eq'
         assert pg.columns[0].filter.value1 == 'bob'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_paging_doesnt_get_page_count_before_filters_are_handled(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -707,13 +707,13 @@ class TestQueryStringArgs(object):
         # page count gets cached.
         assert pg.record_count == 2
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_qs_no_session(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
         assert pg.column('firstname').filter.op is None
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_qs_keyed_session(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -726,7 +726,7 @@ class TestQueryStringArgs(object):
         pg.apply_qs_args()
         assert pg.column('firstname').filter.op == 'eq'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_grid_args_ignores_url(self):
         pg = PeopleGrid()
         pg.apply_qs_args(grid_args=MultiDict({
@@ -736,7 +736,7 @@ class TestQueryStringArgs(object):
         assert pg.column('firstname').filter.op == 'contains'
         assert pg.column('firstname').filter.value1 == 'bill'
 
-    @inrequest('/foo?op(firstname)=&v1(firstname)=foo&op(status)=&v1(status)=1')
+    @_inrequest('/foo?op(firstname)=&v1(firstname)=foo&op(status)=&v1(status)=1')
     def test_qs_blank_operator(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
@@ -748,7 +748,7 @@ class TestQueryStringArgs(object):
         assert pg.columns[4].filter.value1 is None
         assert pg.columns[4].filter.value2 is None
 
-    @inrequest('/foo?sort1=legacycol1&sort2=legacycol2')
+    @_inrequest('/foo?sort1=legacycol1&sort2=legacycol2')
     def test_sa_expr_sort(self):
         class AGrid(Grid):
             Column('First Name', 'firstname')
@@ -768,25 +768,25 @@ class TestQueryStringArgs(object):
         # this will fail if we are not using SA expressions correctly to sort
         g.records
 
-    @inrequest('/thepage?export_to=xls')
+    @_inrequest('/thepage?export_to=xls')
     def test_export_to_xls(self):
         g = PeopleGrid()
         g.apply_qs_args()
         assert g.export_to == 'xls'
 
-    @inrequest('/thepage?export_to=xlsx')
+    @_inrequest('/thepage?export_to=xlsx')
     def test_export_to_xlsx(self):
         g = PeopleGrid()
         g.apply_qs_args()
         assert g.export_to == 'xlsx'
 
-    @inrequest('/thepage?export_to=foo')
+    @_inrequest('/thepage?export_to=foo')
     def test_export_to_unrecognized(self):
         g = PeopleGrid()
         g.apply_qs_args()
         assert g.export_to is None
 
-    @inrequest('/foo?op(id)=eq&v1(id)=d')
+    @_inrequest('/foo?op(id)=eq&v1(id)=d')
     def test_exc_msg_in_warnings(self):
         class TGrid(Grid):
             Column('T', Person.id, IntFilter)
@@ -794,21 +794,21 @@ class TestQueryStringArgs(object):
         g.apply_qs_args()
         assert g.user_warnings[0] == 'T: Please enter an integer value'
 
-    @inrequest('/foo?search=bar')
+    @_inrequest('/foo?search=bar')
     def test_qs_search(self):
         g = PeopleGrid()
         g.enable_search = True
         g.apply_qs_args()
         assert g.search_value == 'bar'
 
-    @inrequest('/foo?search=bar')
+    @_inrequest('/foo?search=bar')
     def test_qs_search_disabled(self):
         g = PeopleGrid()
         g.enable_search = False
         g.apply_qs_args()
         assert g.search_value is None
 
-    @inrequest('/foo?search=bar')
+    @_inrequest('/foo?search=bar')
     def test_qs_no_searchable_columns(self):
         class TG(Grid):
             Column('First Name', Person.firstname)
@@ -947,7 +947,7 @@ class TestRequestJsonLoader:
 
 
 class TestWebSessionArgsLoader:
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_no_session_present(self):
         source_args = MultiDict([('foo', 'bar'), ('baz', 'bin')])
         source_args_copy = source_args.copy()
@@ -961,7 +961,7 @@ class TestWebSessionArgsLoader:
             ('__foreign_session_loaded__', False),
         ])
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_empty_session_not_stored(self):
         source_args = MultiDict([])
         grid = PeopleGrid()
@@ -970,7 +970,7 @@ class TestWebSessionArgsLoader:
         assert '_PeopleGrid' not in flask.session['dgsessions']
         assert grid.session_key not in flask.session['dgsessions']
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob')
     def test_matching_session_not_stored(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -981,14 +981,14 @@ class TestWebSessionArgsLoader:
         assert pg.session_key in flask.session['dgsessions']
         assert pg2.session_key not in flask.session['dgsessions']
 
-    @inrequest('/foo?dgreset=1&op(firstname)=eq&v1(firstname)=bob')
+    @_inrequest('/foo?dgreset=1&op(firstname)=eq&v1(firstname)=bob')
     def test_reset_result(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         args = loader.get_args(pg, flask.request.args)
         assert args == MultiDict([('dgreset', 1), ('session_key', None)])
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_reset_removes_session(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1002,7 +1002,7 @@ class TestWebSessionArgsLoader:
         assert '_PeopleGrid' not in flask.session['dgsessions']
         assert pg.session_key not in flask.session['dgsessions']
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_session_load_from_none(self):
         # test backwards compatibility for multidict load
         flask.session['dgsessions'] = {}
@@ -1011,7 +1011,7 @@ class TestWebSessionArgsLoader:
         args = loader.get_session_store(grid, MultiDict())
         assert args == MultiDict([])
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_session_load_from_multidict(self):
         # test backwards compatibility for multidict load
         flask.session['dgsessions'] = {
@@ -1022,7 +1022,7 @@ class TestWebSessionArgsLoader:
         args = loader.get_session_store(grid, MultiDict())
         assert args == MultiDict([('a', 'b'), ('a', 'c')])
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_session_load_from_dict(self):
         # test backwards compatibility for dict load
         flask.session['dgsessions'] = {
@@ -1033,7 +1033,7 @@ class TestWebSessionArgsLoader:
         args = loader.get_session_store(grid, MultiDict())
         assert args == MultiDict([('a', 'b'), ('c', 'd')])
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_default_session(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1043,7 +1043,7 @@ class TestWebSessionArgsLoader:
         args = loader.get_args(pg2, MultiDict())
         assert args['op(firstname)'] == 'eq'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1057,7 +1057,7 @@ class TestWebSessionArgsLoader:
         args = loader.get_args(pg, flask.request.args)
         assert args['op(firstname)'] == 'eq'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
     def test_page_args_always_applied(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1075,7 +1075,7 @@ class TestWebSessionArgsLoader:
         assert args['sort1'] == 'foo'
         assert '["perpage", "15"]' in flask.session['dgsessions'][pg.session_key]
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100&sort1=foo')
     def test_sort_args_always_applied(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1091,7 +1091,7 @@ class TestWebSessionArgsLoader:
         assert args['sort1'] == 'bar'
         assert '["sort1", "bar"]' in flask.session['dgsessions'][pg.session_key]
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session_with_export(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1110,7 +1110,7 @@ class TestWebSessionArgsLoader:
         assert args['export_to'] == 'xls'
         assert 'export_to' not in flask.session['dgsessions'][pg.session_key]
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session_with_override(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1128,7 +1128,7 @@ class TestWebSessionArgsLoader:
         assert args['op(createdts)'] == '!eq'
         assert args['v1(createdts)'] == '2017-05-06'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session_without_override(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1145,7 +1145,7 @@ class TestWebSessionArgsLoader:
         assert args['op(createdts)'] == '!eq'
         assert args['v1(createdts)'] == '2017-05-06'
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_apply_prevents_session_load(self):
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1160,7 +1160,7 @@ class TestWebSessionArgsLoader:
         assert 'v1(firstname)' not in args
         assert 'apply' not in flask.session['dgsessions'][pg.session_key]
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_expired_session_cleaned_up(self):
         with mock.patch(
             'webgrid.extensions.arrow.utcnow',
@@ -1184,7 +1184,7 @@ class TestWebSessionArgsLoader:
         assert '_PeopleGrid' not in flask.session['dgsessions']
         assert pg.session_key not in flask.session['dgsessions']
 
-    @inrequest('/foo')
+    @_inrequest('/foo')
     def test_expired_session_no_stamp(self):
         flask.session['dgsessions'] = {
             '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
@@ -1195,7 +1195,7 @@ class TestWebSessionArgsLoader:
         loader.cleanup_expired_sessions()
         assert flask.session['dgsessions']['_PeopleGrid'] == MultiDict([('a', 'b'), ('a', 'c')])
 
-    @inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
+    @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_expired_session_no_max_hours(self):
         with mock.patch(
             'webgrid.extensions.arrow.utcnow',
