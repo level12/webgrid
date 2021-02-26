@@ -1,12 +1,12 @@
 """
 A collection of utilities for testing webgrid functionality in client applications
 """
+from contextlib import contextmanager
 import re
 from unittest import mock
 import urllib
 import warnings
 
-import flask
 import openpyxl
 from pyquery import PyQuery
 import sqlalchemy
@@ -275,11 +275,28 @@ class GridBase:
     grid_cls = None
     filters = ()
     sort_tests = ()
+    _url = '/'
 
     @classmethod
     def setup_class(cls):
         if hasattr(cls, 'init'):
             cls.init()
+
+    @property
+    def url(self):
+        return self._url
+
+    @contextmanager
+    def url_context(self, url):
+        """Set the url for the request context manager
+
+        Allows setting the url once for multiple method calls, without affecting subsequent tests.
+        """
+        try:
+            self._url = url
+            yield url
+        finally:
+            self._url = '/'
 
     def query_to_str(self, statement, bind=None):
         """Render a SQLAlchemy query to a string."""
@@ -341,8 +358,9 @@ class GridBase:
             grid instance
         """
         grid = self.grid_cls(*args, **kwargs)
-        grid.apply_qs_args()
-        return grid
+        with grid.manager.request_context(url=self.url):
+            grid.apply_qs_args()
+            return grid
 
     def get_pyq(self, grid=None, **kwargs):
         """Turn provided/constructed grid into a rendered PyQuery object.
@@ -378,7 +396,7 @@ class GridBase:
 
         def sub_func(ex):
             url = '/?' + urllib.parse.urlencode(qs_args)
-            with flask.current_app.test_request_context(url):
+            with self.url_context(url):
                 if isinstance(ex, re.compile('').__class__):
                     self.assert_regex_in_query(ex)
                 else:
@@ -387,7 +405,7 @@ class GridBase:
 
         def page_func():
             url = '/?' + urllib.parse.urlencode([('onpage', 2), ('perpage', 1), *qs_args])
-            with flask.current_app.test_request_context(url):
+            with self.url_context(url):
                 pg = self.get_session_grid()
                 if pg.page_count > 1:
                     self.get_pyq()
@@ -419,7 +437,7 @@ class GridBase:
         d = {'sort1': k}
 
         def sub_func():
-            with flask.current_app.test_request_context('/?' + urllib.parse.urlencode(d)):
+            with self.url_context('/?' + urllib.parse.urlencode(d)):
                 self.assert_in_query('ORDER BY %s%s' % (ex, '' if asc else ' DESC'))
                 self.get_pyq()  # ensures the query executes and the grid renders without error
 

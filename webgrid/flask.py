@@ -85,6 +85,10 @@ class WebGrid(extensions.FrameworkManager):
         """Return request."""
         return request
 
+    def request_context(self, url='/'):
+        """Get request context for tests."""
+        return current_app.test_request_context(url)
+
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
         return url_for('{}.static'.format(self.blueprint_name), filename=url_tail)

@@ -493,6 +493,11 @@ class FrameworkManager(ABC):
 
         return args
 
+    @abstractmethod
+    def request_context(self, url='/'):
+        """Get request context for tests."""
+
+
     def request_args(self):
         warnings.warn(
             'request_args is deprecated and will be removed in a future version.',
