@@ -301,138 +301,146 @@ class TestNumberFilters(CheckFilterBase):
         assert expr.right.value == '%12345%'
 
 
+@pytest.mark.parametrize('field,field_name', (
+    (Person.due_date, 'persons.due_date'),
+    (ArrowRecord.created_utc, 'arrow_records.created_utc'),
+))
 class TestDateFilter(CheckFilterBase):
-    between_sql = "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-01-31'"
-    between_week_sql = "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-01-07'"
 
-    def test_eq(self):
-        filter = DateFilter(Person.due_date)
+    def between_sql(self, field_name):
+        return f"WHERE {field_name} BETWEEN '2012-01-01' AND '2012-01-31'"
+
+    def between_week_sql(self, field_name):
+        return f"WHERE {field_name} BETWEEN '2012-01-01' AND '2012-01-07'"
+
+    def test_eq(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('eq', '12/31/2010')
-        self.assert_filter_query(filter, "WHERE persons.due_date = '2010-12-31'")
+        self.assert_filter_query(filter, f"WHERE {field_name} = '2010-12-31'")
         assert filter.description == '12/31/2010'
 
-    def test_eq_none(self):
-        filter = DateFilter(Person.due_date)
+    def test_eq_none(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('eq', None)
 
-    def test_eq_default(self):
-        filter = DateFilter(Person.due_date, default_op='eq')
+    def test_eq_default(self, field, field_name):
+        filter = DateFilter(field, default_op='eq')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_not_eq(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_eq(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('!eq', '12/31/2010')
-        self.assert_filter_query(filter, "WHERE persons.due_date != '2010-12-31'")
+        self.assert_filter_query(filter, f"WHERE {field_name} != '2010-12-31'")
         assert filter.description == 'excluding 12/31/2010'
 
-    def test_noteq_default(self):
-        filter = DateFilter(Person.due_date, default_op='!eq')
+    def test_noteq_default(self, field, field_name):
+        filter = DateFilter(field, default_op='!eq')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_not_eq_none(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_eq_none(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('!eq', None)
 
-    def test_lte(self):
-        filter = DateFilter(Person.due_date)
+    def test_lte(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('lte', '12/31/2010')
-        self.assert_filter_query(filter, "WHERE persons.due_date <= '2010-12-31'")
+        self.assert_filter_query(filter, f"WHERE {field_name} <= '2010-12-31'")
         assert filter.description == 'up to 12/31/2010'
         with pytest.raises(formencode.Invalid):
             filter.set('lte', '')
 
-    def test_lte_default(self):
-        filter = DateFilter(Person.due_date, default_op='lte')
+    def test_lte_default(self, field, field_name):
+        filter = DateFilter(field, default_op='lte')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_lte_none(self):
-        filter = DateFilter(Person.due_date)
+    def test_lte_none(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
 
-    def test_gte(self):
-        filter = DateFilter(Person.due_date)
+    def test_gte(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('gte', '12/31/2010')
-        self.assert_filter_query(filter, "WHERE persons.due_date >= '2010-12-31'")
+        self.assert_filter_query(filter, f"WHERE {field_name} >= '2010-12-31'")
         assert filter.description == 'beginning 12/31/2010'
 
-    def test_gte_default(self):
-        filter = DateFilter(Person.due_date, default_op='gte')
+    def test_gte_default(self, field, field_name):
+        filter = DateFilter(field, default_op='gte')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_gte_none(self):
-        figter = DateFilter(Person.due_date)
+    def test_gte_none(self, field, field_name):
+        figter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             figter.set('gte', None)
 
-    def test_empty(self):
-        filter = DateFilter(Person.due_date)
+    def test_empty(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('empty', None)
-        self.assert_filter_query(filter, "WHERE persons.due_date IS NULL")
+        self.assert_filter_query(filter, f"WHERE {field_name} IS NULL")
         assert filter.description == 'date not specified'
         filter.set('empty', '')
-        self.assert_filter_query(filter, "WHERE persons.due_date IS NULL")
+        self.assert_filter_query(filter, f"WHERE {field_name} IS NULL")
         assert filter.description == 'date not specified'
 
-    def test_empty_default(self):
-        filter = DateTimeFilter(Person.createdts, default_op='empty')
+    def test_empty_default(self, field, field_name):
+        filter = DateTimeFilter(field, default_op='empty')
         filter.set(None, None)
         assert filter.description == 'date not specified'
 
-    def test_not_empty(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_empty(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('!empty', None)
-        self.assert_filter_query(filter, "WHERE persons.due_date IS NOT NULL")
+        self.assert_filter_query(filter, f"WHERE {field_name} IS NOT NULL")
         assert filter.description == 'any date'
         filter.set('!empty', '')
-        self.assert_filter_query(filter, "WHERE persons.due_date IS NOT NULL")
+        self.assert_filter_query(filter, f"WHERE {field_name} IS NOT NULL")
         assert filter.description == 'any date'
 
-    def test_not_empty_default(self):
-        filter = DateTimeFilter(Person.createdts, default_op='!empty')
+    def test_not_empty_default(self, field, field_name):
+        filter = DateTimeFilter(field, default_op='!empty')
         filter.set(None, None)
         assert filter.description == 'any date'
 
-    def test_between(self):
-        filter = DateFilter(Person.due_date)
+    def test_between(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('between', '1/31/2010', '12/31/2010')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2010-01-31' AND '2010-12-31'"
+            f"WHERE {field_name} BETWEEN '2010-01-31' AND '2010-12-31'"
         )
         assert filter.description == '01/31/2010 - 12/31/2010'
 
-    def test_between_swap(self):
-        filter = DateFilter(Person.due_date)
+    def test_between_swap(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('between', '12/31/2010', '1/31/2010')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2010-01-31' AND '2010-12-31'"
+            f"WHERE {field_name} BETWEEN '2010-01-31' AND '2010-12-31'"
         )
         assert filter.description == '01/31/2010 - 12/31/2010'
 
-    def test_between_missing_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_between_missing_date(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('between', '12/31/2010', '')
         today = dt.date.today().strftime('%Y-%m-%d')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2010-12-31' AND '{}'".format(today)
+            f"WHERE {field_name} BETWEEN '2010-12-31' AND '{today}'"
         )
 
-    def test_between_none_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_between_none_date(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('between', '12/31/2010')
         today = dt.date.today().strftime('%Y-%m-%d')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2010-12-31' AND '{}'".format(today)
+            f"WHERE {field_name} BETWEEN '2010-12-31' AND '{today}'"
         )
 
         with pytest.raises(formencode.Invalid):
@@ -440,34 +448,34 @@ class TestDateFilter(CheckFilterBase):
         assert filter.error is True
         assert filter.description == 'invalid'
 
-    def test_between_blank(self):
-        filter = DateFilter(Person.due_date)
+    def test_between_blank(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('between', '', '')
         assert filter.error is True
         assert filter.description == 'invalid'
 
-    def test_between_default(self):
-        filter = DateFilter(Person.due_date, default_op='between')
+    def test_between_default(self, field, field_name):
+        filter = DateFilter(field, default_op='between')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_not_between_missing_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_between_missing_date(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('!between', '12/31/2010', '')
         today = dt.date.today().strftime('%Y-%m-%d')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date NOT BETWEEN '2010-12-31' AND '{}'".format(today)
+            f"WHERE {field_name} NOT BETWEEN '2010-12-31' AND '{today}'"
         )
 
-    def test_not_between_none_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_between_none_date(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('!between', '12/31/2010')
         today = dt.date.today().strftime('%Y-%m-%d')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date NOT BETWEEN '2010-12-31' AND '{}'".format(today)
+            f"WHERE {field_name} NOT BETWEEN '2010-12-31' AND '{today}'"
         )
 
         with pytest.raises(formencode.Invalid):
@@ -475,356 +483,358 @@ class TestDateFilter(CheckFilterBase):
         assert filter.error is True
         assert filter.description == 'invalid'
 
-    def test_not_between(self):
-        filter = DateFilter(Person.due_date)
+    def test_not_between(self, field, field_name):
+        filter = DateFilter(field)
         filter.set('!between', '1/31/2010', '12/31/2010')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date NOT BETWEEN '2010-01-31' AND '2010-12-31'"
+            f"WHERE {field_name} NOT BETWEEN '2010-01-31' AND '2010-12-31'"
         )
         assert filter.description == 'excluding 01/31/2010 - 12/31/2010'
 
-    def test_not_between_default(self):
-        filter = DateFilter(Person.due_date, default_op='!between')
+    def test_not_between_default(self, field, field_name):
+        filter = DateFilter(field, default_op='!between')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_days_ago(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_days_ago(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('da', '10')
-        self.assert_filter_query(filter, "WHERE persons.due_date = '2011-12-22'")
+        self.assert_filter_query(filter, f"WHERE {field_name} = '2011-12-22'")
         assert filter.description == '12/22/2011'
 
-    def test_days_ago_default(self):
-        filter = DateFilter(Person.due_date, default_op='da')
+    def test_days_ago_default(self, field, field_name):
+        filter = DateFilter(field, default_op='da')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_days_ago_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_days_ago_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('da', None)
 
-    def test_less_than_days_ago(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_less_than_days_ago(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('ltda', '10')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date > '2011-12-22' AND persons.due_date <= '2012-01-01'"
+            f"WHERE {field_name} > '2011-12-22' AND {field_name} <= '2012-01-01'"
         )
         assert filter.description == '12/22/2011 - 01/01/2012'
 
-    def test_less_than_days_ago_default(self):
-        filter = DateFilter(Person.due_date, default_op='ltda')
+    def test_less_than_days_ago_default(self, field, field_name):
+        filter = DateFilter(field, default_op='ltda')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_less_than_days_ago_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_less_than_days_ago_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('ltda', None)
 
-    def test_more_than_days_ago(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_more_than_days_ago(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('mtda', '10')
-        self.assert_filter_query(filter, "WHERE persons.due_date < '2011-12-22'")
+        self.assert_filter_query(filter, f"WHERE {field_name} < '2011-12-22'")
         assert filter.description == 'before 12/22/2011'
 
-    def test_more_than_days_ago_default(self):
-        filter = DateFilter(Person.due_date, default_op='mtda')
+    def test_more_than_days_ago_default(self, field, field_name):
+        filter = DateFilter(field, default_op='mtda')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_more_than_days_ago_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_more_than_days_ago_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('mtda', None)
 
-    def test_in_less_than_days(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_less_than_days(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('iltd', '10')
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date >= '2012-01-01' AND persons.due_date < '2012-01-11'"
+            f"WHERE {field_name} >= '2012-01-01' AND {field_name} < '2012-01-11'"
         )
         assert filter.description == '01/01/2012 - 01/11/2012'
 
-    def test_in_less_than_days_default(self):
-        filter = DateFilter(Person.due_date, default_op='iltd')
+    def test_in_less_than_days_default(self, field, field_name):
+        filter = DateFilter(field, default_op='iltd')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_in_less_than_days_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_less_than_days_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('iltd', None)
 
-    def test_in_more_than_days(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_more_than_days(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('imtd', '10')
-        self.assert_filter_query(filter, "WHERE persons.due_date > '2012-01-11'")
+        self.assert_filter_query(filter, f"WHERE {field_name} > '2012-01-11'")
         assert filter.description == 'after 01/11/2012'
 
-    def test_in_more_than_days_default(self):
-        filter = DateFilter(Person.due_date, default_op='imtd')
+    def test_in_more_than_days_default(self, field, field_name):
+        filter = DateFilter(field, default_op='imtd')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_in_more_than_days_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_more_than_days_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('imtd', None)
 
-    def test_in_days(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_days(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('ind', '10')
-        self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-11'")
+        self.assert_filter_query(filter, f"WHERE {field_name} = '2012-01-11'")
         assert filter.description == '01/11/2012'
 
-    def test_in_days_default(self):
-        filter = DateFilter(Person.due_date, default_op='ind')
+    def test_in_days_default(self, field, field_name):
+        filter = DateFilter(field, default_op='ind')
         filter.set(None, None)
         assert filter.description == 'all'
 
-    def test_in_days_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_days_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid):
             filter.set('ind', None)
 
-    def test_today(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_today(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('today', None)
-        self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-01'")
+        self.assert_filter_query(filter, f"WHERE {field_name} = '2012-01-01'")
         assert filter.description == '01/01/2012'
 
-    def test_today_default(self):
-        filter = DateFilter(Person.due_date, default_op='today', _now=dt.date(2012, 1, 1))
+    def test_today_default(self, field, field_name):
+        filter = DateFilter(field, default_op='today', _now=dt.date(2012, 1, 1))
         filter.set(None, None)
         assert filter.description == '01/01/2012'
 
-    def test_this_week(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 4))
+    def test_this_week(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 4))
         filter.set('thisweek', None)
-        self.assert_filter_query(filter, self.between_week_sql)
+        self.assert_filter_query(filter, self.between_week_sql(field_name))
         assert filter.description == '01/01/2012 - 01/07/2012'
 
-    def test_this_week_default(self):
-        filter = DateFilter(Person.due_date, default_op='thisweek', _now=dt.date(2012, 1, 4))
+    def test_this_week_default(self, field, field_name):
+        filter = DateFilter(field, default_op='thisweek', _now=dt.date(2012, 1, 4))
         filter.set(None, None)
         assert filter.description == '01/01/2012 - 01/07/2012'
 
-    def test_this_week_left_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_this_week_left_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('thisweek', None)
-        self.assert_filter_query(filter, self.between_week_sql)
+        self.assert_filter_query(filter, self.between_week_sql(field_name))
         assert filter.description == '01/01/2012 - 01/07/2012'
 
-    def test_this_week_right_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 7))
+    def test_this_week_right_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 7))
         filter.set('thisweek', None)
-        self.assert_filter_query(filter, self.between_week_sql)
+        self.assert_filter_query(filter, self.between_week_sql(field_name))
         assert filter.description == '01/01/2012 - 01/07/2012'
 
-    def test_days_operator_with_blank_value(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_days_operator_with_blank_value(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid, match='Please enter a value'):
             filter.set('ind', '')
 
-    def test_this_month(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 4))
+    def test_this_month(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 4))
         filter.set('thismonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_this_month_default(self):
-        filter = DateFilter(Person.due_date, default_op='thismonth', _now=dt.date(2012, 1, 4))
+    def test_this_month_default(self, field, field_name):
+        filter = DateFilter(field, default_op='thismonth', _now=dt.date(2012, 1, 4))
         filter.set(None, None)
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_this_month_left_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_this_month_left_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('thismonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_this_month_right_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 31))
+    def test_this_month_right_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 31))
         filter.set('thismonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_last_month(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
+    def test_last_month(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 4))
         filter.set('lastmonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_last_month_default(self):
-        filter = DateFilter(Person.due_date, default_op='lastmonth', _now=dt.date(2012, 2, 4))
+    def test_last_month_default(self, field, field_name):
+        filter = DateFilter(field, default_op='lastmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_last_month_left_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 1))
+    def test_last_month_left_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 1))
         filter.set('lastmonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_last_month_right_edge(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 29))
+    def test_last_month_right_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 29))
         filter.set('lastmonth', None)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == '01/01/2012 - 01/31/2012'
 
-    def test_this_year(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
+    def test_this_year(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 4))
         filter.set('thisyear', None)
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-12-31'"
+            f"WHERE {field_name} BETWEEN '2012-01-01' AND '2012-12-31'"
         )
         assert filter.description == '01/01/2012 - 12/31/2012'
 
-    def test_this_year_default(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4), default_op='thisyear')
+    def test_this_year_default(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 4), default_op='thisyear')
         filter.set(None, None)
         self.assert_filter_query(
             filter,
-            "WHERE persons.due_date BETWEEN '2012-01-01' AND '2012-12-31'"
+            f"WHERE {field_name} BETWEEN '2012-01-01' AND '2012-12-31'"
         )
         assert filter.description == '01/01/2012 - 12/31/2012'
 
-    def test_selmonth(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
+    def test_selmonth(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 4))
         filter.set('selmonth', 1, 2012)
-        self.assert_filter_query(filter, self.between_sql)
+        self.assert_filter_query(filter, self.between_sql(field_name))
         assert filter.description == 'Jan 2012'
 
-    def test_selmonth_default(self):
-        filter = DateFilter(Person.due_date, default_op='selmonth', _now=dt.date(2012, 2, 4))
+    def test_selmonth_default(self, field, field_name):
+        filter = DateFilter(field, default_op='selmonth', _now=dt.date(2012, 2, 4))
         filter.set(None, None)
         assert filter.description == 'All'
 
-    def test_selmonth_none(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 4))
+    def test_selmonth_none(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 4))
         with pytest.raises(formencode.Invalid):
             filter.set('selmonth', None, 2012)
 
-    def test_int_filter_process(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 2, 29))
+    def test_int_filter_process(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 2, 29))
         filter.set('ltda', '1', '')
         assert filter.error is False
 
-    def test_bad_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_bad_date(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('eq', '1/1/2015 - 8/31/2015')
         assert filter.error is True
         assert filter.description == 'invalid'
 
-    def test_days_ago_overflow(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_days_ago_overflow(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
             filter.set('da', '10142015')
 
-    def test_in_days_overflow(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_days_overflow(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
             filter.set('ind', '10000000')
 
-    def test_in_days_empty_value2(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_in_days_empty_value2(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         filter.set('ind', '10', '')
-        self.assert_filter_query(filter, "WHERE persons.due_date = '2012-01-11'")
+        self.assert_filter_query(filter, f"WHERE {field_name} = '2012-01-11'")
 
-    def test_invalid_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_invalid_date(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid, match='invalid date'):
             filter.set('eq', '7/45/2007')
 
-    def test_overflow_date(self):
-        filter = DateFilter(Person.due_date)
+    def test_overflow_date(self, field, field_name):
+        filter = DateFilter(field)
         with pytest.raises(formencode.Invalid, match='invalid date'):
             filter.set('eq', '12345678901234567890')
 
-    def test_days_operator_with_invalid_value(self):
-        filter = DateFilter(Person.due_date, _now=dt.date(2012, 1, 1))
+    def test_days_operator_with_invalid_value(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
         with pytest.raises(formencode.Invalid, match='Please enter an integer value'):
             filter.set('ind', 'a')
 
-    def test_default(self):
-        filter = DateFilter(Person.due_date, default_op='between', default_value1='1/31/2010',
+    def test_default(self, field, field_name):
+        filter = DateFilter(field, default_op='between', default_value1='1/31/2010',
                             default_value2='12/31/2010')
         filter.set(None, None)
         self.assert_filter_query(filter,
-                                 "WHERE persons.due_date BETWEEN '2010-01-31' AND '2010-12-31'")
+                                 f"WHERE {field_name} BETWEEN '2010-01-31' AND '2010-12-31'")
 
-    def test_search_expr(self):
-        expr_factory = DateFilter(Person.due_date).get_search_expr()
+    def test_search_expr(self, field, field_name):
+        expr_factory = DateFilter(field).get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('foo')
-        assert str(expr) == 'CAST(persons.due_date AS VARCHAR) LIKE :param_1', str(expr)
+        assert str(expr) == f"CAST({field_name} AS VARCHAR) LIKE :param_1", str(expr)
         assert expr.right.value == '%foo%'
 
-    def test_search_expr_with_numeric(self):
+    def test_search_expr_with_numeric(self, field, field_name):
         fake_dialect = namedtuple('dialect', 'name')
 
         # mssql within range
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('mssql'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('mssql'))
         expr_factory = filter.get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('1753')
         assert str(expr) == (
-            'CAST(persons.due_date AS VARCHAR) LIKE :param_1 OR persons.due_date = :due_date_1'
+            f"CAST({field_name} AS VARCHAR) LIKE :param_1 "
+            f"OR {field_name} = :{field_name.split('.')[1]}_1"
         )
         assert expr.clauses[0].right.value == '%1753%', expr.clauses[0].right.value
         assert expr.clauses[1].right.value.year == 1753
 
         # mssql out of range
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('mssql'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('mssql'))
         expr_factory = filter.get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('1752')
-        assert str(expr) == 'CAST(persons.due_date AS VARCHAR) LIKE :param_1'
+        assert str(expr) == f"CAST({field_name} AS VARCHAR) LIKE :param_1"
         assert expr.right.value == '%1752%'
 
-    def test_search_expr_with_date(self):
-        expr_factory = DateFilter(Person.due_date).get_search_expr()
+    def test_search_expr_with_date(self, field, field_name):
+        expr_factory = DateFilter(field).get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('6/19/2019')
         assert str(expr) == (
-            'CAST(persons.due_date AS VARCHAR) LIKE :param_1 OR persons.due_date = :due_date_1'
+            f"CAST({field_name} AS VARCHAR) LIKE :param_1 "
+            f"OR {field_name} = :{field_name.split('.')[1]}_1"
         )
         assert expr.clauses[0].right.value == '%6/19/2019%'
         assert expr.clauses[1].right.value == dt.datetime(2019, 6, 19)
 
-    def test_overflow_search_expr(self):
-        expr_factory = DateFilter(Person.due_date).get_search_expr()
+    def test_overflow_search_expr(self, field, field_name):
+        expr_factory = DateFilter(field).get_search_expr()
         # This generates an overflow error that should be handled
         expr_factory('12345678901234567890')
 
-    def test_valid_date_for_backend(self):
+    def test_valid_date_for_backend(self, field, field_name):
         fake_dialect = namedtuple('dialect', 'name')
 
-        filter = DateFilter(Person.due_date)
+        filter = DateFilter(field)
         assert filter.valid_date_for_backend(dt.date(1, 1, 1)) is True
 
-        filter = DateFilter(Person.due_date).new_instance()
+        filter = DateFilter(field).new_instance()
         assert filter.valid_date_for_backend('foo') is True
 
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('postgresql'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('postgresql'))
         assert filter.valid_date_for_backend(dt.date(1, 1, 1)) is True
         assert filter.valid_date_for_backend(dt.date(9999, 12, 31)) is True
         assert filter.valid_date_for_backend(dt.datetime(1, 1, 1)) is True
         assert filter.valid_date_for_backend(dt.datetime(9999, 12, 31, 23, 59, 59)) is True
 
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('sqlite'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('sqlite'))
         assert filter.valid_date_for_backend(dt.date(1, 1, 1)) is True
         assert filter.valid_date_for_backend(dt.date(9999, 12, 31)) is True
         assert filter.valid_date_for_backend(dt.datetime(1, 1, 1)) is True
         assert filter.valid_date_for_backend(dt.datetime(9999, 12, 31, 23, 59, 59)) is True
 
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('mssql'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('mssql'))
         assert filter.valid_date_for_backend(dt.date(1, 1, 1)) is False
         assert filter.valid_date_for_backend(dt.date(1752, 12, 31)) is False
         assert filter.valid_date_for_backend(dt.date(1753, 1, 1)) is True
@@ -836,7 +846,7 @@ class TestDateFilter(CheckFilterBase):
         assert filter.valid_date_for_backend(dt.datetime(9999, 12, 31, 23, 59, 59)) is True
         assert filter.valid_date_for_backend(dt.datetime(9999, 12, 31, 23, 59, 59, 9999)) is False
 
-        filter = DateFilter(Person.due_date).new_instance(dialect=fake_dialect('foo'))
+        filter = DateFilter(field).new_instance(dialect=fake_dialect('foo'))
         assert filter.valid_date_for_backend(dt.date(1, 1, 1)) is True
 
 
