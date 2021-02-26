@@ -1,7 +1,6 @@
 """
 A collection of utilities for testing webgrid functionality in client applications
 """
-from contextlib import contextmanager
 import re
 from unittest import mock
 import urllib
@@ -275,28 +274,11 @@ class GridBase:
     grid_cls = None
     filters = ()
     sort_tests = ()
-    _url = '/'
 
     @classmethod
     def setup_class(cls):
         if hasattr(cls, 'init'):
             cls.init()
-
-    @property
-    def url(self):
-        return self._url
-
-    @contextmanager
-    def url_context(self, url):
-        """Set the url for the request context manager
-
-        Allows setting the url once for multiple method calls, without affecting subsequent tests.
-        """
-        try:
-            self._url = url
-            yield url
-        finally:
-            self._url = '/'
 
     def query_to_str(self, statement, bind=None):
         """Render a SQLAlchemy query to a string."""
@@ -351,16 +333,37 @@ class GridBase:
             assert re.search(look_for, query_str), \
                 '"{0}" not found in: {1}'.format(look_for, query_str)
 
-    def get_session_grid(self, *args, **kwargs):
-        """Construct grid from args and kwargs, and apply query string.
+    def get_grid(self, grid_args, *args, **kwargs):
+        """Construct grid from args and kwargs, and apply grid_args.
+
+        Args:
+            grid_args: grid query args
 
         Returns:
             grid instance
         """
         grid = self.grid_cls(*args, **kwargs)
-        with grid.manager.request_context(url=self.url):
+        grid.apply_qs_args(add_user_warnings=False, grid_args=grid_args)
+        return grid
+
+    def get_session_grid(self, *args, _query_string=None, **kwargs):
+        """Construct grid from args and kwargs, and apply query string.
+
+        Args:
+            _query_string: URL query string with grid query args
+
+        Returns:
+            grid instance
+        """
+        grid = self.grid_cls(*args, **kwargs)
+        if grid.manager.request():
+            # request context already exists
             grid.apply_qs_args()
-            return grid
+        else:
+            url = f'/?{_query_string}' if _query_string else '/'
+            with grid.manager.test_request_context(url=url):
+                grid.apply_qs_args()
+        return grid
 
     def get_pyq(self, grid=None, **kwargs):
         """Turn provided/constructed grid into a rendered PyQuery object.
@@ -395,20 +398,19 @@ class GridBase:
             qs_args.append(('v1({0})'.format(name), value))
 
         def sub_func(ex):
-            url = '/?' + urllib.parse.urlencode(qs_args)
-            with self.url_context(url):
-                if isinstance(ex, re.compile('').__class__):
-                    self.assert_regex_in_query(ex)
-                else:
-                    self.assert_in_query(ex)
-                self.get_pyq()  # ensures the query executes and the grid renders without error
+            query_string = urllib.parse.urlencode(qs_args)
+            if isinstance(ex, re.compile('').__class__):
+                self.assert_regex_in_query(ex, _query_string=query_string)
+            else:
+                self.assert_in_query(ex, _query_string=query_string)
+            # ensures the query executes and the grid renders without error
+            self.get_pyq(_query_string=query_string)
 
         def page_func():
-            url = '/?' + urllib.parse.urlencode([('onpage', 2), ('perpage', 1), *qs_args])
-            with self.url_context(url):
-                pg = self.get_session_grid()
-                if pg.page_count > 1:
-                    self.get_pyq()
+            query_string = urllib.parse.urlencode([('onpage', 2), ('perpage', 1), *qs_args])
+            pg = self.get_session_grid(_query_string=query_string)
+            if pg.page_count > 1:
+                self.get_pyq(_query_string=query_string)
 
         if self.grid_cls.pager_on:
             page_func()
@@ -437,9 +439,12 @@ class GridBase:
         d = {'sort1': k}
 
         def sub_func():
-            with self.url_context('/?' + urllib.parse.urlencode(d)):
-                self.assert_in_query('ORDER BY %s%s' % (ex, '' if asc else ' DESC'))
-                self.get_pyq()  # ensures the query executes and the grid renders without error
+            query_string = urllib.parse.urlencode(d)
+            self.assert_in_query(
+                'ORDER BY %s%s' % (ex, '' if asc else ' DESC'), _query_string=query_string
+            )
+            # ensures the query executes and the grid renders without error
+            self.get_pyq(_query_string=query_string)
 
         return sub_func()
 

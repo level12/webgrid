@@ -667,11 +667,11 @@ class TestQueryStringArgs(object):
     def test_qs_filtering(self):
         first_id = Status.query.filter_by(label='pending').one().id
         second_id = Status.query.filter_by(label='in process').one().id
-        with flask.current_app.test_request_context(
+        pg = PeopleGrid()
+        with pg.manager.test_request_context(
             '/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is'
             f'&v1(status)={first_id}&v1(status)={second_id}'
         ):
-            pg = PeopleGrid()
             pg.apply_qs_args()
         assert pg.columns[0].filter.op == 'eq'
         assert pg.columns[0].filter.value1 == 'fn001'

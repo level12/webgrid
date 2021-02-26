@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import flask
-from flask import request, session, flash, url_for, send_file
 
 from webgrid import extensions, renderers
 
@@ -59,39 +58,39 @@ class WebGrid(extensions.FrameworkManager):
 
     def request_form_args(self):
         """Return POST request args."""
-        return request.form
+        return flask.request.form
 
     def request_json(self):
         """Return json body of request."""
-        return request.json
+        return flask.request.json
 
     def request_url_args(self):
         """Return GET request args."""
-        return request.args
+        return flask.request.args
 
     def web_session(self):
         """Return current session."""
-        return session
+        return flask.session
 
     def persist_web_session(self):
         """Some frameworks require an additional step to persist session data."""
-        session.modified = True
+        flask.session.modified = True
 
     def flash_message(self, category, message):
         """Add a flash message through the framework."""
-        flash(message, category)
+        flask.flash(message, category)
 
     def request(self):
         """Return request."""
-        return request
+        return flask.request
 
-    def request_context(self, url='/'):
+    def test_request_context(self, url='/'):
         """Get request context for tests."""
-        return current_app.test_request_context(url)
+        return flask.current_app.test_request_context(url)
 
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
-        return url_for('{}.static'.format(self.blueprint_name), filename=url_tail)
+        return flask.url_for('{}.static'.format(self.blueprint_name), filename=url_tail)
 
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets."""
@@ -111,8 +110,8 @@ class WebGrid(extensions.FrameworkManager):
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
         as_attachment = (file_name is not None)
-        return send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
-                         attachment_filename=file_name)
+        return flask.send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
+                               attachment_filename=file_name)
 
 
 class WebGridAPI(WebGrid):

@@ -494,7 +494,7 @@ class FrameworkManager(ABC):
         return args
 
     @abstractmethod
-    def request_context(self, url='/'):
+    def test_request_context(self, url='/'):
         """Get request context for tests."""
 
 
