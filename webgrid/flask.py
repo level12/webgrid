@@ -1,6 +1,14 @@
 from __future__ import absolute_import
 
-from flask import request, session, flash, Blueprint, url_for, send_file
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 
 from webgrid.extensions import FrameworkManager, translation_manager
 
@@ -59,6 +67,10 @@ class WebGrid(FrameworkManager):
     def request(self):
         """Return request."""
         return request
+
+    def request_context(self, url='/'):
+        """Get request context for tests."""
+        return current_app.test_request_context(url)
 
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
