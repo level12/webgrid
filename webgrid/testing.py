@@ -284,7 +284,7 @@ class GridBase:
         """Render a SQLAlchemy query to a string."""
         return query_to_str(statement, bind=bind)
 
-    def assert_in_query(self, look_for, grid=None, **kwargs):
+    def assert_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given SQL string is in the grid's query.
 
         Args:
@@ -295,10 +295,10 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         assert_in_query(grid, look_for)
 
-    def assert_not_in_query(self, look_for, grid=None, **kwargs):
+    def assert_not_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given SQL string is not in the grid's query.
 
         Args:
@@ -309,10 +309,10 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         assert_not_in_query(grid, look_for)
 
-    def assert_regex_in_query(self, look_for, grid=None, **kwargs):
+    def assert_regex_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given regex matches the grid's query.
 
         Args:
@@ -323,7 +323,7 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(grid.build_query())
 
         if hasattr(look_for, 'search'):
@@ -465,7 +465,7 @@ class GridBase:
                 read = cells.eq(col_idx).text()
                 assert read == val, 'row {} col {} {} != {}'.format(row_idx, col_idx, read, val)
 
-    def expect_table_header(self, expect, grid=None, **kwargs):
+    def expect_table_header(self, expect, grid=None, _query_string=None, **kwargs):
         """Run assertions to compare rendered headings with expected data.
 
         Args:
@@ -476,14 +476,14 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        d = self.get_pyq(grid, **kwargs)
+        d = self.get_pyq(grid, _query_string=_query_string, **kwargs)
         self._compare_table_block(
             d.find('table.records thead tr'),
             'th',
             expect,
         )
 
-    def expect_table_contents(self, expect, grid=None, **kwargs):
+    def expect_table_contents(self, expect, grid=None, _query_string=None, **kwargs):
         """Run assertions to compare rendered data rows with expected data.
 
         Args:
@@ -494,16 +494,16 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        d = self.get_pyq(grid, **kwargs)
+        d = self.get_pyq(grid, _query_string=_query_string, **kwargs)
         self._compare_table_block(
             d.find('table.records tbody tr'),
             'td',
             expect,
         )
 
-    def test_search_expr_passes(self, grid=None):
+    def test_search_expr_passes(self, grid=None, _query_string=None):
         """Assert that a single-search query executes without error."""
-        grid = grid or self.get_session_grid()
+        grid = grid or self.get_session_grid(_query_string=_query_string)
         if grid.enable_search:
             grid.records
 
@@ -523,22 +523,24 @@ class MSSQLGridBase(GridBase):
             r"(\(|WHEN|LIKE|ELSE|THEN|[,=\+])( ?)N'(.*?)'", r"\1\2'\3'", query_str
         )
 
-    def assert_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
         assert look_for in query_str or look_for in query_str_repl, \
             '"{0}" not found in: {1}'.format(look_for, query_str)
 
-    def assert_not_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_not_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
         assert look_for not in query_str or look_for not in query_str_repl, \
             '"{0}" found in: {1}'.format(look_for, query_str)
 
-    def assert_regex_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_regex_in_query(
+        self, look_for, grid=None, context=None, _query_string=None, **kwargs
+    ):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
 
