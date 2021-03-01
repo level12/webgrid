@@ -114,7 +114,7 @@ class DefaultOpGrid(Grid):
 class ArrowGrid(Grid):
     session_on = True
 
-    DateTimeColumn(_('Created'), ArrowRecord.created_utc, DateTimeFilter)
+    DateTimeColumn(_('Created'), ArrowRecord.created_utc, DateFilter)
 
     def query_prep(self, query, has_sort, has_filters):
         # default sort
