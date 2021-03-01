@@ -30,7 +30,7 @@ from .extensions import (
     translation_manager
 )
 from .utils import current_url
-from . import types
+from . import extensions, types
 import csv
 
 try:
@@ -354,10 +354,20 @@ class HTML(GroupMixin, Renderer):
     def header_form_attrs(self, **kwargs):
         """HTML attributes to render on the grid header form element."""
         return {
-            'method': 'get',
+            'method': self.form_action_method(),
             'action': self.form_action_url(),
             **kwargs
         }
+
+    def form_action_method(self):
+        """Detect whether the header form should have a GET or POST action.
+
+        By default, we look at the grid manager's args_loaders for RequestFormLoader. If it
+        is present, the form will be POST.
+        """
+        if extensions.RequestFormLoader in self.grid.manager.args_loaders:
+            return 'post'
+        return 'get'
 
     def form_action_url(self):
         """URL target for the grid header form."""

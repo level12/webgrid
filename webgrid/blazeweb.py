@@ -38,6 +38,9 @@ class WebGrid(FrameworkManager):
         """Return GET request args."""
         return rg.request.args
 
+    def csrf_token(self):
+        raise NotImplementedError
+
     def web_session(self):
         return user
 

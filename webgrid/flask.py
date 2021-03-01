@@ -69,6 +69,11 @@ class WebGrid(extensions.FrameworkManager):
         """Return GET request args."""
         return request.args
 
+    def csrf_token(self):
+        """Return a CSRF token for POST."""
+        from flask_wtf.csrf import generate_csrf
+        return generate_csrf()
+
     def web_session(self):
         """Return current session."""
         return session
