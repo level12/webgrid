@@ -3,8 +3,11 @@
         {{ message }}
     {%- endmacro %}
 {%- endif -%}
-
-<form {{ renderer.header_form_attrs(class='header')|wg_attributes }}>
+{%- set form_attrs = renderer.header_form_attrs(class='header') -%}
+<form {{ form_attrs|wg_attributes }}>
+    {%- if form_attrs['method'] == 'post' -%}
+        <input type="hidden" name="csrf_token" value="{{ renderer.grid.manager.csrf_token() }}"/>
+    {%- endif -%}
     <div class="top">
         <div class="filtering">
             {{ renderer.header_filtering()|wg_safe }}
