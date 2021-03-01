@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from flask import request, session, flash, Blueprint, url_for, send_file
 
-from webgrid.extensions import FrameworkManager, translation_manager
+from webgrid import extensions
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
@@ -10,7 +10,7 @@ except ImportError:
     configure_jinja_environment = lambda *args, **kwargs: None  # noqa: E731
 
 
-class WebGrid(FrameworkManager):
+class WebGrid(extensions.FrameworkManager):
     """Grid manager for connecting grids to Flask webapps.
 
     Instance should be assigned to the manager attribute of a grid class::
@@ -86,10 +86,63 @@ class WebGrid(FrameworkManager):
             static_url_path=app.static_url_path + '/webgrid'
         )
         app.register_blueprint(self.blueprint)
-        configure_jinja_environment(app.jinja_env, translation_manager)
+        configure_jinja_environment(app.jinja_env, extensions.translation_manager)
 
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
         as_attachment = (file_name is not None)
         return send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
                          attachment_filename=file_name)
+
+
+class WebGridAPI(WebGrid):
+    blueprint_name = 'webgrid-api'
+    api_route = '/webgrid-api/<grid_ident>'
+    args_loaders = (extensions.RequestJsonLoader, )
+
+    def init(self):
+        self._registered_grids = {}
+
+    def init_app(self, app):
+        super().init_app(app)
+        self.setup_route()
+
+    def register_grid(self, grid_ident, grid_cls_or_creator):
+        if grid_ident in self._registered_grids:
+            raise Exception('API grid_ident must be unique')
+
+        self._registered_grids[grid_ident] = grid_cls_or_creator
+
+    def api_init_grid(self, grid_cls_or_creator):
+        return grid_cls_or_creator()
+
+    def api_on_render_limit_exceeded(self, grid):
+        return flask.jsonify({'error': 'too many records for render target'})
+
+    def api_export_response(self, grid):
+        import webgrid
+
+        try:
+            return grid.export_as_response()
+        except webgrid.renderers.RenderLimitExceeded:
+            return self.on_render_limit_exceeded(grid)
+
+    def api_view_method(self, grid_ident):
+        if grid_ident not in self._registered_grids:
+            flask.abort(404)
+
+        grid = self.api_init_grid(self._registered_grids.get(grid_ident))
+        grid.manager = self
+        grid.check_auth()
+        grid.apply_qs_args()
+
+        if grid.export_to:
+            return self.api_export_response()
+
+        return grid.json()
+
+    def setup_route(self):
+        # add view to blueprint
+        self.blueprint.route(self.api_route, methods=('GET', 'POST', 'HEAD'))(
+            self.api_view_method
+        )

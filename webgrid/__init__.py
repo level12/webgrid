@@ -1003,6 +1003,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # Calling build is now preferred over calling .apply_qs_args() and then .html()
         self.record_count
 
+    def check_auth(self):
+        """For API usage, provides a hook for grids to specify authorization that should be
+        applied for the API responder method.
+
+        If a 40* response is warranted, take that action here.
+        """
+        pass
+
     def column(self, ident):
         """Retrieve a grid column instance via either the key string or index int.
 
