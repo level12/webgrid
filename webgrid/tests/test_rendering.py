@@ -1048,9 +1048,12 @@ class TestHideSection(object):
 
 
 class TestArrowDate(object):
+
+    def setup_method(self):
+        ArrowRecord.query.delete()
+
     @inrequest('/')
     def test_arrow_render_html(self):
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
         assert '<td>08/10/2016 01:02 AM</td>' in g.html(), g.html()
@@ -1061,7 +1064,6 @@ class TestArrowDate(object):
     @inrequest('/')
     def test_arrow_timezone(self):
         # regardless of timezone given, ArrowType stored as UTC and will display that way
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3).to('US/Pacific'))
         g = ArrowGrid()
         assert '<td>08/10/2016 01:02 AM</td>' in g.html(), g.html()
@@ -1069,8 +1071,12 @@ class TestArrowDate(object):
         g.column('created_utc').html_format = 'YYYY-MM-DD HH:mm:ss ZZ'
         assert '<td>2016-08-10 01:02:03 +00:00</td>' in g.html(), g.html()
 
+    @inrequest('/?op(created_utc)=in&value1=2018-01-01')
+    def test_filter(self):
+        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
+        g = ArrowGrid()
+
     def test_xls(self):
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
         buffer = io.BytesIO()
