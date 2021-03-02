@@ -181,6 +181,7 @@ class WebSessionArgsLoader(ArgsLoader):
         'apply',
         'dgreset',
         'export_to',
+        'session_key',
         'session_override',
     )
 
