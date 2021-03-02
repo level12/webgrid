@@ -1008,6 +1008,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         applied for the API responder method.
 
         If a 40* response is warranted, take that action here.
+
+        Note, this method is not part of normal grid/render operation. It will only be
+        executed if run by a calling layer, such as the Flask WebGridAPI manager/extension.
         """
         pass
 
