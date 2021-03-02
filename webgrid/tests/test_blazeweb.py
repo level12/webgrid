@@ -75,7 +75,7 @@ class TestBlazeWeb(object):
         g.apply_qs_args()
         assert '#something' in g.html().data['text/css'][0]
 
-    @inrequest('/path?session_key=123456')
+    @inrequest('/path?session_key=123456&op(createdts)=today')
     def test_session(self):
         from webgrid_blazeweb_ta.views import PeopleGrid
         g = PeopleGrid()

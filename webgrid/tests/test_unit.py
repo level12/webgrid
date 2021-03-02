@@ -1042,6 +1042,7 @@ class TestWebSessionArgsLoader:
         loader.get_args(pg, flask.request.args)
         flask.request.args = MultiDict([
             ('session_key', pg.session_key),
+            ('op(createdts)', 'today'),
             ('apply', None),
         ])
         pg2 = PeopleGrid()
