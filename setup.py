@@ -28,6 +28,7 @@ develop_requires = [
     'Flask-Script',
     'Flask-SQLAlchemy',
     'Flask-WebTest',
+    'Flask-WTF',
     'pyquery',
     'sqlalchemy_pyodbc_mssql',
     'sqlalchemy_utils',

@@ -1,8 +1,9 @@
 from __future__ import absolute_import
 
+import flask
 from flask import request, session, flash, Blueprint, url_for, send_file
 
-from webgrid import extensions
+from webgrid import extensions, renderers
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
@@ -13,6 +14,8 @@ except ImportError:
 class WebGrid(extensions.FrameworkManager):
     """Grid manager for connecting grids to Flask webapps.
 
+    Manager is a Flask extension, and may be bound to an app via ``init_app``.
+
     Instance should be assigned to the manager attribute of a grid class::
 
         class MyGrid(BaseGrid):
@@ -20,7 +23,7 @@ class WebGrid(extensions.FrameworkManager):
 
     Args:
         db (flask_sqlalchemy.SQLAlchemy, optional): Database instance. Defaults to None.
-        If db is not supplied here, it can be set via `init_db` later.
+        If db is not supplied here, it can be set via ``init_db`` later.
 
     Class Attributes:
         jinja_loader (jinja.Loader): Template loader to use for HTML rendering.
@@ -77,14 +80,18 @@ class WebGrid(extensions.FrameworkManager):
         """Construct static URL from webgrid blueprint."""
         return url_for('{}.static'.format(self.blueprint_name), filename=url_tail)
 
-    def init_app(self, app):
-        """Register a blueprint for webgrid assets, and configure jinja templates."""
-        self.blueprint = Blueprint(
+    def init_blueprint(self, app):
+        """Create a blueprint for webgrid assets."""
+        return Blueprint(
             self.blueprint_name,
             __name__,
             static_folder='static',
             static_url_path=app.static_url_path + '/webgrid'
         )
+
+    def init_app(self, app):
+        """Register a blueprint for webgrid assets, and configure jinja templates."""
+        self.blueprint = self.init_blueprint(app)
         app.register_blueprint(self.blueprint)
         configure_jinja_environment(app.jinja_env, extensions.translation_manager)
 
@@ -96,6 +103,27 @@ class WebGrid(extensions.FrameworkManager):
 
 
 class WebGridAPI(WebGrid):
+    """Subclass of WebGrid manager for creating an API connected to grid results.
+
+    Manager is a Flask extension, and may be bound to an app via ``init_app``.
+
+    Grids intended for API use should be registered on the manager via ``register_grid``.
+
+    Security note: no attempt is made here to perform explicit authentication or
+    authorization for the view. Those layers of functionality are the app developer's
+    responsibility. For generic auth, ``api_view_method`` may be wrapped/overridden,
+    or set up ``check_auth`` accordingly on your base grid class. Grid-specific auth can
+    be handled in each grid's ``check_auth``.
+
+    CSRF note: CSRF protection is standard security practice on Flask apps via
+    ``flask_wtf``. If the API set up here will be used in scenarios with cookies
+    (e.g. Ajax requests), protection should be applied here. If your app is set up
+    with a simple ``CSRFProtect``, no further action should be required.
+
+    Special Class Attributes:
+        api_route (string): URL route to bind on the manager's blueprint.
+        Default "/webgrid-api/<grid_ident>".
+    """
     blueprint_name = 'webgrid-api'
     api_route = '/webgrid-api/<grid_ident>'
     args_loaders = (extensions.RequestJsonLoader, )
@@ -103,23 +131,45 @@ class WebGridAPI(WebGrid):
     def init(self):
         self._registered_grids = {}
 
-    def init_app(self, app):
-        super().init_app(app)
-        self.setup_route()
+    def init_blueprint(self, app):
+        """Create a blueprint for webgrid assets and set up a generic API endpoint."""
+        blueprint = super().init_blueprint(app)
+        blueprint.route(self.api_route, methods=('POST', ))(
+            self.api_view_method
+        )
+
+        if app.config.get('TESTING'):
+            @blueprint.route('/webgrid-api-testing/__csrf__', methods=('GET', ))
+            def csrf_get():
+                from flask_wtf.csrf import generate_csrf
+                return generate_csrf()
+
+        return blueprint
 
     def register_grid(self, grid_ident, grid_cls_or_creator):
+        """Identify a grid class for API use via an identifying string.
+
+        The identifier provided here will be used in route matching to init the
+        requested grid. Identifiers are enforced as unique.
+
+        ``grid_cls_or_creator`` may be a grid class or some other callable returning
+        a grid instance.
+        """
         if grid_ident in self._registered_grids:
             raise Exception('API grid_ident must be unique')
 
         self._registered_grids[grid_ident] = grid_cls_or_creator
 
     def api_init_grid(self, grid_cls_or_creator):
+        """Create the grid instance from the registered class/creator."""
         return grid_cls_or_creator()
 
     def api_on_render_limit_exceeded(self, grid):
-        return flask.jsonify({'error': 'too many records for render target'})
+        """Export failed due to number of records. Returns a JSON response."""
+        return flask.jsonify(error='too many records for render target')
 
     def api_export_response(self, grid):
+        """Set up grid for export and return the response. Handles render limit exception."""
         import webgrid
 
         try:
@@ -128,6 +178,13 @@ class WebGridAPI(WebGrid):
             return self.on_render_limit_exceeded(grid)
 
     def api_view_method(self, grid_ident):
+        """Main API view method. Returns JSON-rendered grid or desired export.
+
+        No authentication/authorization is explicit here. Be sure to apply generic
+        auth or set up ``check_auth`` on specific grids, if authorization is needed.
+
+        If the ``grid_ident`` is not registered, response is 404.
+        """
         if grid_ident not in self._registered_grids:
             flask.abort(404)
 
@@ -139,10 +196,5 @@ class WebGridAPI(WebGrid):
         if grid.export_to:
             return self.api_export_response()
 
-        return grid.json()
-
-    def setup_route(self):
-        # add view to blueprint
-        self.blueprint.route(self.api_route, methods=('GET', 'POST', 'HEAD'))(
-            self.api_view_method
-        )
+        # not using jsonify here because the JSON renderer returns a string
+        return flask.Response(grid.json(), mimetype='application/json')
