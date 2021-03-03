@@ -455,8 +455,15 @@ class FrameworkManager(ABC):
     )
     session_max_hours = 12
 
-    def __init__(self, db=None):
+    def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None):
         self.init_db(db)
+
+        self.jinja_loader = jinja_loader or self.jinja_loader
+        self.args_loaders = args_loaders or self.args_loaders
+        if session_max_hours is not None:
+            # condition must account for possibility of 0 being passed in
+            self.session_max_hours = session_max_hours
+
         self.init_jinja()
 
         if callable(getattr(self, 'init', False)):

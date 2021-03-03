@@ -39,6 +39,15 @@ class WebGrid(extensions.FrameworkManager):
         extensions.
     """
     blueprint_name = 'webgrid'
+    blueprint_class = flask.Blueprint
+
+    def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None,
+                 blueprint_name=None, blueprint_class=None):
+        self.blueprint_name = blueprint_name or self.blueprint_name
+        self.blueprint_class = blueprint_class or self.blueprint_class
+        self._registered_grids = {}
+        super().__init__(db=db, jinja_loader=jinja_loader, args_loaders=args_loaders,
+                         session_max_hours=session_max_hours)
 
     def init_db(self, db):
         """Set the db connector."""
@@ -82,7 +91,7 @@ class WebGrid(extensions.FrameworkManager):
 
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets."""
-        return Blueprint(
+        return self.blueprint_class(
             self.blueprint_name,
             __name__,
             static_folder='static',
@@ -121,15 +130,21 @@ class WebGridAPI(WebGrid):
     with a simple ``CSRFProtect``, no further action should be required.
 
     Special Class Attributes:
-        api_route (string): URL route to bind on the manager's blueprint.
-        Default "/webgrid-api/<grid_ident>".
+        api_route_prefix (string): Prefix for URL route to bind on the manager's blueprint.
+        Default "/webgrid-api". By default, ``api_route`` uses this to construct
+        "/webgrid-api/<grid_ident>".
     """
     blueprint_name = 'webgrid-api'
-    api_route = '/webgrid-api/<grid_ident>'
+    api_route_prefix = '/webgrid-api'
     args_loaders = (extensions.RequestJsonLoader, )
 
-    def init(self):
+    def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None,
+                 blueprint_name=None, blueprint_class=None, api_route_prefix=None):
+        self.api_route_prefix = api_route_prefix or self.api_route_prefix
         self._registered_grids = {}
+        super().__init__(db=db, jinja_loader=jinja_loader, args_loaders=args_loaders,
+                         session_max_hours=session_max_hours, blueprint_name=blueprint_name,
+                         blueprint_class=blueprint_class)
 
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets and set up a generic API endpoint."""
@@ -139,12 +154,17 @@ class WebGridAPI(WebGrid):
         )
 
         if app.config.get('TESTING'):
-            @blueprint.route('/webgrid-api-testing/__csrf__', methods=('GET', ))
+            @blueprint.route(self.api_route_prefix + '/testing/__csrf__', methods=('GET', ))
             def csrf_get():
                 from flask_wtf.csrf import generate_csrf
                 return generate_csrf()
 
         return blueprint
+
+    @property
+    def api_route(self):
+        """URL route to bind on the manager's blueprint for serving grids."""
+        return self.api_route_prefix + '/<grid_ident>'
 
     def register_grid(self, grid_ident, grid_cls_or_creator):
         """Identify a grid class for API use via an identifying string.
@@ -189,12 +209,22 @@ class WebGridAPI(WebGrid):
             flask.abort(404)
 
         grid = self.api_init_grid(self._registered_grids.get(grid_ident))
+
+        # Make the API as flexible as possible to accept JSON post requests for grids
+        # that may be used in other areas of the application, hence managed by a different
+        # Flask extension/manager.
         grid.manager = self
+
+        # Check auth before applying any args
         grid.check_auth()
         grid.apply_qs_args()
 
         if grid.export_to:
             return self.api_export_response()
 
+        # Be as flexible as possible here. If the grid has a JSON renderer, use it. But,
+        # provide a default if it does not.
+        renderer = getattr(grid, 'json', renderers.JSON(grid))
+
         # not using jsonify here because the JSON renderer returns a string
-        return flask.Response(grid.json(), mimetype='application/json')
+        return flask.Response(renderer(), mimetype='application/json')
