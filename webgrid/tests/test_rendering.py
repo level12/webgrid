@@ -750,31 +750,39 @@ class TestStringExprTotals:
 
 
 class TestJSONRenderer:
+    def get_json(self, grid):
+        return json.loads(JSON(grid).render())
+
     def test_json_format_records(self):
-        grid = PeopleGrid()
-        renderer = JSON(grid)
         expected = {
-            'meta': {
-                'filters': {
-                    'account_type': {'op': None, 'value1': None, 'value2': None},
-                    'createdts': {'op': None, 'value1': None, 'value2': None},
-                    'firstname': {'op': None, 'value1': None, 'value2': None},
-                    'status': {'op': None, 'value1': None, 'value2': None},
-                },
+            'errors': [],
+            'settings': {
+                'filters': {},
                 'paging': {'on_page': 1, 'per_page': 50},
                 'search_expr': None,
                 'sort': [],
+                'export_to': None,
             },
-            'columns': {
-                'account_type': 'Account Type',
-                'createdts': 'Created',
-                'due_date': 'Due Date',
-                'emails': 'Emails',
-                'firstname': 'First Name',
-                'full_name': 'Full Name',
-                'inactive': 'Active',
-                'numericcol': 'Number',
-                'status': 'Status',
+            'spec': {
+                'columns': {
+                    'account_type': 'Account Type',
+                    'createdts': 'Created',
+                    'due_date': 'Due Date',
+                    'emails': 'Emails',
+                    'firstname': 'First Name',
+                    'full_name': 'Full Name',
+                    'inactive': 'Active',
+                    'numericcol': 'Number',
+                    'status': 'Status',
+                },
+                'enable_search': True,
+                'enable_sort': True,
+                'export_targets': ['xls', 'xlsx'],
+            },
+            'state': {
+                'page_count': 1,
+                'record_count': 3,
+                'warnings': [],
             },
             'records': [
                 {
@@ -812,9 +820,14 @@ class TestJSONRenderer:
                 },
             ],
         }
-        assert json.loads(renderer.render()) == expected
+        assert self.get_json(PeopleGrid()) == expected
 
-    def test_json_format_meta(self):
+    def test_warnings(self):
+        grid = PeopleGrid()
+        grid.user_warnings = ['foo', 'bar', 'baz']
+        assert self.get_json(grid)['state']['warnings'] == ['foo', 'bar', 'baz']
+
+    def test_json_format_settings(self):
         grid = PeopleGrid()
         firstname = grid.column('firstname')
         firstname.filter.set('eq', 'bar', 'baz')
@@ -824,13 +837,9 @@ class TestJSONRenderer:
         grid.set_paging(20, 2)
         grid.search_value = 'foo'
         grid.set_sort('firstname', '-status')
-        renderer = JSON(grid)
-        assert json.loads(renderer.render())['meta'] == {
+        assert self.get_json(grid)['settings'] == {
             'filters': {
-                'account_type': {'op': None, 'value1': None, 'value2': None},
-                'createdts': {'op': None, 'value1': None, 'value2': None},
                 'firstname': {'op': 'eq', 'value1': 'bar', 'value2': 'baz'},
-                'status': {'op': None, 'value1': None, 'value2': None},
             },
             'paging': {'on_page': 2, 'per_page': 20},
             'search_expr': 'foo',
@@ -838,6 +847,7 @@ class TestJSONRenderer:
                 {'key': 'firstname', 'flag_desc': False},
                 {'key': 'status', 'flag_desc': True},
             ],
+            'export_to': None,
         }
 
     def test_json_format_arrow(self):
@@ -845,9 +855,7 @@ class TestJSONRenderer:
         ArrowRecord.testing_create(
             created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
         )
-        grid = ArrowGrid()
-        renderer = JSON(grid)
-        reloaded = json.loads(renderer.render())
+        reloaded = self.get_json(ArrowGrid())
         assert reloaded['records'] == [
             {'created_utc': '2016-08-10T01:02:03+00:00'}
         ]

@@ -56,7 +56,8 @@ class WebGrid(FrameworkManager):
     def file_as_response(self, data_stream, file_name, mime_type):
         rp = StreamResponse(data_stream)
         rp.headers['Content-Type'] = mime_type
-        rp.headers['Content-Disposition'] = 'attachment; filename={}'.format(file_name)
+        if file_name is not None:
+            rp.headers['Content-Disposition'] = 'attachment; filename={}'.format(file_name)
         abort(rp)
 
     def render_template(self, endpoint, **kwargs):

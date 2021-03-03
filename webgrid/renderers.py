@@ -194,6 +194,7 @@ def render_html_attributes(attrs):
 
 class JSON(Renderer):
     """Renderer for JSON output"""
+    mime_type = 'application/json'
 
     @property
     def name(self):
@@ -213,6 +214,7 @@ class JSON(Renderer):
         return {
             col.key: self.serialize_filter(col.filter)
             for key, col in self.grid.filtered_cols.items()
+            if col.filter.is_active
         }
 
     def serialize_record(self, record):
@@ -230,7 +232,8 @@ class JSON(Renderer):
 
     def asdict(self):
         grid = types.Grid(
-            meta=types.Meta(
+            errors=[],
+            settings=types.GridSettings(
                 search_expr=self.grid.search_value,
                 filters=self.serialized_filters(),
                 paging=types.Paging(
@@ -238,14 +241,32 @@ class JSON(Renderer):
                     on_page=self.grid.on_page,
                 ),
                 sort=self.serialized_order_by(),
+                export_to=None,
             ),
-            columns=self.serialized_columns(),
+            spec=types.GridSpec(
+                columns=self.serialized_columns(),
+                export_targets=list(self.grid.allowed_export_targets.keys()),
+                enable_search=self.grid.enable_search,
+                enable_sort=self.grid.sorter_on,
+            ),
+            state=types.GridState(
+                page_count=self.grid.page_count,
+                record_count=self.grid.record_count,
+                warnings=self.grid.user_warnings,
+            ),
             records=self.serialized_records(),
         )
         return asdict(grid)
 
     def render(self):
         return json.dumps(self.asdict(), cls=CustomJsonEncoder)
+
+    def as_response(self):
+        """Return a response via the grid's manager."""
+        buffer = io.BytesIO()
+        buffer.write(self.render())
+        buffer.seek(0)
+        return self.grid.manager.file_as_response(buffer, None, self.mime_type)
 
 
 class HTML(GroupMixin, Renderer):

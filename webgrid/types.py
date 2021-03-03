@@ -22,20 +22,22 @@ class Sort:
 
 
 @dataclass
-class Meta:
+class GridSettings:
     search_expr: str
     filters: Dict[str, Filter]
     paging: Paging
     sort: List[Sort]
+    export_to: str
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Meta':
+    def from_dict(cls, data: Dict[str, Any]) -> 'GridSettings':
         """Create from deserialized json"""
         return cls(
-            search_expr=data['search_expr'],
-            filters={key: Filter(**filter_) for key, filter_ in data['filters'].items()},
-            paging=Paging(**data['paging']),
-            sort=[Sort(**sort) for sort in data['sort']],
+            search_expr=data.get('search_expr'),
+            filters={key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()},
+            paging=Paging(**data.get('paging', {'on_page': None, 'per_page': None})),
+            sort=[Sort(**sort) for sort in data.get('sort', [])],
+            export_to=data.get('export_to'),
         )
 
     def to_args(self) -> Dict[str, Any]:
@@ -44,6 +46,7 @@ class Meta:
             'search': self.search_expr,
             'onpage': self.paging.on_page,
             'perpage': self.paging.per_page,
+            'export_to': self.export_to,
         }
 
         for key, filter_ in self.filters.items():
@@ -60,7 +63,24 @@ class Meta:
 
 
 @dataclass
-class Grid:
-    meta: Meta
+class GridSpec:
     columns: List[Dict[str, str]]
+    export_targets: List[str]
+    enable_search: bool
+    enable_sort: bool
+
+
+@dataclass
+class GridState:
+    page_count: int
+    record_count: int
+    warnings: List[str]
+
+
+@dataclass
+class Grid:
+    settings: GridSettings
+    spec: GridSpec
+    state: GridState
     records: List[Dict[str, Any]]
+    errors: List[str]

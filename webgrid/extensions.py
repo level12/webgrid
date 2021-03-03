@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import re
 from typing import Any, Dict
+import warnings
 
 import arrow
 import datetime
@@ -144,11 +145,11 @@ class RequestFormLoader(GridPrefixBase, ArgsLoader):
 class RequestJsonLoader(ArgsLoader):
     """ JSON loader for web request.
 
-    See :meth:`webgrid.types.Meta` for the expected JSON structure. The parsed arguments are
-    converted to the querystring arg format and merged with any previous args.
+    See :meth:`webgrid.types.GridSettings` for the expected JSON structure. The parsed arguments
+    are converted to the querystring arg format and merged with any previous args.
     """
     def json_to_args(self, data: Dict[str, Any]):
-        meta = types.Meta.from_dict(data)
+        meta = types.GridSettings.from_dict(data)
         return MultiDict(meta.to_args())
 
     def get_args(self, grid, previous_args):
@@ -481,6 +482,13 @@ class FrameworkManager(ABC):
             args = loader(self).get_args(grid, args)
 
         return args
+
+    def request_args(self):
+        warnings.warn(
+            'request_args is deprecated and will be removed in a future version.',
+            DeprecationWarning, 2
+        )
+        return self.request_url_args()
 
     @abstractmethod
     def request_json(self):

@@ -906,6 +906,7 @@ class TestRequestJsonLoader:
             ('perpage', 20),
             ('sort1', 'bar'),
             ('sort2', '-baz'),
+            ('export_to', None),
         ])
 
     def test_merge_with_previous(self):
@@ -932,6 +933,7 @@ class TestRequestJsonLoader:
             ('sort1', 'bar'),
             ('sort2', '-baz'),
             ('sort3', 'bong'),
+            ('export_to', None),
         ])
 
     def test_load_empty(self):

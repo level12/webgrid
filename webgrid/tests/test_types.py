@@ -1,7 +1,7 @@
 import webgrid.types as types
 
 
-class TestMeta:
+class TestGridSettings:
     def ok_values(self):
         return {
             'search_expr': 'foo',
@@ -15,7 +15,7 @@ class TestMeta:
 
     def test_from_dict(self):
         data = self.ok_values()
-        assert types.Meta.from_dict(data) == types.Meta(
+        assert types.GridSettings.from_dict(data) == types.GridSettings(
             search_expr='foo',
             filters={
                 'test': types.Filter(op='eq', value1='toast', value2='taft'),
@@ -23,11 +23,21 @@ class TestMeta:
             },
             paging=types.Paging(on_page=2, per_page=20),
             sort=[types.Sort(key='bar', flag_desc=False), types.Sort(key='baz', flag_desc=True)],
+            export_to=None,
+        )
+
+    def test_from_dict_missing_keys(self):
+        assert types.GridSettings.from_dict({}) == types.GridSettings(
+            search_expr=None,
+            filters={},
+            paging=types.Paging(on_page=None, per_page=None),
+            sort=[],
+            export_to=None,
         )
 
     def test_to_args(self):
         data = self.ok_values()
-        assert types.Meta.from_dict(data).to_args() == {
+        assert types.GridSettings.from_dict(data).to_args() == {
             'search': 'foo',
             'onpage': 2,
             'perpage': 20,
@@ -38,4 +48,5 @@ class TestMeta:
             'v1(test2)': 'tarp',
             'sort1': 'bar',
             'sort2': '-baz',
+            'export_to': None,
         }

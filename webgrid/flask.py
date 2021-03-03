@@ -90,5 +90,6 @@ class WebGrid(FrameworkManager):
 
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
-        return send_file(data_stream, mimetype=mime_type, as_attachment=True,
+        as_attachment = (file_name is not None)
+        return send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
                          attachment_filename=file_name)
