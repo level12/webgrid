@@ -1672,11 +1672,23 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     def _apply_sorting(self, args):
         """Turn request/session args into sort settings.
 
+        No limit is present here for how many sort args may be passed. However, the
+        args are expected to be contiguous. I.e. sort1, sort2, sort3 will be processed,
+        but sort1, sort3, sort5 will only process sort1.
+
         Args:
             args (MultiDict): Full arguments to search for sort keys.
         """
-        sort_qs_keys = ['sort1', 'sort2', 'sort3']
-        sort_qs_values = [args[sort_qsk] for sort_qsk in sort_qs_keys if sort_qsk in args]
+        counter = 0
+        sort_qs_values = []
+
+        while True:
+            counter += 1
+            sort_arg = 'sort{}'.format(counter)
+            if sort_arg not in args:
+                break
+            sort_qs_values.append(args[sort_arg])
+
         if sort_qs_values:
             self.set_sort(*sort_qs_values)
 

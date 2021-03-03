@@ -215,10 +215,15 @@ class WebSessionArgsLoader(ArgsLoader):
             args (MultiDict): Request args.
 
         Returns:
-            bool: True if at least one sort key is present.
+            List[str]: all args matching as sort args.
         """
-        regex = re.compile('(sort[1-3])')
-        return any(regex.match(a) for a in args.keys())
+        regex = re.compile('(sort[1-9][0-9]*)')
+        return [
+            arg.string for arg in filter(
+                lambda match: match is not None,
+                [regex.match(a) for a in args],
+            )
+        ]
 
     def remove_grid_session(self, session_key):
         # Remove a grid session from the cookie entirely
@@ -260,10 +265,8 @@ class WebSessionArgsLoader(ArgsLoader):
                 session_args['onpage'] = previous_args.get('onpage')
                 session_args['perpage'] = previous_args.get('perpage')
             # Override sorting if it exists in the query
-            if self.args_have_sort(previous_args):
-                session_args['sort1'] = previous_args.get('sort1')
-                session_args['sort2'] = previous_args.get('sort2')
-                session_args['sort3'] = previous_args.get('sort3')
+            for sort_arg in self.args_have_sort(previous_args):
+                session_args[sort_arg] = previous_args.get(sort_arg)
 
         if 'export_to' in previous_args:
             # Export directive gets left out of the session storage, since a request may
