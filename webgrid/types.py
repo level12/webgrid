@@ -1,5 +1,15 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+
+class ValidationError(Exception):
+    pass
+
+
+class FieldValidationError(ValidationError):
+    def __init__(self, field, value, type_):
+        message = f'Received {field}={value}; should be of type {type_}'
+        super().__init__(message)
 
 
 @dataclass
@@ -15,6 +25,12 @@ class Paging:
     per_page: Optional[int] = None
     on_page: Optional[int] = None
 
+    def __post_init__(self):
+        if self.per_page is not None and not isinstance(self.per_page, int):
+            raise FieldValidationError('per_page', self.per_page, 'int')
+        if self.on_page is not None and not isinstance(self.on_page, int):
+            raise FieldValidationError('on_page', self.on_page, 'int')
+
 
 @dataclass
 class Sort:
@@ -24,20 +40,35 @@ class Sort:
 
 @dataclass
 class GridSettings:
-    search_expr: str
-    filters: Dict[str, Filter]
-    paging: Paging
-    sort: List[Sort]
-    export_to: str
+    search_expr: Optional[str] = None
+    filters: Dict[str, Filter] = field(default_factory=dict)
+    paging: Paging = field(default_factory=Paging)
+    sort: List[Sort] = field(default_factory=list)
+    export_to: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'GridSettings':
         """Create from deserialized json"""
+        try:
+            filters = {key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()}
+        except TypeError as e:
+            raise ValidationError(f'Filter: {e}')
+
+        try:
+            paging = Paging(**data.get('paging', {}))
+        except TypeError as e:
+            raise ValidationError(f'Paging: {e}')
+
+        try:
+            sort = [Sort(**sort) for sort in data.get('sort', [])]
+        except TypeError as e:
+            raise ValidationError(f'Sort: {e}')
+
         return cls(
             search_expr=data.get('search_expr'),
-            filters={key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()},
-            paging=Paging(**data.get('paging', {})),
-            sort=[Sort(**sort) for sort in data.get('sort', [])],
+            filters=filters,
+            paging=paging,
+            sort=sort,
             export_to=data.get('export_to'),
         )
 
