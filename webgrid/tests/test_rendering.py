@@ -96,6 +96,13 @@ class PeopleCSVGrid(PG):
 
 
 def setup_module():
+    from webgrid_ta.app import create_app
+    import os
+    app = create_app(config='Test', database_url=os.environ.get('SQLALCHEMY_DATABASE_URI'))
+    app.test_request_context().push()
+    from webgrid_ta.model import load_db
+    load_db()
+
     Status.delete_cascaded()
     sp = Status(label='pending')
     sip = Status(label='in process')
@@ -236,13 +243,13 @@ class TestHtmlRenderer(object):
         mg.set_records(key_data)
         eq_html(mg.html.table(), 'basic_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @_inrequest('/')
     def test_people_html(self):
         pg = render_in_grid(PeopleGrid, 'html')()
         eq_html(pg.html.table(), 'people_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @_inrequest('/')
     def test_stopwatch_html(self):
         # Test Stopwatch grid with column groups.
