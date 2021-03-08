@@ -418,3 +418,7 @@ class FrameworkManager:
             args = loader(self).get_args(grid, args)
 
         return args
+
+    def test_request_context(self, url='/'):
+        """Get request context for tests."""
+        raise NotImplementedError

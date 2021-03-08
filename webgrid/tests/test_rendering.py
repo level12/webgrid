@@ -50,7 +50,7 @@ from webgrid_ta.model.entities import (
     db,
 )
 
-from .helpers import eq_html, inrequest, render_in_grid
+from .helpers import eq_html, _inrequest, render_in_grid
 
 
 def _query_exclude_person(query):
@@ -94,6 +94,13 @@ class PeopleCSVGrid(PG):
 
 
 def setup_module():
+    from webgrid_ta.app import create_app
+    import os
+    app = create_app(config='Test', database_url=os.environ.get('SQLALCHEMY_DATABASE_URI'))
+    app.test_request_context().push()
+    from webgrid_ta.model import load_db
+    load_db()
+
     Status.delete_cascaded()
     sp = Status(label='pending')
     sip = Status(label='in process')
@@ -219,7 +226,7 @@ class TestHtmlRenderer(object):
         {'id': 5, 'name': 'three'},
     )
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_car_html(self):
         key_data = (
             {'id': 1, 'make': 'ford', 'model': 'F150&', 'color': 'pink',
@@ -234,20 +241,20 @@ class TestHtmlRenderer(object):
         mg.set_records(key_data)
         eq_html(mg.html.table(), 'basic_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
-    @inrequest('/')
+    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @_inrequest('/')
     def test_people_html(self):
         pg = render_in_grid(PeopleGrid, 'html')()
         eq_html(pg.html.table(), 'people_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
-    @inrequest('/')
+    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @_inrequest('/')
     def test_stopwatch_html(self):
         # Test Stopwatch grid with column groups.
         grid = StopwatchGrid()
         eq_html(grid.html.table(), 'stopwatch_table.html')
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_default_jinja_env(self):
         class TGrid(Grid):
             manager = None
@@ -280,7 +287,7 @@ class TestHtmlRenderer(object):
         assert isinstance(result, Markup)
         assert result == ' bool1 empty="" esc&amp;="&lt;&gt;&#34;" text="abc"'
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_no_filters(self):
         class TGrid(Grid):
             Column('Test', Person.id)
@@ -288,7 +295,7 @@ class TestHtmlRenderer(object):
         tg = TGrid()
         assert 'Add Filter' not in tg.html()
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_hide_excel_deprecated(self):
         class TGrid(Grid):
             hide_excel_link = True
@@ -305,34 +312,34 @@ class TestHtmlRenderer(object):
         g.apply_qs_args()
         return g
 
-    @inrequest('/thepage?perpage=5&onpage=1')
+    @_inrequest('/thepage?perpage=5&onpage=1')
     def test_current_url(self):
         g = self.get_grid()
         assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
         assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_current_url_qs_prefix(self):
         g = self.get_grid(qs_prefix='dg_')
         assert '/thepage?dg_perpage=10' == g.html.current_url(perpage=10)
 
-    @inrequest('/thepage?perpage=5&onpage=1&dgreset=1')
+    @_inrequest('/thepage?perpage=5&onpage=1&dgreset=1')
     def test_current_url_reset_removed(self):
         g = self.get_grid()
         assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
         assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
 
-    @inrequest('/thepage?foo_dgreset=1')
+    @_inrequest('/thepage?foo_dgreset=1')
     def test_current_url_reset_removed_prefix(self):
         g = self.get_grid(qs_prefix='foo_')
         assert '/thepage?foo_perpage=5' == g.html.current_url(perpage=5)
 
-    @inrequest('/thepage?perpage=5&onpage=1')
+    @_inrequest('/thepage?perpage=5&onpage=1')
     def test_current_url_reset_added(self):
         g = self.get_grid()
         assert '/thepage?dgreset=1&onpage=1&perpage=5' == g.html.current_url(dgreset=1)
 
-    @inrequest('/thepage?perpage=5&onpage=1')
+    @_inrequest('/thepage?perpage=5&onpage=1')
     def test_xls_url(self):
         g = self.get_grid()
         with pytest.warns(DeprecationWarning,
@@ -340,35 +347,35 @@ class TestHtmlRenderer(object):
             url = g.html.xls_url()
         assert url == '/thepage?export_to=xls&onpage=1&perpage=5'
 
-    @inrequest('/thepage?perpage=5&onpage=1')
+    @_inrequest('/thepage?perpage=5&onpage=1')
     def test_export_url(self):
         g = self.get_grid()
         assert g.html.export_url('xlsx') == '/thepage?export_to=xlsx&onpage=1&perpage=5'
         assert g.html.export_url('xls') == '/thepage?export_to=xls&onpage=1&perpage=5'
         assert g.html.export_url('csv') == '/thepage?export_to=csv&onpage=1&perpage=5'
 
-    @inrequest('/thepage?onpage=3')
+    @_inrequest('/thepage?onpage=3')
     def test_paging_url_first(self):
         g = self.get_grid()
         assert g.html.paging_url_first() == '/thepage?onpage=1&perpage=1'
 
-    @inrequest('/thepage?onpage=3')
+    @_inrequest('/thepage?onpage=3')
     def test_paging_url_next(self):
         g = self.get_grid()
         assert g.html.paging_url_next() == '/thepage?onpage=4&perpage=1'
 
-    @inrequest('/thepage?onpage=3')
+    @_inrequest('/thepage?onpage=3')
     def test_paging_url_prev(self):
         g = self.get_grid()
         assert g.html.paging_url_prev() == '/thepage?onpage=2&perpage=1'
 
-    @inrequest('/thepage?onpage=3')
+    @_inrequest('/thepage?onpage=3')
     def test_paging_url_last(self):
         g = self.get_grid()
         assert g.html.paging_url_last() == '/thepage?onpage=5&perpage=1'
 
-    @inrequest('/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
-               '=bob&v2(name)=fred')
+    @_inrequest('/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
+                '=bob&v2(name)=fred')
     def test_reset_url(self):
         g = self.get_grid()
         assert (
@@ -376,7 +383,7 @@ class TestHtmlRenderer(object):
             == '/thepage?dgreset=1&foo=bar&session_key={0}'.format(g.session_key)
         )
 
-    @inrequest('/thepage?foo=bar&onpage=5')
+    @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_url(self):
         g = self.get_grid()
         assert (
@@ -396,7 +403,7 @@ class TestHtmlRenderer(object):
     ])
     def test_paging_select(self, page_param, input_value):
 
-        @inrequest('/thepage?onpage={}'.format(page_param))
+        @_inrequest('/thepage?onpage={}'.format(page_param))
         def check_paging():
             g = self.get_grid()
             select_html = g.html.paging_select()
@@ -406,7 +413,7 @@ class TestHtmlRenderer(object):
 
         check_paging()
 
-    @inrequest('/thepage?onpage=2')
+    @_inrequest('/thepage?onpage=2')
     def test_paging_html(self):
         g = self.get_grid()
         input_html = g.html.paging_input()
@@ -465,7 +472,7 @@ class TestHtmlRenderer(object):
         assert g.html.paging_img_next_dead() in footer_html
         assert g.html.paging_img_last_dead() in footer_html
 
-    @inrequest('/thepage?sort1=name&sort2=-id')
+    @_inrequest('/thepage?sort1=name&sort2=-id')
     def test_sorting_html(self):
         g = self.get_grid()
 
@@ -488,20 +495,20 @@ class TestHtmlRenderer(object):
         assert 'sort-asc' not in heading_row
         assert 'sort-desc' not in heading_row
 
-    @inrequest('/thepage?sort1=name')
+    @_inrequest('/thepage?sort1=name')
     def test_sorting_headers_asc(self):
         g = self.get_grid()
         heading_row = g.html.table_column_headings()
         assert_tag(heading_row, 'a', text='Name', class_='sort-asc', href='/thepage?sort1=-name')
 
-    @inrequest('/thepage?sort1=-name')
+    @_inrequest('/thepage?sort1=-name')
     def test_sorting_headers_desc(self):
         g = self.get_grid()
         heading_row = g.html.table_column_headings()
         assert_tag(heading_row, 'a', text='Name', class_='sort-desc', href='/thepage?sort1=name')
 
-    @inrequest('/thepage?op(firstname)=eq&v1(firstname)=foo&op(createdts)=between&v1(createdts)='
-               '2%2F15%2F12&&v2(createdts)=2012-02-16')
+    @_inrequest('/thepage?op(firstname)=eq&v1(firstname)=foo&op(createdts)=between&v1(createdts)='
+                '2%2F15%2F12&&v2(createdts)=2012-02-16')
     def test_filtering_input_html(self):
         g = PeopleGrid()
 
@@ -531,7 +538,7 @@ class TestHtmlRenderer(object):
         assert '<input id="createdts_input2" name="v2(createdts)" type="text" value=' + \
             '"02/16/2012 11:59 PM" />' in filter_html, filter_html
 
-    @inrequest('/thepage?op(firstname)=foobar&v1(firstname)=baz')
+    @_inrequest('/thepage?op(firstname)=foobar&v1(firstname)=baz')
     def test_filtering_invalid_operator(self):
         g = PeopleGrid()
 
@@ -539,14 +546,14 @@ class TestHtmlRenderer(object):
         assert '<input id="firstname_input1" name="v1(firstname)" type="text" />' in filter_html, \
             filter_html
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_extra_filter_attrs(self):
         g = PeopleGrid()
         g.key_column_map['firstname'].filter.html_extra = {'data-special-attr': 'foo'}
         filter_html = g.html.filtering_table_row(g.key_column_map['firstname'])
         assert '<tr class="firstname_filter" data-special-attr="foo">' in filter_html, filter_html
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_filter_primary_op_specified(self):
         g = PeopleGrid()
         g.key_column_map['firstname'].filter.primary_op = '!eq'
@@ -554,7 +561,7 @@ class TestHtmlRenderer(object):
         assert PyQuery(filter_html).find('option[value="!eq"]').attr('data-render') == 'primary'
         assert not PyQuery(filter_html).find('option[value="eq"]').attr('data-render')
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_filter_primary_op_not_specified(self):
         g = PeopleGrid()
         g.key_column_map['firstname'].filter.primary_op = None
@@ -562,7 +569,7 @@ class TestHtmlRenderer(object):
         assert PyQuery(filter_html).find('option[value="eq"]').attr('data-render') == 'primary'
         assert not PyQuery(filter_html).find('option[value="!eq"]').attr('data-render')
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_multiselect_enum_options(self):
         class PeopleType(Enum):
             bob = 'Bob'
@@ -575,7 +582,7 @@ class TestHtmlRenderer(object):
         assert PyQuery(output).find('input[value="bob"]').attr('checked')
         assert not PyQuery(output).find('input[value="charlie"]').attr('checked')
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_confirm_export(self):
         g = PeopleGrid()
         assert json.loads(g.html.confirm_export()) == {'confirm_export': False, 'record_count': 3}
@@ -586,20 +593,20 @@ class TestHtmlRenderer(object):
         g.unconfirmed_export_limit = None
         assert json.loads(g.html.confirm_export()) == {'confirm_export': False, 'record_count': 3}
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_grid_rendering(self):
         g = PeopleGrid()
         # really just making sure no exceptions come through at this point
         assert g.html()
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_no_records(self):
         g = PeopleGrid()
         g.set_records([])
         g.html
         assert '<p class="no-records">No records to display</p>' in g.html()
 
-    @inrequest('/thepage')
+    @_inrequest('/thepage')
     def test_no_pager(self):
         class PgNP(PeopleGrid):
             pager_on = False
@@ -626,7 +633,7 @@ class TestHtmlRenderer(object):
         with pytest.raises(RenderLimitExceeded):
             TestGrid().html()
 
-    @inrequest('/thepage?search=foo')
+    @_inrequest('/thepage?search=foo')
     def test_render_search_filter(self):
         g = PeopleGrid()
         g.enable_search = True
@@ -639,7 +646,7 @@ class TestHtmlRenderer(object):
         filter_html = g.html.filtering_fields()
         assert_tag(filter_html, 'input', id='search_input', name='search', type='text', value='foo')
 
-    @inrequest('/thepage?search=foo&dgreset=1')
+    @_inrequest('/thepage?search=foo&dgreset=1')
     def test_render_search_filter_reset(self):
         g = PeopleGrid()
         g.enable_search = True
@@ -676,7 +683,7 @@ class PGPageTotals(PeopleGrid):
 
 
 class TestPageTotals(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html(self):
         g = PGPageTotals()
         html = g.html()
@@ -690,7 +697,7 @@ class PGGrandTotals(PeopleGrid):
 
 
 class TestGrandTotals(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html(self):
         g = PGGrandTotals()
         g.html
@@ -699,7 +706,7 @@ class TestGrandTotals(object):
 
 
 class TestFooterRendersCorrectly(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html_footer(self):
         g = PeopleGrid()
         g.html
@@ -708,7 +715,7 @@ class TestFooterRendersCorrectly(object):
         # make sure we are rendering the separator
         assert '&nbsp;|' in g.html()
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html_footer_only_csv(self):
         g = PeopleCSVGrid()
         g.html
@@ -721,7 +728,7 @@ class PGAllTotals(PeopleGrid):
 
 
 class TestAllTotals(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html(self):
         g = PGAllTotals()
         html = g.html()
@@ -739,7 +746,7 @@ class PGTotalsStringExpr(PeopleGrid):
 
 
 class TestStringExprTotals:
-    @inrequest('/')
+    @_inrequest('/')
     def test_people_html(self):
         g = PGTotalsStringExpr()
         html = g.html()
@@ -1038,7 +1045,7 @@ class TestCSVRenderer(object):
 
 
 class TestHideSection(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_controlls_hidden(self):
         class NoControlBoxGrid(PG):
             hide_controls_box = True
@@ -1048,7 +1055,7 @@ class TestHideSection(object):
 
 
 class TestArrowDate(object):
-    @inrequest('/')
+    @_inrequest('/')
     def test_arrow_render_html(self):
         ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
@@ -1058,7 +1065,7 @@ class TestArrowDate(object):
         g.column('created_utc').html_format = 'YYYY-MM-DD HH:mm:ss ZZ'
         assert '<td>2016-08-10 01:02:03 +00:00</td>' in g.html(), g.html()
 
-    @inrequest('/')
+    @_inrequest('/')
     def test_arrow_timezone(self):
         # regardless of timezone given, ArrowType stored as UTC and will display that way
         ArrowRecord.query.delete()

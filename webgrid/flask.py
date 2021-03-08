@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from flask import request, session, flash, Blueprint, url_for, send_file
+import flask
 
 from webgrid.extensions import FrameworkManager, translation_manager
 
@@ -42,31 +42,35 @@ class WebGrid(FrameworkManager):
 
     def request_args(self):
         """Return GET request args."""
-        return request.args
+        return flask.request.args
 
     def web_session(self):
         """Return current session."""
-        return session
+        return flask.session
 
     def persist_web_session(self):
         """Some frameworks require an additional step to persist session data."""
-        session.modified = True
+        flask.session.modified = True
 
     def flash_message(self, category, message):
         """Add a flash message through the framework."""
-        flash(message, category)
+        flask.flash(message, category)
 
     def request(self):
         """Return request."""
-        return request
+        return flask.request
+
+    def test_request_context(self, url='/'):
+        """Get request context for tests."""
+        return flask.current_app.test_request_context(url)
 
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
-        return url_for('webgrid.static', filename=url_tail)
+        return flask.url_for('webgrid.static', filename=url_tail)
 
     def init_app(self, app):
         """Register a blueprint for webgrid assets, and configure jinja templates."""
-        bp = Blueprint(
+        bp = flask.Blueprint(
             'webgrid',
             __name__,
             static_folder='static',
@@ -77,5 +81,5 @@ class WebGrid(FrameworkManager):
 
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
-        return send_file(data_stream, mimetype=mime_type, as_attachment=True,
-                         attachment_filename=file_name)
+        return flask.send_file(data_stream, mimetype=mime_type, as_attachment=True,
+                               attachment_filename=file_name)
