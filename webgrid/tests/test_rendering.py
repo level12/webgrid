@@ -758,7 +758,7 @@ class TestJSONRenderer:
             'errors': [],
             'settings': {
                 'filters': {},
-                'paging': {'on_page': 1, 'per_page': 50},
+                'paging': {'pager_on': True, 'on_page': 1, 'per_page': 50},
                 'search_expr': None,
                 'sort': [],
                 'export_to': None,
@@ -841,7 +841,7 @@ class TestJSONRenderer:
             'filters': {
                 'firstname': {'op': 'eq', 'value1': 'bar', 'value2': 'baz'},
             },
-            'paging': {'on_page': 2, 'per_page': 20},
+            'paging': {'pager_on': True, 'on_page': 2, 'per_page': 20},
             'search_expr': 'foo',
             'sort': [
                 {'key': 'firstname', 'flag_desc': False},

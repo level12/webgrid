@@ -237,6 +237,7 @@ class JSON(Renderer):
                 search_expr=self.grid.search_value,
                 filters=self.serialized_filters(),
                 paging=types.Paging(
+                    pager_on=self.grid.pager_on,
                     per_page=self.grid.per_page,
                     on_page=self.grid.on_page,
                 ),

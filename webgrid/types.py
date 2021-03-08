@@ -11,8 +11,9 @@ class Filter:
 
 @dataclass
 class Paging:
-    per_page: int
-    on_page: int
+    pager_on: bool = False
+    per_page: Optional[int] = None
+    on_page: Optional[int] = None
 
 
 @dataclass
@@ -35,7 +36,7 @@ class GridSettings:
         return cls(
             search_expr=data.get('search_expr'),
             filters={key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()},
-            paging=Paging(**data.get('paging', {'on_page': None, 'per_page': None})),
+            paging=Paging(**data.get('paging', {})),
             sort=[Sort(**sort) for sort in data.get('sort', [])],
             export_to=data.get('export_to'),
         )

@@ -9,7 +9,7 @@ class TestGridSettings:
                 'test': {'op': 'eq', 'value1': 'toast', 'value2': 'taft'},
                 'test2': {'op': 'in', 'value1': 'tarp', 'value2': None},
             },
-            'paging': {'on_page': 2, 'per_page': 20},
+            'paging': {'pager_on': True, 'on_page': 2, 'per_page': 20},
             'sort': [{'key': 'bar', 'flag_desc': False}, {'key': 'baz', 'flag_desc': True}],
         }
 
@@ -21,7 +21,7 @@ class TestGridSettings:
                 'test': types.Filter(op='eq', value1='toast', value2='taft'),
                 'test2': types.Filter(op='in', value1='tarp')
             },
-            paging=types.Paging(on_page=2, per_page=20),
+            paging=types.Paging(pager_on=True, on_page=2, per_page=20),
             sort=[types.Sort(key='bar', flag_desc=False), types.Sort(key='baz', flag_desc=True)],
             export_to=None,
         )
@@ -30,7 +30,7 @@ class TestGridSettings:
         assert types.GridSettings.from_dict({}) == types.GridSettings(
             search_expr=None,
             filters={},
-            paging=types.Paging(on_page=None, per_page=None),
+            paging=types.Paging(pager_on=False, on_page=None, per_page=None),
             sort=[],
             export_to=None,
         )
