@@ -10,6 +10,11 @@ from webgrid_ta.grids import RadioGrid, TemporalGrid
 from webgrid_ta.model.entities import Person, db
 
 
+def setup_module():
+    import flask
+    assert not flask.request
+
+
 class TestAssertListEqual:
     """Verify the `assert_list_equal` method performs as expected"""
 
@@ -248,7 +253,6 @@ class TestAssertRenderedXlsxMatches:
         ])
 
 
-@pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason='sqlite-only test')
 class TestGridBase(testing.GridBase):
     grid_cls = TemporalGrid
 
@@ -257,6 +261,11 @@ class TestGridBase(testing.GridBase):
         ('due_date', 'persons.due_date'),
         ('start_time', 'persons.start_time'),
     )
+
+    @classmethod
+    def setup_class(cls):
+        if db.engine.dialect.name != 'sqlite':
+            pytest.skip('sqlite-only test')
 
     @property
     def filters(self):
@@ -281,7 +290,6 @@ class TestGridBase(testing.GridBase):
         self.expect_table_contents((('01/01/2018 05:30 AM', '05/31/2019', '01:30 AM'), ))
 
 
-@pytest.mark.skipif(db.engine.dialect.name != 'postgresql', reason='postgres-only test')
 class TestGridBasePG(testing.GridBase):
     grid_cls = TemporalGrid
 
@@ -290,6 +298,11 @@ class TestGridBasePG(testing.GridBase):
         ('due_date', 'persons.due_date'),
         ('start_time', 'persons.start_time'),
     )
+
+    @classmethod
+    def setup_class(cls):
+        if db.engine.dialect.name != 'postgresql':
+            pytest.skip('postgres-only test')
 
     @property
     def filters(self):
@@ -302,7 +315,6 @@ class TestGridBasePG(testing.GridBase):
         )
 
 
-@pytest.mark.skipif(db.engine.dialect.name != 'mssql', reason='sql server-only test')
 class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
     grid_cls = TemporalGrid
 
@@ -311,6 +323,11 @@ class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
         ('due_date', 'persons.due_date'),
         ('start_time', 'persons.start_time'),
     )
+
+    @classmethod
+    def setup_class(cls):
+        if db.engine.dialect.name != 'mssql':
+            pytest.skip('sql server-only test')
 
     @property
     def filters(self):
@@ -323,7 +340,6 @@ class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
         )
 
 
-@pytest.mark.skipif(db.engine.dialect.name != 'mssql', reason='sql server-only test')
 class TestGridBaseMSSQLStrings(testing.MSSQLGridBase):
     grid_cls = RadioGrid
 
@@ -334,3 +350,8 @@ class TestGridBaseMSSQLStrings(testing.MSSQLGridBase):
             ('model', 'eq', 'foo', "WHERE sabwp_radios.model = 'foo'"),
             ('year', 'eq', '1945', "WHERE sabwp_radios.year = 1945"),
         )
+
+    @classmethod
+    def setup_class(cls):
+        if db.engine.dialect.name != 'mssql':
+            pytest.skip('sql server-only test')
