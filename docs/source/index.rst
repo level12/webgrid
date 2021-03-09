@@ -29,6 +29,7 @@ With a grid configured from one or more entities, WebGrid provides these feature
    grid/grid
    grid/managers
    grid/args-loaders
+   grid/types
    columns/index
    filters/index
    renderers/index

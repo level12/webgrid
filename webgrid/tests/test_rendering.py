@@ -29,6 +29,7 @@ from webgrid.filters import TextFilter, OptionsEnumFilter
 from webgrid.renderers import (
     CSV,
     HTML,
+    JSON,
     XLS,
     XLSX,
     RenderLimitExceeded,
@@ -746,6 +747,118 @@ class TestStringExprTotals:
 
         assert_tag(html, 'td', text='Grand Totals (3 records):', class_='totals-label', colspan='7')
         assert_tag(html, 'td', text='Page Totals (3 records):', class_='totals-label', colspan='7')
+
+
+class TestJSONRenderer:
+    def get_json(self, grid):
+        return json.loads(JSON(grid).render())
+
+    def test_json_format_records(self):
+        expected = {
+            'errors': [],
+            'settings': {
+                'filters': {},
+                'paging': {'pager_on': True, 'on_page': 1, 'per_page': 50},
+                'search_expr': None,
+                'sort': [],
+                'export_to': None,
+            },
+            'spec': {
+                'columns': {
+                    'account_type': 'Account Type',
+                    'createdts': 'Created',
+                    'due_date': 'Due Date',
+                    'emails': 'Emails',
+                    'firstname': 'First Name',
+                    'full_name': 'Full Name',
+                    'inactive': 'Active',
+                    'numericcol': 'Number',
+                    'status': 'Status',
+                },
+                'enable_search': True,
+                'enable_sort': True,
+                'export_targets': ['xls', 'xlsx'],
+            },
+            'state': {
+                'page_count': 1,
+                'record_count': 3,
+                'warnings': [],
+            },
+            'records': [
+                {
+                    'account_type': None,
+                    'createdts': '2012-02-22T10:04:16',
+                    'due_date': '2012-02-04',
+                    'emails': 'email004@example.com, email004@gmail.com',
+                    'firstname': 'fn004',
+                    'full_name': 'fn004 ln004',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': None,
+                },
+                {
+                    'account_type': 'Employee',
+                    'createdts': None,
+                    'due_date': None,
+                    'emails': 'email002@example.com, email002@gmail.com',
+                    'firstname': 'fn002',
+                    'full_name': 'fn002 ln002',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': 'pending',
+                },
+                {
+                    'account_type': 'Admin',
+                    'createdts': '2012-02-22T10:01:16',
+                    'due_date': '2012-02-01',
+                    'emails': 'email001@example.com, email001@gmail.com',
+                    'firstname': 'fn001',
+                    'full_name': 'fn001 ln001',
+                    'inactive': 'Yes',
+                    'numericcol': '2.13',
+                    'status': 'in process',
+                },
+            ],
+        }
+        assert self.get_json(PeopleGrid()) == expected
+
+    def test_warnings(self):
+        grid = PeopleGrid()
+        grid.user_warnings = ['foo', 'bar', 'baz']
+        assert self.get_json(grid)['state']['warnings'] == ['foo', 'bar', 'baz']
+
+    def test_json_format_settings(self):
+        grid = PeopleGrid()
+        firstname = grid.column('firstname')
+        firstname.filter.set('eq', 'bar', 'baz')
+        # Ensure that raw filter value is serialized
+        firstname.filter.value1 = 'bong'
+        firstname.filter.value2 = 'bing'
+        grid.set_paging(20, 2)
+        grid.search_value = 'foo'
+        grid.set_sort('firstname', '-status')
+        assert self.get_json(grid)['settings'] == {
+            'filters': {
+                'firstname': {'op': 'eq', 'value1': 'bar', 'value2': 'baz'},
+            },
+            'paging': {'pager_on': True, 'on_page': 2, 'per_page': 20},
+            'search_expr': 'foo',
+            'sort': [
+                {'key': 'firstname', 'flag_desc': False},
+                {'key': 'status', 'flag_desc': True},
+            ],
+            'export_to': None,
+        }
+
+    def test_json_format_arrow(self):
+        ArrowRecord.query.delete()
+        ArrowRecord.testing_create(
+            created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
+        )
+        reloaded = self.get_json(ArrowGrid())
+        assert reloaded['records'] == [
+            {'created_utc': '2016-08-10T01:02:03+00:00'}
+        ]
 
 
 class TestXLSRenderer(object):

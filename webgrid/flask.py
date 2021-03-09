@@ -31,7 +31,12 @@ class WebGrid(FrameworkManager):
         session_max_hours (int): Hours to hold a given grid session in storage. Set to None to
         disable. Default 12.
 
+        blueprint_name (string): Identifier to use for the Flask blueprint on this extension.
+        Default "webgrid". Needs to be unique if multiple managers are initialized as flask
+        extensions.
     """
+    blueprint_name = 'webgrid'
+
     def init_db(self, db):
         """Set the db connector."""
         self.db = db
@@ -40,7 +45,15 @@ class WebGrid(FrameworkManager):
         """Wrap SQLAlchemy query instantiation."""
         return self.db.session.query(*args, **kwargs)
 
-    def request_args(self):
+    def request_form_args(self):
+        """Return POST request args."""
+        return request.form
+
+    def request_json(self):
+        """Return json body of request."""
+        return request.json
+
+    def request_url_args(self):
         """Return GET request args."""
         return request.args
 
@@ -62,20 +75,21 @@ class WebGrid(FrameworkManager):
 
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
-        return url_for('webgrid.static', filename=url_tail)
+        return url_for('{}.static'.format(self.blueprint_name), filename=url_tail)
 
     def init_app(self, app):
         """Register a blueprint for webgrid assets, and configure jinja templates."""
-        bp = Blueprint(
-            'webgrid',
+        self.blueprint = Blueprint(
+            self.blueprint_name,
             __name__,
             static_folder='static',
             static_url_path=app.static_url_path + '/webgrid'
         )
-        app.register_blueprint(bp)
+        app.register_blueprint(self.blueprint)
         configure_jinja_environment(app.jinja_env, translation_manager)
 
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
-        return send_file(data_stream, mimetype=mime_type, as_attachment=True,
+        as_attachment = (file_name is not None)
+        return send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
                          attachment_filename=file_name)

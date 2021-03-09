@@ -7,12 +7,18 @@ from os import path
 import arrow
 import flask
 import pytest
-from mock import mock
+from mock import mock, MagicMock
 import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 
 from webgrid import Column, BoolColumn, YesNoColumn
-from webgrid.extensions import RequestArgsLoader, WebSessionArgsLoader
+from webgrid.extensions import (
+    RequestArgsLoader,
+    RequestFormLoader,
+    RequestJsonLoader,
+    WebSessionArgsLoader,
+    lazy_gettext as _
+)
 from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
 from webgrid.testing import assert_in_query, assert_not_in_query, query_to_str
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
@@ -29,6 +35,9 @@ class TestGrid(object):
         # demonstrate grid operations when multiple column expressions have the same key
         Column('Person ID', Person.id, IntFilter)
         Column('Stopwatch ID', Stopwatch.id, IntFilter)
+        Column('No Expression')
+        Column(_('No Expression'))
+        Column('')
 
         query_joins = [(Stopwatch, Stopwatch.id > 0)]
 
@@ -521,6 +530,13 @@ class TestGrid(object):
         assert grid.column('id').expr == Person.id
         assert grid.column('id_1').expr == Stopwatch.id
 
+    def test_no_expression_column_key(self):
+        """Test that columns without an expression get a key"""
+        grid = self.KeyGrid()
+        assert grid.column('no_expression')
+        assert grid.column('no_expression_1')
+        assert grid.column('unnamed_expression')
+
     def test_column_keys_unique_query_default_sort(self):
         grid = self.KeyGrid()
         grid.query_default_sort = 'id'
@@ -801,39 +817,131 @@ class TestQueryStringArgs(object):
         assert g.search_value is None
 
 
-class TestRequestArgsLoader:
+class GridPrefixTestBase:
     def test_passthru(self):
         source_args = MultiDict([('foo', 'bar'), ('baz', 'bin')])
         source_args_copy = source_args.copy()
         grid = PeopleGrid()
-        loader = RequestArgsLoader(grid.manager)
-        result = loader.get_args(grid, source_args)
+        setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
+        loader = self.loader_cls(grid.manager)
+        result = loader.get_args(grid, MultiDict())
         assert result == source_args == source_args_copy
+
+    def test_merge_with_previous(self):
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin')])
+        previous_args = MultiDict([('foo', 'fog'), ('bong', 'bing')])
+        grid = PeopleGrid()
+        setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
+        loader = self.loader_cls(grid.manager)
+        result = loader.get_args(grid, previous_args)
+        assert result == MultiDict(
+            [('foo', 'bar'), ('foo', 'fog'), ('baz', 'bin'), ('bong', 'bing')]
+        )
 
     def test_qs_prefix_filter(self):
         source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('boo', 'hoo'),
                                  ('baz', 'bid')])
         source_args_copy = source_args.copy()
         grid = PeopleGrid(qs_prefix='b')
-        loader = RequestArgsLoader(grid.manager)
-        result = loader.get_args(grid, source_args)
+        setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
+        loader = self.loader_cls(grid.manager)
+        result = loader.get_args(grid, MultiDict())
         assert source_args == source_args_copy
         assert result == MultiDict([('az', 'bin'), ('az', 'bid'), ('oo', 'hoo')])
 
     def test_reset(self):
         source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1')])
         grid = PeopleGrid()
-        loader = RequestArgsLoader(grid.manager)
-        result = loader.get_args(grid, source_args)
+        setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
+        loader = self.loader_cls(grid.manager)
+        result = loader.get_args(grid, MultiDict())
         assert result == MultiDict([('dgreset', 1)])
 
     def test_reset_with_session_key(self):
         source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1'),
                                  ('session_key', '123')])
         grid = PeopleGrid()
-        loader = RequestArgsLoader(grid.manager)
-        result = loader.get_args(grid, source_args)
+        setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
+        loader = self.loader_cls(grid.manager)
+        result = loader.get_args(grid, MultiDict())
         assert result == MultiDict([('dgreset', 1), ('session_key', '123')])
+
+
+class TestRequestFormLoader(GridPrefixTestBase):
+    loader_cls = RequestFormLoader
+    manager_arg_method = 'request_form_args'
+
+
+class TestRequestArgsLoader(GridPrefixTestBase):
+    loader_cls = RequestArgsLoader
+    manager_arg_method = 'request_url_args'
+
+
+class TestRequestJsonLoader:
+    def ok_values(self):
+        return {
+            'search_expr': 'foo',
+            'filters': {
+                'test': {'op': 'eq', 'value1': 'toast', 'value2': 'taft'},
+                'test2': {'op': 'in', 'value1': 'tarp', 'value2': None},
+            },
+            'paging': {'on_page': 2, 'per_page': 20},
+            'sort': [{'key': 'bar', 'flag_desc': False}, {'key': 'baz', 'flag_desc': True}],
+        }
+
+    def test_load(self):
+        data = self.ok_values()
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=data)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict())
+        assert result == MultiDict([
+            ('search', 'foo'),
+            ('op(test)', 'eq'),
+            ('v1(test)', 'toast'),
+            ('v2(test)', 'taft'),
+            ('op(test2)', 'in'),
+            ('v1(test2)', 'tarp'),
+            ('onpage', 2),
+            ('perpage', 20),
+            ('sort1', 'bar'),
+            ('sort2', '-baz'),
+            ('export_to', None),
+        ])
+
+    def test_merge_with_previous(self):
+        data = self.ok_values()
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=data)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict([
+            ('search', 'oof'),
+            ('onpage', 1),
+            ('sort3', 'bong'),
+        ]))
+        assert result == MultiDict([
+            ('search', 'foo'),
+            ('search', 'oof'),
+            ('op(test)', 'eq'),
+            ('v1(test)', 'toast'),
+            ('v2(test)', 'taft'),
+            ('op(test2)', 'in'),
+            ('v1(test2)', 'tarp'),
+            ('onpage', 2),
+            ('onpage', 1),
+            ('perpage', 20),
+            ('sort1', 'bar'),
+            ('sort2', '-baz'),
+            ('sort3', 'bong'),
+            ('export_to', None),
+        ])
+
+    def test_load_empty(self):
+        grid = PeopleGrid()
+        grid.manager.request_json = MagicMock(return_value=None)
+        loader = RequestJsonLoader(grid.manager)
+        result = loader.get_args(grid, MultiDict())
+        assert result == MultiDict()
 
 
 class TestWebSessionArgsLoader:

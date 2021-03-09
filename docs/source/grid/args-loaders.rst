@@ -35,6 +35,12 @@ applies session information as needed.
 .. autoclass:: webgrid.extensions.RequestArgsLoader
     :members:
 
+.. autoclass:: webgrid.extensions.RequestFormLoader
+    :members:
+
+.. autoclass:: webgrid.extensions.RequestJsonLoader
+    :members:
+
 .. autoclass:: webgrid.extensions.WebSessionArgsLoader
     :members:
 
