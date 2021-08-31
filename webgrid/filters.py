@@ -818,13 +818,13 @@ class _DateMixin(object):
             ops.not_between.key
         ):
             # !!!: localize
-            self.value1_set_with = self.value1.strftime('%m/%d/%Y')
+            self.value1_set_with = self.value1.strftime('%Y-%m-%d')
         if isinstance(self.value2, dt.date) and self.op in (
             ops.between.key,
             ops.not_between.key
         ):
             # !!!: localize
-            self.value2_set_with = self.value2.strftime('%m/%d/%Y')
+            self.value2_set_with = self.value2.strftime('%Y-%m-%d')
 
     def _between_range(self):
         if self.value1 is None:
@@ -1066,6 +1066,14 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         ops.last_month, ops.this_year
     )
     input_types = 'input', 'select', 'input2'
+    html_input_types = {
+        ops.eq: 'date',
+        ops.not_eq: 'date',
+        ops.less_than_equal: 'date',
+        ops.greater_than_equal: 'date',
+        ops.between: 'date',
+        ops.not_between: 'date',
+    }
 
     def __init__(self, sa_col, _now=None, default_op=None, default_value1=None,
                  default_value2=None):
@@ -1198,6 +1206,14 @@ class DateTimeFilter(DateFilter):
         _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
         of the true `datetime.now()`. Defaults to None.
     """
+    html_input_types = {
+        ops.eq: 'datetime-local',
+        ops.not_eq: 'datetime-local',
+        ops.less_than_equal: 'datetime-local',
+        ops.greater_than_equal: 'datetime-local',
+        ops.between: 'datetime-local',
+        ops.not_between: 'datetime-local',
+    }
     op_to_query = ImmutableDict({**DateFilter.op_to_query, **{
         ops.today: lambda self, query, today: query.filter(self.sa_col.between(
             ensure_datetime(today),
@@ -1298,16 +1314,16 @@ class DateTimeFilter(DateFilter):
         )
         if isinstance(self.value1, dt.datetime) and self.op in ops_single_val + ops_double_val:
             # !!!: localize
-            self.value1_set_with = self.value1.strftime('%m/%d/%Y %I:%M %p')
+            self.value1_set_with = self.value1.strftime('%Y-%m-%dT%H:%M')
             if self.op in ops_single_val and self._has_date_only1:
                 # !!!: localize
-                self.value1_set_with = self.value1.strftime('%m/%d/%Y')
+                self.value1_set_with = self.value1.strftime('%Y-%m-%d')
         if isinstance(self.value2, dt.datetime) and self.op in ops_double_val:
             # !!!: localize
-            self.value2_set_with = self.value2.strftime('%m/%d/%Y %I:%M %p')
+            self.value2_set_with = self.value2.strftime('%Y-%m-%dT%H:%M')
             if self._has_date_only2:
                 # !!!: localize
-                self.value2_set_with = self.value2.strftime('%m/%d/%Y 11:59 PM')
+                self.value2_set_with = self.value2.strftime('%Y-%m-%dT23:59')
 
     def _between_clause(self):
         if self._has_date_only2:

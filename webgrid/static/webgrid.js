@@ -179,6 +179,7 @@ function datagrid_toggle_filter_inputs(jq_filter_tr) {
     } else {
         var op_data = datagrid_data[filter_key][op_key];
         var field_type = op_data.field_type;
+        var html_input_type = op_data.html_input_type;
         if( field_type == null ) {
             fields1.hide();
             fields1.val('');
@@ -202,6 +203,10 @@ function datagrid_toggle_filter_inputs(jq_filter_tr) {
                     }
                 }
             } else {
+                if (html_input_type) {
+                    jq_filter_tr.find('.inputs1 input').attr('type', html_input_type);
+                    jq_filter_tr.find('.inputs2 input').attr('type', html_input_type);
+                }
                 if (_datagrid_is_loaded) {
                     jq_filter_tr.find('.inputs1 input').val('');
                 }
