@@ -44,16 +44,22 @@ def api_manager_with_csrf(csrf, app):
     yield manager
 
 
+class DummyMixin:
+    Column('Foo', 'foo')
+
+    @property
+    def records(self):
+        return [{'foo': 'bar'}]
+
+    @property
+    def record_count(self):
+        return 1
+
+
 def create_grid_cls(grid_manager):
-    class Grid(BaseGrid):
+    class Grid(DummyMixin, BaseGrid):
         manager = grid_manager
         allowed_export_targets = {'json': JSON}
-
-        Column('Foo', 'foo')
-
-        @property
-        def records(self):
-            return [{'foo': 'bar'}]
 
     return Grid
 
@@ -69,6 +75,7 @@ class TestFlaskAPI:
             'filters': {},
             'sort': [],
             'paging': {'per_page': 50, 'on_page': 1},
+            'export_to': None,
         }
         data.update(**kwargs)
         return data
@@ -141,43 +148,25 @@ class TestFlaskAPI:
             def render(self):
                 return '"render result"'
 
-        class Grid(BaseGrid):
+        class Grid(DummyMixin, BaseGrid):
             manager = api_manager
             allowed_export_targets = {'json': MyRenderer}
-
-            Column('Foo', 'foo')
-
-            @property
-            def records(self):
-                return [{'foo': 'bar'}]
 
         register_grid(api_manager, 'foo', Grid)
         resp = test_app.post('/webgrid-api/foo', {})
         assert resp.json == 'render result'
 
     def test_grid_default_renderer(self, api_manager, test_app):
-        class Grid(BaseGrid):
+        class Grid(DummyMixin, BaseGrid):
             manager = api_manager
-
-            Column('Foo', 'foo')
-
-            @property
-            def records(self):
-                return [{'foo': 'bar'}]
 
         register_grid(api_manager, 'foo', Grid)
         resp = test_app.post('/webgrid-api/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
     def test_grid_auth(self, api_manager, test_app):
-        class Grid(BaseGrid):
+        class Grid(DummyMixin, BaseGrid):
             manager = api_manager
-
-            Column('Foo', 'foo')
-
-            @property
-            def records(self):
-                return [{'foo': 'bar'}]
 
             def check_auth(self):
                 if b'bad' in flask.request.query_string:
@@ -195,7 +184,7 @@ class TestFlaskAPI:
         register_grid(api_manager, 'foo', Grid)
         post_data = self.post_data(sort=[{'key': 'foo', 'flag_desc': True}])
         resp = test_app.post_json('/webgrid-api/foo', post_data)
-        assert resp.json['meta']['sort'] == [{'key': 'foo', 'flag_desc': True}]
+        assert resp.json['settings']['sort'] == [{'key': 'foo', 'flag_desc': True}]
 
     def test_grid_args_applied_alt_manager(self, api_manager, test_app):
         Grid = create_grid_cls(WebGrid())
@@ -203,17 +192,11 @@ class TestFlaskAPI:
         register_grid(api_manager, 'foo', Grid)
         post_data = self.post_data(sort=[{'key': 'foo', 'flag_desc': True}])
         resp = test_app.post_json('/webgrid-api/foo', post_data)
-        assert resp.json['meta']['sort'] == [{'key': 'foo', 'flag_desc': True}]
+        assert resp.json['settings']['sort'] == [{'key': 'foo', 'flag_desc': True}]
 
     def test_grid_auth_precedes_args(self, api_manager, test_app):
-        class Grid(BaseGrid):
+        class Grid(DummyMixin, BaseGrid):
             manager = api_manager
-
-            Column('Foo', 'foo')
-
-            @property
-            def records(self):
-                return [{'foo': 'bar'}]
 
             def check_auth(self):
                 flask.abort(403)
@@ -224,9 +207,14 @@ class TestFlaskAPI:
 
         assert not m_args.call_count
 
-    @pytest.mark.xfail
-    def test_grid_export(self):
-        assert False
+    def test_grid_export(self, api_manager, test_app):
+        class Grid(DummyMixin, BaseGrid):
+            manager = api_manager
+
+        register_grid(api_manager, 'foo', Grid)
+        post_data = self.post_data(export_to='xlsx')
+        resp = test_app.post_json('/webgrid-api/foo', post_data)
+        assert 'spreadsheetml' in resp.headers['Content-Type']
 
     @pytest.mark.xfail
     def test_grid_export_limit_exceeded(self):

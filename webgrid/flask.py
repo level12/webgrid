@@ -230,7 +230,7 @@ class WebGridAPI(WebGrid):
         grid.apply_qs_args(add_user_warnings=False)
 
         if grid.export_to:
-            return self.api_export_response()
+            return self.api_export_response(grid)
 
         # Be as flexible as possible here. If the grid has a JSON renderer, use it. But,
         # provide a default if it does not.
