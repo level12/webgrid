@@ -125,9 +125,13 @@ class WebGridAPI(WebGrid):
     be handled in each grid's ``check_auth``.
 
     CSRF note: CSRF protection is standard security practice on Flask apps via
-    ``flask_wtf``. If the API set up here will be used in scenarios with cookies
-    (e.g. Ajax requests), protection should be applied here. If your app is set up
-    with a simple ``CSRFProtect``, no further action should be required.
+    ``flask_wtf``, but that is not really applicable to API endpoints. We take posts
+    on the API view, but they will not inject information for storage - the API simply sets
+    up and returns a grid. If you do wish to have CSRF protection, use the ``csrf_protection``
+    class attribute and apply ``CSRFProtect`` to your application. Note that in that scenario
+    you will need to apply the CSRF token manually to any API requests. If CSRF protection
+    is not desired for the grid API endpoint, make sure ``init_app`` is called on the
+    CSRF extension prior to this grid manager.
 
     Special Class Attributes:
         api_route_prefix (string): Prefix for URL route to bind on the manager's blueprint.
@@ -137,6 +141,7 @@ class WebGridAPI(WebGrid):
     blueprint_name = 'webgrid-api'
     api_route_prefix = '/webgrid-api'
     args_loaders = (extensions.RequestJsonLoader, )
+    csrf_protection = False
 
     def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None,
                  blueprint_name=None, blueprint_class=None, api_route_prefix=None):
@@ -149,6 +154,11 @@ class WebGridAPI(WebGrid):
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets and set up a generic API endpoint."""
         blueprint = super().init_blueprint(app)
+
+        # conditionally exempt the blueprint from CSRF protection
+        if not self.csrf_protection and app.extensions.get('csrf'):
+            app.extensions['csrf'].exempt(blueprint)
+
         blueprint.route(self.api_route, methods=('POST', ))(
             self.api_view_method
         )
@@ -195,7 +205,7 @@ class WebGridAPI(WebGrid):
         try:
             return grid.export_as_response()
         except webgrid.renderers.RenderLimitExceeded:
-            return self.on_render_limit_exceeded(grid)
+            return self.api_on_render_limit_exceeded(grid)
 
     def api_view_method(self, grid_ident):
         """Main API view method. Returns JSON-rendered grid or desired export.
@@ -217,7 +227,7 @@ class WebGridAPI(WebGrid):
 
         # Check auth before applying any args
         grid.check_auth()
-        grid.apply_qs_args()
+        grid.apply_qs_args(add_user_warnings=False)
 
         if grid.export_to:
             return self.api_export_response()
