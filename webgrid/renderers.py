@@ -203,6 +203,24 @@ class JSON(Renderer):
     def serialized_columns(self):
         return {col.key: str(col.label) for col in self.columns}
 
+    def serialize_column_group(self, label, columns):
+        return types.ColumnGroup(
+            label=label,
+            columns=columns,
+        )
+
+    def serialized_column_groups(self):
+        group_to_keys = defaultdict(list)
+        for column in filter(
+            lambda col: col.group is not None,
+            self.columns
+        ):
+            group_to_keys[column.group].append(column.key)
+        return [
+            self.serialize_column_group(group.label, columns)
+            for group, columns in group_to_keys.items()
+        ]
+
     def serialize_filter(self, filter):
         return types.Filter(
             op=filter.op,
@@ -215,6 +233,20 @@ class JSON(Renderer):
             col.key: self.serialize_filter(col.filter)
             for key, col in self.grid.filtered_cols.items()
             if col.filter.is_active
+        }
+
+    def serialize_filter_operator(self, op):
+        return types.FilterOperator(
+            key=op.key,
+            label=op.display,
+            field_type=op.field_type,
+            hint=op.hint,
+        )
+
+    def serialized_filter_specs(self):
+        return {
+            col.key: col.filter.serialize_filter_spec()
+            for key, col in self.grid.filtered_cols.items()
         }
 
     def serialize_record(self, record):
@@ -246,9 +278,11 @@ class JSON(Renderer):
             ),
             spec=types.GridSpec(
                 columns=self.serialized_columns(),
+                column_groups=self.serialized_column_groups(),
                 export_targets=list(self.grid.allowed_export_targets.keys()),
                 enable_search=self.grid.enable_search,
                 enable_sort=self.grid.sorter_on,
+                filters=self.serialized_filter_specs(),
             ),
             state=types.GridState(
                 page_count=self.grid.page_count,

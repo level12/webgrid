@@ -19,6 +19,7 @@ from .extensions import (
     gettext,
     lazy_gettext as _
 )
+from . import types
 
 
 class UnrecognizedOperator(ValueError):
@@ -299,6 +300,27 @@ class FilterBase(object):
         """
         return None
 
+    def serialize_filter_operator(self, op):
+        return types.FilterOperator(
+            key=op.key,
+            label=op.display,
+            field_type=op.field_type,
+            hint=op.hint,
+        )
+
+    def serialize_filter_option(self, key, value):
+        return types.FilterOption(
+            key=key,
+            value=value,
+        )
+
+    def serialize_filter_spec(self):
+        return types.FilterSpec(
+            operators=[self.serialize_filter_operator(op) for op in self.operators],
+            primary_op=self.serialize_filter_operator(
+                self.primary_op) if self.primary_op else None,
+        )
+
     def new_instance(self, **kwargs):
         """
         Note: Ensure any overrides of this method accept and pass through kwargs to preserve
@@ -357,6 +379,16 @@ class OptionsFilterBase(FilterBase):
         # attributes that will start fresh for each instance
         self._options_seq = None
         self._options_keys = None
+
+    def serialize_filter_spec(self):
+        base_spec = super().serialize_filter_spec()
+        return types.OptionsFilterSpec(
+            operators=base_spec.operators,
+            primary_op=base_spec.primary_op,
+            options=[
+                self.serialize_filter_option(key, value)
+                for key, value in self.options_seq],
+        )
 
     def new_instance(self, **kwargs):
         filter = FilterBase.new_instance(self, **kwargs)

@@ -39,6 +39,37 @@ class Sort:
 
 
 @dataclass
+class FilterOperator:
+    key: str
+    label: str
+    field_type: str
+    hint: Optional[str] = None
+
+
+@dataclass
+class FilterOption:
+    key: str
+    value: str
+
+
+@dataclass
+class FilterSpec:
+    operators: List[FilterOperator]
+    primary_op: Optional[FilterOperator]
+
+
+@dataclass
+class OptionsFilterSpec(FilterSpec):
+    options: List[FilterOption]
+
+
+@dataclass
+class ColumnGroup:
+    label: str
+    columns: List[str]
+
+
+@dataclass
 class GridSettings:
     search_expr: Optional[str] = None
     filters: Dict[str, Filter] = field(default_factory=dict)
@@ -97,9 +128,11 @@ class GridSettings:
 @dataclass
 class GridSpec:
     columns: List[Dict[str, str]]
+    column_groups: List[ColumnGroup]
     export_targets: List[str]
     enable_search: bool
     enable_sort: bool
+    filters: Dict[str, FilterSpec] = field(default_factory=dict)
 
 
 @dataclass

@@ -17,6 +17,7 @@ from pyquery import PyQuery
 from webgrid import (
     BoolColumn,
     Column,
+    ColumnGroup,
     DateTimeColumn,
     LinkColumnBase,
     NumericColumn,
@@ -754,6 +755,10 @@ class TestJSONRenderer:
         return json.loads(JSON(grid).render())
 
     def test_json_format_records(self):
+        status_options = [{
+            'key': status.id,
+            'value': status.label
+        } for status in reversed(Status.list())]
         expected = {
             'errors': [],
             'settings': {
@@ -775,9 +780,101 @@ class TestJSONRenderer:
                     'numericcol': 'Number',
                     'status': 'Status',
                 },
+                'column_groups': [
+                    {'columns': ['firstname', 'inactive'], 'label': 'foo'}
+                ],
                 'enable_search': True,
                 'enable_sort': True,
                 'export_targets': ['xls', 'xlsx'],
+                'filters': {
+                    'account_type': {
+                        'operators': [
+                            {'field_type': 'select', 'hint': None, 'key': 'is', 'label': 'is'},
+                            {'field_type': 'select', 'hint': None, 'key': '!is', 'label': 'is not'},
+                            {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
+                            {'field_type': None, 'hint': None, 'key': '!empty',
+                             'label': 'not empty'}
+                        ],
+                        'options': [
+                            {'key': 'admin', 'value': 'Admin'},
+                            {'key': 'manager', 'value': 'Manager'},
+                            {'key': 'employee', 'value': 'Employee'}
+                        ],
+                        'primary_op': {'field_type': 'select', 'hint': None, 'key': 'is',
+                                       'label': 'is'}
+                    },
+                    'createdts': {
+                        'operators': [
+                            {'field_type': 'input', 'hint': None, 'key': 'eq', 'label': 'is'},
+                            {'field_type': 'input', 'hint': None, 'key': '!eq', 'label': 'is not'},
+                            {'field_type': 'input', 'hint': None, 'key': 'lte',
+                             'label': 'less than or equal'},
+                            {'field_type': 'input', 'hint': None, 'key': 'gte',
+                             'label': 'greater than or equal'},
+                            {'field_type': '2inputs', 'hint': None, 'key': 'between',
+                             'label': 'between'},
+                            {'field_type': '2inputs', 'hint': None, 'key': '!between',
+                             'label': 'not between'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'da',
+                             'label': 'days ago'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'ltda',
+                             'label': 'less than days ago'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'mtda',
+                             'label': 'more than days ago'},
+                            {'field_type': None, 'hint': None, 'key': 'today', 'label': 'today'},
+                            {'field_type': None, 'hint': None, 'key': 'thisweek',
+                             'label': 'this week'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'ind',
+                             'label': 'in days'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'iltd',
+                             'label': 'in less than days'},
+                            {'field_type': 'input', 'hint': 'days', 'key': 'imtd',
+                             'label': 'in more than days'},
+                            {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
+                            {'field_type': None, 'hint': None, 'key': '!empty',
+                             'label': 'not empty'},
+                            {'field_type': None, 'hint': None, 'key': 'thismonth',
+                             'label': 'this month'},
+                            {'field_type': None, 'hint': None, 'key': 'lastmonth',
+                             'label': 'last month'},
+                            {'field_type': 'select+input', 'hint': None, 'key': 'selmonth',
+                             'label': 'select month'},
+                            {'field_type': None, 'hint': None, 'key': 'thisyear',
+                             'label': 'this year'}
+                        ],
+                        'primary_op': None
+                    },
+                    'firstname': {
+                        'operators': [
+                            {'field_type': 'input', 'hint': None, 'key': 'eq', 'label': 'is'},
+                            {'field_type': 'input', 'hint': None, 'key': '!eq',
+                             'label': 'is not'},
+                            {'field_type': 'input', 'hint': None, 'key': 'contains',
+                             'label': 'contains'},
+                            {'field_type': 'input', 'hint': None, 'key': '!contains',
+                             'label': "doesn't contain"},
+                            {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
+                            {'field_type': None, 'hint': None, 'key': '!empty',
+                             'label': 'not empty'}
+                        ],
+                        'primary_op': {'field_type': 'input', 'hint': None, 'key': 'contains',
+                                       'label': 'contains'}
+                    },
+                    'status': {
+                        'operators': [
+                            {'field_type': None, 'hint': None, 'key': 'o', 'label': 'open'},
+                            {'field_type': 'select', 'hint': None, 'key': 'is', 'label': 'is'},
+                            {'field_type': 'select', 'hint': None, 'key': '!is', 'label': 'is not'},
+                            {'field_type': None, 'hint': None, 'key': 'c', 'label': 'closed'},
+                            {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
+                            {'field_type': None, 'hint': None, 'key': '!empty',
+                             'label': 'not empty'}
+                        ],
+                        'options': status_options,
+                        'primary_op': {'field_type': 'select', 'hint': None, 'key': 'is',
+                                       'label': 'is'}
+                    },
+                },
             },
             'state': {
                 'page_count': 1,
@@ -820,7 +917,10 @@ class TestJSONRenderer:
                 },
             ],
         }
-        assert self.get_json(PeopleGrid()) == expected
+        grid = PeopleGrid()
+        group = ColumnGroup('foo')
+        grid.column('firstname').group = grid.column('inactive').group = group
+        assert self.get_json(grid) == expected
 
     def test_warnings(self):
         grid = PeopleGrid()

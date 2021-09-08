@@ -1578,6 +1578,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
         Args:
             add_user_warnings (bool, optional): Add flash messages for warnings. Defaults to True.
+            grid_args (MultiDict, optional): Supply args directly to the grid.
         """
         args = grid_args if grid_args is not None else self.manager.get_args(self)
 
@@ -1601,6 +1602,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # export
         self._apply_export(args)
 
+        # Having this here is not ideal. Due to separation of concerns, it would be nice to
+        #   have flash warnings in the HTML renderer. However, by the time the renderer is
+        #   called, an app template has probably already loaded and rendered any messages to
+        #   be shown, and it's too late to add new ones.
         if add_user_warnings:
             for msg in self.user_warnings:
                 self.manager.flash_message('warning', msg)
