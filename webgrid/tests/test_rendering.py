@@ -371,7 +371,7 @@ class TestHtmlRenderer(object):
         assert g.html.paging_url_last() == '/thepage?onpage=5&perpage=1'
 
     @_inrequest('/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
-                '=bob&v2(name)=fred')
+                '=bob&v2(name)=fred&search=bar')
     def test_reset_url(self):
         g = self.get_grid()
         assert (

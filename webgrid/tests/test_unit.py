@@ -460,6 +460,15 @@ class TestGrid(object):
         with pytest.raises(Exception, match='bad filter search expression: foo is not callable'):
             CTG().search_expression_generators
 
+    def test_search_blank(self):
+        class CTG(Grid):
+            Column('First Name', Person.firstname, TextFilter)
+            Column('Last Name', Person.lastname, TextFilter)
+
+        g = CTG()
+        g.search_value = ''
+        assert_not_in_query(g.build_query(), 'WHERE')
+
     def test_search_query(self):
         class CTG(Grid):
             Column('First Name', Person.firstname, TextFilter)

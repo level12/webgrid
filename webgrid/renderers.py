@@ -1130,6 +1130,7 @@ class HTML(GroupMixin, Renderer):
         url_args = {}
         url_args['perpage'] = None
         url_args['onpage'] = None
+        url_args['search'] = None
         url_args['sort1'] = None
         url_args['sort2'] = None
         url_args['sort3'] = None

@@ -1484,7 +1484,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             Query: SQLAlchemy query
         """
         filter_display = []
-        if self.search_value is not None:
+        if self.search_value:
             query = self.apply_search(query, self.search_value)
 
         for col in six.itervalues(self.filtered_cols):
@@ -1511,11 +1511,14 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             Query: SQLAlchemy query
         """
         filter_method = query.having if self.search_uses_aggregate else query.filter
-
-        return filter_method(sa.or_(*filter(
+        filter_clauses = list(filter(
             lambda item: item is not None,
             (expr(value) for expr in self.search_expression_generators)
-        )))
+        ))
+
+        if not filter_clauses:
+            return query
+        return filter_method(sa.or_(*filter_clauses))
 
     def query_paging(self, query):
         """Modify the query by applying limit/offset to match grid parameters.
