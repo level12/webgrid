@@ -1614,6 +1614,14 @@ class TestEnumFilter(CheckFilterBase):
         filter.set('is', [AccountType.admin])
         self.assert_filter_query(filter, "WHERE persons.account_type = 'admin'")
 
+    def test_is_with_type_on_class(self):
+        class AccountTypeFilter(OptionsEnumFilter):
+            enum_type = AccountType
+
+        filter = AccountTypeFilter(Person.account_type).new_instance()
+        filter.set('is', ['admin'])
+        self.assert_filter_query(filter, "WHERE persons.account_type = 'admin'")
+
 
 class TestIntrospect(CheckFilterBase):
     def test_new_instance(self):

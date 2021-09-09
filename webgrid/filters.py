@@ -566,6 +566,8 @@ class OptionsEnumFilter(OptionsFilterBase):
     Notable args:
         enum_type (Enum): Python Enum type to use for options list.
     """
+    enum_type = None
+
     def __init__(
             self,
             sa_col,
@@ -575,7 +577,7 @@ class OptionsEnumFilter(OptionsFilterBase):
             default_value2=None,
             enum_type=None,
     ):
-        self.enum_type = enum_type
+        self.enum_type = enum_type or self.__class__.enum_type
 
         if self.enum_type is None:
             raise ValueError('enum_type argument not given')
