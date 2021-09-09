@@ -1566,7 +1566,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             self.pager_on
             and self.manager
             and self.manager.db.engine.dialect.name == 'mssql'
-            and not query._order_by
+            and not query._order_by_clauses
         ):
             query = self._fix_mssql_order_by(query)
 
@@ -1578,7 +1578,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         if len(self.columns):
             query = self.columns[0].apply_sort(query, False)
-            if query._order_by:
+            if query._order_by_clauses:
                 return query
         raise Exception(
             'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'

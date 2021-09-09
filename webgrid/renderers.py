@@ -651,7 +651,7 @@ class HTML(GroupMixin, Renderer):
                 {% endfor %}
             </select>
             ''',
-            options=((opt if len(opt) == 3 else (opt + (None, ))) for opt in options),
+            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None, ))) for opt in options),
             current_selection=current_selection,
             placeholder=placeholder,
             attrs=kwargs,
