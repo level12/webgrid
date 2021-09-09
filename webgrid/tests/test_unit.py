@@ -184,6 +184,19 @@ class TestGrid(object):
         g = CTG()
         assert_in_query(g, 'ORDER BY persons.last_name')
 
+    def test_column_reorder(self):
+        class CTG(Grid):
+            Column('First Name', Person.firstname, TextFilter)
+            Column('Last Name', Person.lastname, TextFilter)
+
+        grid = CTG()
+        grid.set_column_order(('lastname', 'firstname'))
+        assert grid.columns[-1].label == 'First Name'
+        assert grid.columns[0].label == 'Last Name'
+
+        with pytest.raises(Exception, match="Keys not recognized on grid: {'foo'}"):
+            grid.set_column_order(('foo', ))
+
     def test_filter_class(self):
         class CTG(Grid):
             Column('First Name', Person.firstname, TextFilter)

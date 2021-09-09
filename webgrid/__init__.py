@@ -986,6 +986,20 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         pass
 
+    def set_column_order(self, column_keys):
+        """Most renderers output columns in the order they appear in the grid's ``columns``
+        list. When bringing mixins together or subclassing a grid, however, the order is
+        often not what is intended.
+
+        This method allows a manual override of column order, based on keys."""
+        key_check = set(column_keys) - set(self.key_column_map.keys())
+        if key_check:
+            raise Exception(f'Keys not recognized on grid: {key_check}')
+
+        self.columns = [
+            self.key_column_map[key] for key in column_keys
+        ]
+
     def before_query_hook(self):
         """Hook to give subclasses a chance to change things before executing the query.
         """
