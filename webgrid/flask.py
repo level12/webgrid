@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import flask
-from flask import request, session, flash, Blueprint, url_for, send_file
+from flask import request, session, flash, url_for, send_file
 
 from webgrid import extensions, renderers
 

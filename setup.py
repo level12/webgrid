@@ -24,7 +24,6 @@ develop_requires = [
     'pytest-cov',
     'Flask',
     'Flask-Bootstrap',
-    'Flask-Script',
     'Flask-SQLAlchemy',
     'Flask-WebTest',
     'Flask-WTF',
