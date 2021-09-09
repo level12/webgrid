@@ -1467,13 +1467,12 @@ class TestOptionsFilter(CheckFilterBase):
         expr_factory = FooFilter(Person.state).new_instance().get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('foo')
-        assert str(expr) == 'persons.state IN (:state_1)'
-        assert expr.right.clauses[0].value == 'foo'
+        assert str(expr) == 'persons.state IN ([POSTCOMPILE_state_1])'
+        assert expr.right.value == ['foo']
 
         expr = expr_factory('ba')
-        assert str(expr) == 'persons.state IN (:state_1, :state_2)'
-        assert expr.right.clauses[0].value == 'bar'
-        assert expr.right.clauses[1].value == 5
+        assert str(expr) == 'persons.state IN ([POSTCOMPILE_state_1])'
+        assert expr.right.value == ['bar', 5]
 
     def test_is(self):
         filter = StateFilter(Person.state).new_instance()
@@ -1484,7 +1483,7 @@ class TestOptionsFilter(CheckFilterBase):
     def test_is_multiple(self):
         filter = StateFilter(Person.state).new_instance()
         filter.set('is', ['in', 'ky'])
-        self.assert_filter_query(filter, "WHERE persons.state IN ('in', 'ky')")
+        self.assert_filter_query(filter, "WHERE persons.state IN 'in', 'ky'")
 
     def test_is_not(self):
         filter = StateFilter(Person.state).new_instance()
@@ -1494,7 +1493,7 @@ class TestOptionsFilter(CheckFilterBase):
     def test_is_not_multiple(self):
         filter = StateFilter(Person.state).new_instance()
         filter.set('!is', ['in', 'ky'])
-        self.assert_filter_query(filter, "WHERE persons.state NOT IN ('in', 'ky')")
+        self.assert_filter_query(filter, "WHERE (persons.state NOT IN 'in', 'ky')")
 
     def test_empty(self):
         filter = StateFilter(Person.state).new_instance()
@@ -1511,7 +1510,7 @@ class TestOptionsFilter(CheckFilterBase):
         # the '3' should get filtered out because its not a valid option
         # the 'foo' should get filtered out because its the wrong type (and isn't an option)
         filter.set('is', ['1', '2', '3', 'foo'])
-        self.assert_filter_query(filter, "WHERE persons.sortorder IN (1, 2)")
+        self.assert_filter_query(filter, "WHERE persons.sortorder IN 1, 2")
 
     def test_float_conversion(self):
         filter = FloatFilter(Person.floatcol).new_instance()
@@ -1566,7 +1565,7 @@ class TestOptionsFilter(CheckFilterBase):
         filter = SortOrderFilter(Person.sortorder, default_op='is',
                                  default_value1=['1', '2', '3', 'foo']).new_instance()
         filter.set(None, None)
-        self.assert_filter_query(filter, "WHERE persons.sortorder IN (1, 2)")
+        self.assert_filter_query(filter, "WHERE persons.sortorder IN 1, 2")
 
     def test_default_op_callable(self):
         def def_op():
@@ -1574,7 +1573,7 @@ class TestOptionsFilter(CheckFilterBase):
         filter = SortOrderFilter(Person.sortorder, default_op=def_op,
                                  default_value1=['1', '2', '3', 'foo']).new_instance()
         filter.set(None, None)
-        self.assert_filter_query(filter, "WHERE persons.sortorder IN (1, 2)")
+        self.assert_filter_query(filter, "WHERE persons.sortorder IN 1, 2")
 
     def test_default_callable(self):
         def def_val():
@@ -1582,7 +1581,7 @@ class TestOptionsFilter(CheckFilterBase):
         filter = SortOrderFilter(Person.sortorder, default_op='is',
                                  default_value1=def_val).new_instance()
         filter.set(None, None)
-        self.assert_filter_query(filter, "WHERE persons.sortorder IN (1, 2)")
+        self.assert_filter_query(filter, "WHERE persons.sortorder IN 1, 2")
 
 
 class TestEnumFilter(CheckFilterBase):
@@ -1608,7 +1607,7 @@ class TestEnumFilter(CheckFilterBase):
     def test_is_multiple(self):
         filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
         filter.set('is', ['admin', 'manager'])
-        self.assert_filter_query(filter, "WHERE persons.account_type IN ('admin', 'manager')")
+        self.assert_filter_query(filter, "WHERE persons.account_type IN 'admin', 'manager'")
 
     def test_literal_value(self):
         filter = OptionsEnumFilter(Person.account_type, enum_type=AccountType).new_instance()
