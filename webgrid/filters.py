@@ -21,6 +21,15 @@ from .extensions import (
 )
 from . import types
 
+try:
+    import arrow
+except ImportError:
+    arrow = None
+try:
+    from sqlalchemy_utils.types import ArrowType
+except ImportError:
+    ArrowType = None
+
 
 class UnrecognizedOperator(ValueError):
     pass
@@ -1071,6 +1080,14 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         self._was_time_given1 = False
         self._was_time_given2 = False
 
+        self.check_arrow_type()
+
+    def check_arrow_type(self):
+        """Verify that the expression given to the filter is not ArrowType. If it
+        is, cast it to a date to avoid type problems in the date filter"""
+        if arrow and ArrowType and isinstance(self.sa_col.type, ArrowType):
+            self.sa_col = sa.sql.cast(self.sa_col, sa.Date)
+
     def set(self, op, value1, value2=None):
         super(DateFilter, self).set(op, value1, value2)
         self.format_display_vals()
@@ -1263,6 +1280,10 @@ class DateTimeFilter(DateFilter):
         super(DateTimeFilter, self).__init__(sa_col, _now=_now, default_op=default_op,
                                              default_value1=default_value1,
                                              default_value2=default_value2)
+
+    def check_arrow_type(self):
+        """DateTimeFilter has no problems with ArrowType. Pass this case through."""
+        pass
 
     def format_display_vals(self):
         ops_single_val = (

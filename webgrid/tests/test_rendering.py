@@ -27,7 +27,7 @@ from webgrid import (
     extensions,
     row_styler,
 )
-from webgrid.filters import TextFilter, OptionsEnumFilter
+from webgrid.filters import TextFilter, OptionsEnumFilter, DateFilter
 from webgrid.renderers import (
     CSV,
     HTML,
@@ -1315,10 +1315,16 @@ class TestArrowDate(object):
         g.column('created_utc').html_format = 'YYYY-MM-DD HH:mm:ss ZZ'
         assert '<td>2016-08-10 01:02:03 +00:00</td>' in g.html(), g.html()
 
-    @inrequest('/?op(created_utc)=in&value1=2018-01-01')
-    def test_filter(self):
+    def test_filter_handles_arrow(self):
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
+        g.column('created_utc').filter = DateFilter(g.column('created_utc').expr)
+        g.apply_qs_args(grid_args={
+            'op(created_utc)': 'eq',
+            'v1(created_utc)': '2018-01-01'
+        })
+        assert g.column('created_utc').filter.is_active
+        g.record_count
 
     def test_xls(self):
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
