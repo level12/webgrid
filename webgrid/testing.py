@@ -6,7 +6,10 @@ from unittest import mock
 import urllib
 import warnings
 
-import openpyxl
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
 from pyquery import PyQuery
 import sqlalchemy
 try:
@@ -226,6 +229,11 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
     """
     assert rendered_xlsx
     rendered_xlsx.filename.seek(0)
+
+    if not openpyxl:
+        raise Exception(
+            'openpyxl is required for webgrid testing helpers to read XLSX'
+        )
 
     book = openpyxl.load_workbook(rendered_xlsx.filename)
     assert len(book.sheetnames) >= 1
