@@ -21,7 +21,7 @@ from blazeutils.spreadsheets import Writer, WriterX, xlsxwriter
 from blazeutils.strings import reindent, randnumerics
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
-from werkzeug.urls import Href
+from werkzeug.routing import Map, Rule
 
 from .extensions import (
     CustomJsonEncoder,
@@ -1090,7 +1090,10 @@ class HTML(GroupMixin, Renderer):
     def current_url(self, **kwargs):
         """Generate a URL from current request args and the given kwargs."""
         curl = current_url(self.grid.manager, strip_querystring=True, strip_host=True)
-        href = Href(curl, sort=True)
+
+        map_adapter = Map([
+            Rule(curl, endpoint='magic'),
+        ], sort_parameters=True).bind(curl)
 
         req_args = MultiDict(self.grid.manager.request_url_args())
 
@@ -1120,7 +1123,7 @@ class HTML(GroupMixin, Renderer):
         # convert to md first so that if we have lists in the kwargs, they
         # are converted appropriately
         req_args.update(MultiDict(kwargs))
-        return href(req_args)
+        return map_adapter.build('magic', req_args)
 
     def reset_url(self, session_reset=True):
         """Generate a URL that will trigger a reset of the grid's UI options."""
