@@ -197,6 +197,20 @@ class TestGrid(object):
         with pytest.raises(Exception, match="Keys not recognized on grid: {'foo'}"):
             grid.set_column_order(('foo', ))
 
+    def test_add_column(self):
+        class CTG(Grid):
+            Column('First Name', Person.firstname, TextFilter)
+
+        grid = CTG()
+        grid.add_column(
+            Column('Last Name', Person.lastname, TextFilter)
+        )
+
+        assert len(grid.columns) == 2
+        colinst = grid.column('lastname')
+        assert colinst.grid is grid
+        assert colinst.key == 'lastname'
+
     def test_filter_class(self):
         class CTG(Grid):
             Column('First Name', Person.firstname, TextFilter)

@@ -970,16 +970,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Columns are responsible for their own "copy" process with the `new_instance` method.
         """
         for col in self.__cls_cols__:
-            new_col = col.new_instance(self)
-            self.columns.append(new_col)
-            self.key_column_map[new_col.key] = new_col
-            if new_col.filter is not None:
-                self.filtered_cols[new_col.key] = new_col
-            if new_col.has_subtotal is not False and new_col.has_subtotal is not None:
-                self.subtotal_cols[new_col.key] = (
-                    subtotal_function_map(new_col.has_subtotal),
-                    new_col
-                )
+            self.add_column(col)
+
+    def add_column(self, column):
+        new_col = column.new_instance(self)
+        self.columns.append(new_col)
+        self.key_column_map[new_col.key] = new_col
+        if new_col.filter is not None:
+            self.filtered_cols[new_col.key] = new_col
+        if new_col.has_subtotal is not False and new_col.has_subtotal is not None:
+            self.subtotal_cols[new_col.key] = (
+                subtotal_function_map(new_col.has_subtotal),
+                new_col
+            )
 
     def post_init(self):
         """Provided for subclasses to run post-initialization customizations.
