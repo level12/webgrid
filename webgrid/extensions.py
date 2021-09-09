@@ -516,3 +516,7 @@ class FrameworkManager(ABC):
     @abstractmethod
     def request_url_args(self):
         """Return POST request args."""
+
+    @abstractmethod
+    def csrf_token(self):
+        """Return a CSRF token for POST."""

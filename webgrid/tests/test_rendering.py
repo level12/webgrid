@@ -24,6 +24,7 @@ from webgrid import (
     YesNoColumn,
     col_filter,
     col_styler,
+    extensions,
     row_styler,
 )
 from webgrid.filters import TextFilter, OptionsEnumFilter
@@ -214,11 +215,11 @@ def assert_tag(html, tag, text=None, **kwargs):
 
 class TestHtmlRenderer(object):
     key_data = (
-        {'id': 1, 'name': 'one'},
-        {'id': 2, 'name': 'two'},
-        {'id': 3, 'name': 'three'},
-        {'id': 4, 'name': 'three'},
-        {'id': 5, 'name': 'three'},
+        {'id': 1, 'name': 'one', 'status': 'new', 'emails': ''},
+        {'id': 2, 'name': 'two', 'status': 'new', 'emails': ''},
+        {'id': 3, 'name': 'three', 'status': 'pending', 'emails': ''},
+        {'id': 4, 'name': 'three', 'status': 'pending', 'emails': ''},
+        {'id': 5, 'name': 'three', 'status': 'complete', 'emails': ''},
     )
 
     @_inrequest('/')
@@ -385,6 +386,36 @@ class TestHtmlRenderer(object):
             g.html.form_action_url()
             == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
         )
+
+    @inrequest('/thepage?foo=bar&onpage=5')
+    def test_form_action_method_get(self):
+        g = self.get_grid()
+        assert g.html.form_action_method() == 'get'
+
+        pyq = PyQuery(g.html())
+        assert pyq('form.header').attr('method') == 'get'
+        assert not pyq('form.header > input[name="csrf_token"]')
+
+    @inrequest('/thepage?foo=bar&onpage=5')
+    def test_form_action_method_post(self):
+        class TestManager(SimpleGrid.manager.__class__):
+            args_loaders = (
+                extensions.RequestArgsLoader,
+                extensions.RequestFormLoader,
+            )
+
+        class TGrid(Grid):
+            manager = TestManager()
+
+            Column('ID', 'id')
+
+        g = TGrid()
+        g.set_records(self.key_data)
+        assert g.html.form_action_method() == 'post'
+
+        pyq = PyQuery(g.html())
+        assert pyq('form.header').attr('method') == 'post'
+        assert pyq('form.header > input[name="csrf_token"]')
 
     @pytest.mark.parametrize('page_param,input_value', [
         (1, '1'),
