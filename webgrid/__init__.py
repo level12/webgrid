@@ -276,6 +276,7 @@ class Column(object):
         )
 
         column = cls(self.label, key, None, self.can_sort, group=self.group, _dont_assign=True)
+        column.key = key
         column.grid = grid
         column.expr = self.expr
         column._query_key = self._query_key
