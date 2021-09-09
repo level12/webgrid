@@ -27,7 +27,7 @@ from webgrid import (
     extensions,
     row_styler,
 )
-from webgrid.filters import TextFilter, OptionsEnumFilter
+from webgrid.filters import TextFilter, OptionsEnumFilter, DateFilter
 from webgrid.renderers import (
     CSV,
     HTML,
@@ -1292,9 +1292,12 @@ class TestHideSection(object):
 
 
 class TestArrowDate(object):
+
+    def setup_method(self):
+        ArrowRecord.query.delete()
+
     @_inrequest('/')
     def test_arrow_render_html(self):
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
         assert '<td>08/10/2016 01:02 AM</td>' in g.html(), g.html()
@@ -1305,7 +1308,6 @@ class TestArrowDate(object):
     @_inrequest('/')
     def test_arrow_timezone(self):
         # regardless of timezone given, ArrowType stored as UTC and will display that way
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3).to('US/Pacific'))
         g = ArrowGrid()
         assert '<td>08/10/2016 01:02 AM</td>' in g.html(), g.html()
@@ -1313,8 +1315,18 @@ class TestArrowDate(object):
         g.column('created_utc').html_format = 'YYYY-MM-DD HH:mm:ss ZZ'
         assert '<td>2016-08-10 01:02:03 +00:00</td>' in g.html(), g.html()
 
+    def test_filter_handles_arrow(self):
+        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
+        g = ArrowGrid()
+        g.column('created_utc').filter = DateFilter(g.column('created_utc').expr)
+        g.apply_qs_args(grid_args={
+            'op(created_utc)': 'eq',
+            'v1(created_utc)': '2018-01-01'
+        })
+        assert g.column('created_utc').filter.is_active
+        g.record_count
+
     def test_xls(self):
-        ArrowRecord.query.delete()
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
         buffer = io.BytesIO()
