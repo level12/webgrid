@@ -96,13 +96,6 @@ class PeopleCSVGrid(PG):
 
 
 def setup_module():
-    from webgrid_ta.app import create_app
-    import os
-    app = create_app(config='Test', database_url=os.environ.get('SQLALCHEMY_DATABASE_URI'))
-    app.test_request_context().push()
-    from webgrid_ta.model import load_db
-    load_db()
-
     Status.delete_cascaded()
     sp = Status(label='pending')
     sip = Status(label='in process')

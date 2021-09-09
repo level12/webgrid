@@ -365,7 +365,7 @@ class GridBase:
                 grid.apply_qs_args()
         return grid
 
-    def get_pyq(self, grid=None, **kwargs):
+    def get_pyq(self, grid=None, _query_string=None, **kwargs):
         """Turn provided/constructed grid into a rendered PyQuery object.
 
         Args:
@@ -378,7 +378,13 @@ class GridBase:
             PyQuery object
         """
         session_grid = grid or self.get_session_grid(**kwargs)
-        html = session_grid.html()
+        if session_grid.manager.request():
+            # request context already exists
+            html = session_grid.html()
+        else:
+            url = f'/?{_query_string}' if _query_string else '/'
+            with session_grid.manager.test_request_context(url=url):
+                html = session_grid.html()
         return PyQuery('<html>{0}</html>'.format(html))
 
     def check_filter(self, name, op, value, expected):

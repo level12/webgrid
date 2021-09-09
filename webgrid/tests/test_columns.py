@@ -14,23 +14,6 @@ from webgrid_ta.grids import Grid
 from webgrid_ta.model.entities import Person
 
 
-ctx = None
-
-
-def setup_module():
-    from webgrid_ta.app import create_app
-    import os
-    app = create_app(config='Test', database_url=os.environ.get('SQLALCHEMY_DATABASE_URI'))
-    ctx = app.test_request_context()
-    ctx.push()
-    from webgrid_ta.model import load_db
-    load_db()
-
-
-def teardown_module():
-    ctx.pop()
-
-
 class FirstNameColumn(LinkColumnBase):
     def create_url(self, record):
         return '/person-edit/{0}'.format(record.id)
