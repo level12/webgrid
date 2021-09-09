@@ -38,6 +38,9 @@ def api_manager(app):
 
 @pytest.fixture
 def api_manager_with_csrf(csrf, app):
+    """Technically, this is the same as having ``csrf, api_manager`` as fixtures on
+    the test method and turning on csrf_protection. But the order matters, so for
+    consistent results this separate combined fixture is provided."""
     manager = WebGridAPI()
     manager.csrf_protection = True
     manager.init_app(app)
@@ -216,6 +219,15 @@ class TestFlaskAPI:
         resp = test_app.post_json('/webgrid-api/foo', post_data)
         assert 'spreadsheetml' in resp.headers['Content-Type']
 
-    @pytest.mark.xfail
-    def test_grid_export_limit_exceeded(self):
-        assert False
+    def test_grid_export_limit_exceeded(self, api_manager, test_app):
+        class Grid(DummyMixin, BaseGrid):
+            manager = api_manager
+
+            @property
+            def record_count(self):
+                return 2000000
+
+        register_grid(api_manager, 'foo', Grid)
+        post_data = self.post_data(export_to='xlsx')
+        resp = test_app.post_json('/webgrid-api/foo', post_data)
+        assert resp.json['error'] == 'too many records for render target'
