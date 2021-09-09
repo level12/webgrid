@@ -20,7 +20,7 @@ from webgrid.extensions import (
     lazy_gettext as _
 )
 from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
-from webgrid.testing import assert_in_query, assert_not_in_query, query_to_str
+from webgrid.testing import assert_in_query, assert_not_in_query
 from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
 from .helpers import inrequest
@@ -281,21 +281,22 @@ class TestGrid(object):
     def test_paging(self):
         g = self.TG()
         if db.engine.dialect.name == 'mssql':
-            assert_in_query(g, 'SELECT TOP 50 ')
+            assert_in_query(g, 'OFFSET 0 ROWS')
+            assert_in_query(g, 'FETCH FIRST 50 ROWS ONLY')
         else:
             assert_in_query(g, 'LIMIT 50 OFFSET 0')
 
         g.set_paging(2, 1)
         if db.engine.dialect.name == 'mssql':
-            assert_in_query(g, 'SELECT TOP 2 ')
+            assert_in_query(g, 'OFFSET 0 ROWS')
+            assert_in_query(g, 'FETCH FIRST 2 ROWS ONLY')
         else:
             assert_in_query(g, 'LIMIT 2 OFFSET 0')
 
         g.set_paging(10, 5)
         if db.engine.dialect.name == 'mssql':
-            assert_in_query(g, 'WHERE mssql_rn > 40 AND mssql_rn <= 10 + 40')
-            assert_in_query(g, 'SELECT persons.firstname AS firstname, ROW_NUMBER() '
-                               'OVER (ORDER BY persons.firstname) AS mssql_rn')
+            assert_in_query(g, 'OFFSET 40 ROWS')
+            assert_in_query(g, 'FETCH FIRST 10 ROWS ONLY')
         else:
             assert_in_query(g, 'LIMIT 10 OFFSET 40')
 
@@ -594,9 +595,10 @@ class TestQueryStringArgs(object):
 
         # make sure the corret values get applied to the query
         if db.engine.dialect.name == 'mssql':
-            assert 'WHERE mssql_rn > 1 AND mssql_rn <= 1 + 1' in query_to_str(pg.build_query())
+            assert_in_query(pg, 'OFFSET 1 ROWS')
+            assert_in_query(pg, 'FETCH FIRST 1 ROWS ONLY')
         else:
-            assert 'LIMIT 1 OFFSET 1' in query_to_str(pg.build_query())
+            assert_in_query(pg, 'LIMIT 1 OFFSET 1')
 
     @inrequest('/foo?perpage=5&onpage=foo')
     def test_qs_onpage_invalid(self):
