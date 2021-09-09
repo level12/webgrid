@@ -2,10 +2,12 @@ from __future__ import absolute_import
 
 import re
 from abc import ABC, abstractmethod
+from dataclasses import asdict
 import io
 from operator import itemgetter
 import warnings
 from collections import defaultdict
+import json
 
 import six
 from blazeutils.functional import identity
@@ -22,11 +24,13 @@ from werkzeug.datastructures import MultiDict
 from werkzeug.urls import Href
 
 from .extensions import (
+    CustomJsonEncoder,
     gettext as _,
     ngettext,
     translation_manager
 )
 from .utils import current_url
+from . import types
 import csv
 
 try:
@@ -186,6 +190,118 @@ def render_html_attributes(attrs):
     attrs = sorted(attrs.items(), key=itemgetter(0))
     rendered_attrs = filter(identity, (render_attr(k, v) for k, v in attrs))
     return Markup(' ' + ' '.join(rendered_attrs))
+
+
+class JSON(Renderer):
+    """Renderer for JSON output"""
+    mime_type = 'application/json'
+
+    @property
+    def name(self):
+        return 'json'
+
+    def serialized_columns(self):
+        return {col.key: str(col.label) for col in self.columns}
+
+    def serialize_column_group(self, label, columns):
+        return types.ColumnGroup(
+            label=label,
+            columns=columns,
+        )
+
+    def serialized_column_groups(self):
+        group_to_keys = defaultdict(list)
+        for column in filter(
+            lambda col: col.group is not None,
+            self.columns
+        ):
+            group_to_keys[column.group].append(column.key)
+        return [
+            self.serialize_column_group(group.label, columns)
+            for group, columns in group_to_keys.items()
+        ]
+
+    def serialize_filter(self, filter):
+        return types.Filter(
+            op=filter.op,
+            value1=filter.value1_set_with,
+            value2=filter.value2_set_with,
+        )
+
+    def serialized_filters(self):
+        return {
+            col.key: self.serialize_filter(col.filter)
+            for key, col in self.grid.filtered_cols.items()
+            if col.filter.is_active
+        }
+
+    def serialize_filter_operator(self, op):
+        return types.FilterOperator(
+            key=op.key,
+            label=op.display,
+            field_type=op.field_type,
+            hint=op.hint,
+        )
+
+    def serialized_filter_specs(self):
+        return {
+            col.key: col.filter.serialize_filter_spec()
+            for key, col in self.grid.filtered_cols.items()
+        }
+
+    def serialize_record(self, record):
+        return {col.key: col.render('json', record) for col in self.columns}
+
+    def serialized_records(self):
+        return [self.serialize_record(record) for record in self.grid.records]
+
+    def serialize_sort(self, sort):
+        key, flag_desc = sort
+        return types.Sort(key=key, flag_desc=flag_desc)
+
+    def serialized_order_by(self):
+        return [self.serialize_sort(sort) for sort in self.grid.order_by]
+
+    def asdict(self):
+        grid = types.Grid(
+            errors=[],
+            settings=types.GridSettings(
+                search_expr=self.grid.search_value,
+                filters=self.serialized_filters(),
+                paging=types.Paging(
+                    pager_on=self.grid.pager_on,
+                    per_page=self.grid.per_page,
+                    on_page=self.grid.on_page,
+                ),
+                sort=self.serialized_order_by(),
+                export_to=None,
+            ),
+            spec=types.GridSpec(
+                columns=self.serialized_columns(),
+                column_groups=self.serialized_column_groups(),
+                export_targets=list(self.grid.allowed_export_targets.keys()),
+                enable_search=self.grid.enable_search,
+                enable_sort=self.grid.sorter_on,
+                filters=self.serialized_filter_specs(),
+            ),
+            state=types.GridState(
+                page_count=self.grid.page_count,
+                record_count=self.grid.record_count,
+                warnings=self.grid.user_warnings,
+            ),
+            records=self.serialized_records(),
+        )
+        return asdict(grid)
+
+    def render(self):
+        return json.dumps(self.asdict(), cls=CustomJsonEncoder)
+
+    def as_response(self):
+        """Return a response via the grid's manager."""
+        buffer = io.BytesIO()
+        buffer.write(self.render())
+        buffer.seek(0)
+        return self.grid.manager.file_as_response(buffer, None, self.mime_type)
 
 
 class HTML(GroupMixin, Renderer):
@@ -535,7 +651,7 @@ class HTML(GroupMixin, Renderer):
                 {% endfor %}
             </select>
             ''',
-            options=((opt if len(opt) == 3 else (opt + (None, ))) for opt in options),
+            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None, ))) for opt in options),
             current_selection=current_selection,
             placeholder=placeholder,
             attrs=kwargs,
@@ -966,7 +1082,7 @@ class HTML(GroupMixin, Renderer):
         curl = current_url(self.grid.manager, strip_querystring=True, strip_host=True)
         href = Href(curl, sort=True)
 
-        req_args = MultiDict(self.grid.manager.request_args())
+        req_args = MultiDict(self.grid.manager.request_url_args())
 
         # reset key should not be retained from request for url generation. If we really
         # want it, we'll see it in kwargs.

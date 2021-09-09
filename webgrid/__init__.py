@@ -147,7 +147,7 @@ class Column(object):
     xls_width = None
     xls_num_format = None
     xls_style = None
-    _render_in = 'html', 'xls', 'xlsx', 'csv'
+    _render_in = 'html', 'xls', 'xlsx', 'csv', 'json'
     _visible = True
 
     @property
@@ -269,7 +269,11 @@ class Column(object):
         along with it, to attach them to the grid instance.
         """
         cls = self.__class__
-        key = grid.get_unique_column_key(self.key)
+        key = grid.get_unique_column_key(
+            self.key
+            or case_cw2us(str(self.label).replace(' ', ''))
+            or 'unnamed_expression'
+        )
 
         column = cls(self.label, key, None, self.can_sort, group=self.group, _dont_assign=True)
         column.grid = grid
@@ -999,6 +1003,17 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # Calling build is now preferred over calling .apply_qs_args() and then .html()
         self.record_count
 
+    def check_auth(self):
+        """For API usage, provides a hook for grids to specify authorization that should be
+        applied for the API responder method.
+
+        If a 40* response is warranted, take that action here.
+
+        Note, this method is not part of normal grid/render operation. It will only be
+        executed if run by a calling layer, such as the Flask WebGridAPI manager/extension.
+        """
+        pass
+
     def column(self, ident):
         """Retrieve a grid column instance via either the key string or index int.
 
@@ -1551,7 +1566,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             self.pager_on
             and self.manager
             and self.manager.db.engine.dialect.name == 'mssql'
-            and not query._order_by
+            and not query._order_by_clauses
         ):
             query = self._fix_mssql_order_by(query)
 
@@ -1563,7 +1578,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         if len(self.columns):
             query = self.columns[0].apply_sort(query, False)
-            if query._order_by:
+            if query._order_by_clauses:
                 return query
         raise Exception(
             'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'
@@ -1574,6 +1589,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
         Args:
             add_user_warnings (bool, optional): Add flash messages for warnings. Defaults to True.
+            grid_args (MultiDict, optional): Supply args directly to the grid.
         """
         args = grid_args if grid_args is not None else self.manager.get_args(self)
 
@@ -1597,6 +1613,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # export
         self._apply_export(args)
 
+        # Having this here is not ideal. Due to separation of concerns, it would be nice to
+        #   have flash warnings in the HTML renderer. However, by the time the renderer is
+        #   called, an app template has probably already loaded and rendered any messages to
+        #   be shown, and it's too late to add new ones.
         if add_user_warnings:
             for msg in self.user_warnings:
                 self.manager.flash_message('warning', msg)
@@ -1668,11 +1688,23 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     def _apply_sorting(self, args):
         """Turn request/session args into sort settings.
 
+        No limit is present here for how many sort args may be passed. However, the
+        args are expected to be contiguous. I.e. sort1, sort2, sort3 will be processed,
+        but sort1, sort3, sort5 will only process sort1.
+
         Args:
             args (MultiDict): Full arguments to search for sort keys.
         """
-        sort_qs_keys = ['sort1', 'sort2', 'sort3']
-        sort_qs_values = [args[sort_qsk] for sort_qsk in sort_qs_keys if sort_qsk in args]
+        counter = 0
+        sort_qs_values = []
+
+        while True:
+            counter += 1
+            sort_arg = 'sort{}'.format(counter)
+            if sort_arg not in args:
+                break
+            sort_qs_values.append(args[sort_arg])
+
         if sort_qs_values:
             self.set_sort(*sort_qs_values)
 

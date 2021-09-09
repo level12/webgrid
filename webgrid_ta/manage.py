@@ -1,10 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import logging
 import urllib
 
+import click
 import flask
-from flask_script import Manager, Command, Option
 
 from webgrid_ta.app import create_app
 import webgrid_ta.model as model
@@ -13,48 +11,44 @@ from webgrid_ta.model.helpers import clear_db
 
 log = logging.getLogger(__name__)
 
-
-class CreateDB(Command):
-    """ create the DB and fill with data, optionally clear first """
-
-    option_list = (
-        Option('--clear', default=False, dest='clear', action="store_true",
-               help=_('DROP all DB objects first')),
-    )
-
-    def run(self, clear):
-        if clear:
-            clear_db()
-            print(_('- db cleared'))
-
-        model.load_db()
-        print(_('- db loaded'))
+app = None
 
 
-manager = Manager(create_app)
-manager.add_option('-c', dest='config', default='Dev',
-                   help=_('flask configuration to use'), required=False)
-manager.add_command('create-db', CreateDB())
+@click.group()
+def main():
+    """Run the Webgrid Test App CLI."""
+    app = create_app('Dev')
+    flask.ctx.AppContext(app).push()
 
 
-@manager.command
-def list_routes(name='list-routes'):
+@main.command('create-db')
+@click.option('--clear', default=False, is_flag=True,
+              help=_('DROP all DB objects first'))
+def database_init(clear):
+    if clear:
+        clear_db()
+        print(_('- db cleared'))
+
+    model.load_db()
+    print(_('- db loaded'))
+
+
+@main.command('list-routes')
+def list_routes():
     output = []
     for rule in flask.current_app.url_map.iter_rules():
         methods = ','.join(rule.methods)
-        line = urllib.unquote("{:50s} {:20s} {}".format(rule.endpoint, methods, rule))
+        line = urllib.parse.unquote("{:50s} {:20s} {}".format(rule.endpoint, methods, rule))
         output.append(line)
 
     for line in sorted(output):
         print(line)
 
 
-@manager.command
-def serve():
-    flask.current_app.run(debug=True)
+main.add_command(flask.cli.run_command)
 
 
-@manager.command
+@main.command('verify-translations')
 def verify_translations():
     from pathlib import Path
     from morphi.messages.validation import check_translations
@@ -66,9 +60,5 @@ def verify_translations():
     )
 
 
-def script_entry():
-    manager.run()
-
-
-if __name__ == "__main__":
-    script_entry()
+if __name__ == '__main__':
+    main()

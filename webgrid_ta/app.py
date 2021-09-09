@@ -27,7 +27,7 @@ warnings.filterwarnings('ignore', '.*support Decimal objects natively.*')
 webgrid = WebGrid()
 
 
-def create_app(config, database_url=None):
+def create_app(config='Dev', database_url=None):
     app = Flask(__name__)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///'
@@ -46,7 +46,7 @@ def create_app(config, database_url=None):
     Bootstrap(app)
     webgrid.init_app(app)
 
-    from .views import main
+    from webgrid_ta.views import main
     app.register_blueprint(main)
 
     @app.before_request

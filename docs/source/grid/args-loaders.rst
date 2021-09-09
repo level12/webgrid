@@ -26,13 +26,21 @@ queries and rendering::
 
 To load the arguments, the grid manager uses "args loaders" - subclasses of ArgsLoader. These
 loaders are run in order of priority, and they are chained: each loader's input is the output of
-the previous loader. The default setup provides request URL arguments to the first loader, and then
+the previous loader. The first loader gets a blank MultiDict as input.
+
+The default setup provides request URL arguments to the first loader, and then
 applies session information as needed.
 
 .. autoclass:: webgrid.extensions.ArgsLoader
     :members:
 
 .. autoclass:: webgrid.extensions.RequestArgsLoader
+    :members:
+
+.. autoclass:: webgrid.extensions.RequestFormLoader
+    :members:
+
+.. autoclass:: webgrid.extensions.RequestJsonLoader
     :members:
 
 .. autoclass:: webgrid.extensions.WebSessionArgsLoader

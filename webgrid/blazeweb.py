@@ -26,7 +26,16 @@ class WebGrid(FrameworkManager):
     def sa_query(self, *args, **kwargs):
         return self.db.sess.query(*args, **kwargs)
 
-    def request_args(self):
+    def request_form_args(self):
+        """Return POST request args."""
+        return rg.request.form
+
+    def request_json(self):
+        """Return json body of request."""
+        return rg.request.json
+
+    def request_url_args(self):
+        """Return GET request args."""
         return rg.request.args
 
     def web_session(self):
@@ -47,7 +56,8 @@ class WebGrid(FrameworkManager):
     def file_as_response(self, data_stream, file_name, mime_type):
         rp = StreamResponse(data_stream)
         rp.headers['Content-Type'] = mime_type
-        rp.headers['Content-Disposition'] = 'attachment; filename={}'.format(file_name)
+        if file_name is not None:
+            rp.headers['Content-Disposition'] = 'attachment; filename={}'.format(file_name)
         abort(rp)
 
     def render_template(self, endpoint, **kwargs):
