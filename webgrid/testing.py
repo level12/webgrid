@@ -6,7 +6,6 @@ from unittest import mock
 import urllib
 import warnings
 
-import flask
 import openpyxl
 from pyquery import PyQuery
 import sqlalchemy
@@ -285,7 +284,7 @@ class GridBase:
         """Render a SQLAlchemy query to a string."""
         return query_to_str(statement, bind=bind)
 
-    def assert_in_query(self, look_for, grid=None, **kwargs):
+    def assert_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given SQL string is in the grid's query.
 
         Args:
@@ -296,10 +295,10 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         assert_in_query(grid, look_for)
 
-    def assert_not_in_query(self, look_for, grid=None, **kwargs):
+    def assert_not_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given SQL string is not in the grid's query.
 
         Args:
@@ -310,10 +309,10 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         assert_not_in_query(grid, look_for)
 
-    def assert_regex_in_query(self, look_for, grid=None, **kwargs):
+    def assert_regex_in_query(self, look_for, grid=None, _query_string=None, **kwargs):
         """Verify the given regex matches the grid's query.
 
         Args:
@@ -324,7 +323,7 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        grid = grid or self.get_session_grid(**kwargs)
+        grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(grid.build_query())
 
         if hasattr(look_for, 'search'):
@@ -334,17 +333,39 @@ class GridBase:
             assert re.search(look_for, query_str), \
                 '"{0}" not found in: {1}'.format(look_for, query_str)
 
-    def get_session_grid(self, *args, **kwargs):
-        """Construct grid from args and kwargs, and apply query string.
+    def get_grid(self, grid_args, *args, **kwargs):
+        """Construct grid from args and kwargs, and apply grid_args.
+
+        Args:
+            grid_args: grid query args
 
         Returns:
             grid instance
         """
         grid = self.grid_cls(*args, **kwargs)
-        grid.apply_qs_args()
+        grid.apply_qs_args(add_user_warnings=False, grid_args=grid_args)
         return grid
 
-    def get_pyq(self, grid=None, **kwargs):
+    def get_session_grid(self, *args, _query_string=None, **kwargs):
+        """Construct grid from args and kwargs, and apply query string.
+
+        Args:
+            _query_string: URL query string with grid query args
+
+        Returns:
+            grid instance
+        """
+        grid = self.grid_cls(*args, **kwargs)
+        if grid.manager.request():
+            # request context already exists
+            grid.apply_qs_args()
+        else:
+            url = f'/?{_query_string}' if _query_string else '/'
+            with grid.manager.test_request_context(url=url):
+                grid.apply_qs_args()
+        return grid
+
+    def get_pyq(self, grid=None, _query_string=None, **kwargs):
         """Turn provided/constructed grid into a rendered PyQuery object.
 
         Args:
@@ -357,7 +378,13 @@ class GridBase:
             PyQuery object
         """
         session_grid = grid or self.get_session_grid(**kwargs)
-        html = session_grid.html()
+        if session_grid.manager.request():
+            # request context already exists
+            html = session_grid.html()
+        else:
+            url = f'/?{_query_string}' if _query_string else '/'
+            with session_grid.manager.test_request_context(url=url):
+                html = session_grid.html()
         return PyQuery('<html>{0}</html>'.format(html))
 
     def check_filter(self, name, op, value, expected):
@@ -377,20 +404,19 @@ class GridBase:
             qs_args.append(('v1({0})'.format(name), value))
 
         def sub_func(ex):
-            url = '/?' + urllib.parse.urlencode(qs_args)
-            with flask.current_app.test_request_context(url):
-                if isinstance(ex, re.compile('').__class__):
-                    self.assert_regex_in_query(ex)
-                else:
-                    self.assert_in_query(ex)
-                self.get_pyq()  # ensures the query executes and the grid renders without error
+            query_string = urllib.parse.urlencode(qs_args)
+            if isinstance(ex, re.compile('').__class__):
+                self.assert_regex_in_query(ex, _query_string=query_string)
+            else:
+                self.assert_in_query(ex, _query_string=query_string)
+            # ensures the query executes and the grid renders without error
+            self.get_pyq(_query_string=query_string)
 
         def page_func():
-            url = '/?' + urllib.parse.urlencode([('onpage', 2), ('perpage', 1), *qs_args])
-            with flask.current_app.test_request_context(url):
-                pg = self.get_session_grid()
-                if pg.page_count > 1:
-                    self.get_pyq()
+            query_string = urllib.parse.urlencode([('onpage', 2), ('perpage', 1), *qs_args])
+            pg = self.get_session_grid(_query_string=query_string)
+            if pg.page_count > 1:
+                self.get_pyq(_query_string=query_string)
 
         if self.grid_cls.pager_on:
             page_func()
@@ -419,9 +445,12 @@ class GridBase:
         d = {'sort1': k}
 
         def sub_func():
-            with flask.current_app.test_request_context('/?' + urllib.parse.urlencode(d)):
-                self.assert_in_query('ORDER BY %s%s' % (ex, '' if asc else ' DESC'))
-                self.get_pyq()  # ensures the query executes and the grid renders without error
+            query_string = urllib.parse.urlencode(d)
+            self.assert_in_query(
+                'ORDER BY %s%s' % (ex, '' if asc else ' DESC'), _query_string=query_string
+            )
+            # ensures the query executes and the grid renders without error
+            self.get_pyq(_query_string=query_string)
 
         return sub_func()
 
@@ -442,7 +471,7 @@ class GridBase:
                 read = cells.eq(col_idx).text()
                 assert read == val, 'row {} col {} {} != {}'.format(row_idx, col_idx, read, val)
 
-    def expect_table_header(self, expect, grid=None, **kwargs):
+    def expect_table_header(self, expect, grid=None, _query_string=None, **kwargs):
         """Run assertions to compare rendered headings with expected data.
 
         Args:
@@ -453,14 +482,14 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        d = self.get_pyq(grid, **kwargs)
+        d = self.get_pyq(grid, _query_string=_query_string, **kwargs)
         self._compare_table_block(
             d.find('table.records thead tr'),
             'th',
             expect,
         )
 
-    def expect_table_contents(self, expect, grid=None, **kwargs):
+    def expect_table_contents(self, expect, grid=None, _query_string=None, **kwargs):
         """Run assertions to compare rendered data rows with expected data.
 
         Args:
@@ -471,16 +500,16 @@ class GridBase:
 
             kwargs (dict, optional): Additional args passed to `self.get_session_grid`.
         """
-        d = self.get_pyq(grid, **kwargs)
+        d = self.get_pyq(grid, _query_string=_query_string, **kwargs)
         self._compare_table_block(
             d.find('table.records tbody tr'),
             'td',
             expect,
         )
 
-    def test_search_expr_passes(self, grid=None):
+    def test_search_expr_passes(self, grid=None, _query_string=None):
         """Assert that a single-search query executes without error."""
-        grid = grid or self.get_session_grid()
+        grid = grid or self.get_session_grid(_query_string=_query_string)
         if grid.enable_search:
             grid.records
 
@@ -500,22 +529,24 @@ class MSSQLGridBase(GridBase):
             r"(\(|WHEN|LIKE|ELSE|THEN|[,=\+])( ?)N'(.*?)'", r"\1\2'\3'", query_str
         )
 
-    def assert_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
         assert look_for in query_str or look_for in query_str_repl, \
             '"{0}" not found in: {1}'.format(look_for, query_str)
 
-    def assert_not_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_not_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
         assert look_for not in query_str or look_for not in query_str_repl, \
             '"{0}" found in: {1}'.format(look_for, query_str)
 
-    def assert_regex_in_query(self, look_for, grid=None, context=None, **kwargs):
-        session_grid = grid or self.get_session_grid(**kwargs)
+    def assert_regex_in_query(
+        self, look_for, grid=None, context=None, _query_string=None, **kwargs
+    ):
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
 

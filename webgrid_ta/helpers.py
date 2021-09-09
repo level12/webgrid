@@ -2,12 +2,7 @@ from __future__ import absolute_import
 from os import path as opath
 
 from blazeutils.testing import assert_equal_txt
-import flask
 import sqlalchemy.orm
-from werkzeug.datastructures import MultiDict
-import wrapt
-
-from .app import app
 
 cdir = opath.dirname(__file__)
 
@@ -69,13 +64,3 @@ def assert_not_in_query(obj, test_for):
         query = obj
     query_str = query_to_str(query)
     assert test_for not in query_str, query_str
-
-
-def inrequest(*req_args, **req_kwargs):
-    @wrapt.decorator
-    def wrapper(wrapped, instance, args, kwargs):
-        with app.test_request_context(*req_args, **req_kwargs):
-            # replaces request.args wth MultiDict so it is mutable
-            flask.request.args = MultiDict(flask.request.args)
-            return wrapped(*args, **kwargs)
-    return wrapper

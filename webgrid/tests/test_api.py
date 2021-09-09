@@ -117,8 +117,10 @@ class TestFlaskAPI:
 
     def test_csrf_missing_session(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
+        with test_app.app.test_request_context():
+            csrf_token = flask_wtf.csrf.generate_csrf()
         resp = test_app.post(
-            '/webgrid-api/foo', {}, headers={'X-CSRFToken': flask_wtf.csrf.generate_csrf()},
+            '/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token},
             status=400)
         assert 'The CSRF session token is missing.' in resp
 
