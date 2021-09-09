@@ -10,7 +10,6 @@ except ImportError:
 # pip install -e .[develop]
 develop_requires = [
     'arrow',
-    'BlazeWeb',
     'coverage',
     # tests rely on SQL string comparison which fails with SA < 0.9
     'SQLAlchemy>=0.9.0'
@@ -32,7 +31,6 @@ develop_requires = [
     'pyquery',
     'sqlalchemy_pyodbc_mssql',
     'sqlalchemy_utils',
-    'sqlalchemybwc',
     'wrapt',
     'xlrd',
     'xlsxwriter',
@@ -61,9 +59,9 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     license='BSD-3-Clause',
     packages=['webgrid'],
@@ -82,7 +80,7 @@ setup(
         'BlazeUtils>=0.6.0',
         'dataclasses; python_version < "3.7"',
         'FormEncode',
-        'SQLAlchemy',
+        'SQLAlchemy>=1.4.20',
         'jinja2',
         'python-dateutil',
         'Werkzeug',

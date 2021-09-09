@@ -85,9 +85,7 @@ def query_to_str(statement, bind=None):
     """
     if isinstance(statement, sqlalchemy.orm.Query):
         if bind is None:
-            bind = statement.session.get_bind(
-                statement._mapper_zero()
-            )
+            bind = statement.session.get_bind()
         statement = statement.statement
     elif bind is None:
         bind = statement.bind

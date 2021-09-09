@@ -37,7 +37,7 @@ jobs:
             - image: level12/python-test-multi
               environment:
                 SQLALCHEMY_DATABASE_URI: "postgresql://postgres:password@localhost/test"
-            - image: postgres:10.5
+            - image: postgres:latest
               environment:
                 POSTGRES_USER: postgres
                 POSTGRES_PASSWORD: password
