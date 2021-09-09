@@ -116,7 +116,7 @@ class WebGrid(extensions.FrameworkManager):
         """Return response from framework for sending a file."""
         as_attachment = (file_name is not None)
         return flask.send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
-                               attachment_filename=file_name)
+                               download_name=file_name)
 
 
 class WebGridAPI(WebGrid):
