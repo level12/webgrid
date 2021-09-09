@@ -1,5 +1,6 @@
 import datetime as dt
 from io import BytesIO
+from unittest import mock
 
 import pytest
 import xlsxwriter
@@ -154,6 +155,11 @@ class TestAssertRenderedXlsxMatches:
         self.sheet = self.workbook.add_worksheet('sheet1')
 
         self.headers_written = None
+
+    def test_openpyxl_requirement(self):
+        with mock.patch('webgrid.testing.openpyxl', None):
+            with pytest.raises(Exception, match=r'openpyxl is required.*'):
+                self.assert_matches([], [])
 
     def set_headers(self, headers):
         assert self.headers_written is None

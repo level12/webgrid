@@ -11,9 +11,6 @@ except ImportError:
 develop_requires = [
     'arrow',
     'coverage',
-    # tests rely on SQL string comparison which fails with SA < 0.9
-    'SQLAlchemy>=0.9.0'
-    'SQLAlchemyBWC',
     'mock',
     'nose',  # required to import some blazeweb helpers
     'openpyxl',
