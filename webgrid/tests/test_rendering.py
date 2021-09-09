@@ -387,7 +387,7 @@ class TestHtmlRenderer(object):
             == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
         )
 
-    @inrequest('/thepage?foo=bar&onpage=5')
+    @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_method_get(self):
         g = self.get_grid()
         assert g.html.form_action_method() == 'get'
@@ -396,7 +396,7 @@ class TestHtmlRenderer(object):
         assert pyq('form.header').attr('method') == 'get'
         assert not pyq('form.header > input[name="csrf_token"]')
 
-    @inrequest('/thepage?foo=bar&onpage=5')
+    @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_method_post(self):
         class TestManager(SimpleGrid.manager.__class__):
             args_loaders = (
