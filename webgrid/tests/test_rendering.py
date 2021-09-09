@@ -236,13 +236,13 @@ class TestHtmlRenderer(object):
         mg.set_records(key_data)
         eq_html(mg.html.table(), 'basic_table.html')
 
-    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @_inrequest('/')
     def test_people_html(self):
         pg = render_in_grid(PeopleGrid, 'html')()
         eq_html(pg.html.table(), 'people_table.html')
 
-    # @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
     @_inrequest('/')
     def test_stopwatch_html(self):
         # Test Stopwatch grid with column groups.
