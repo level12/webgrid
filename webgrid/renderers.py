@@ -589,12 +589,15 @@ class HTML(GroupMixin, Renderer):
         """Export certain filter data as a JSON object for use by the JS asset."""
         for_js = {}
         for col_key, col in six.iteritems(self.grid.filtered_cols):
+            html_input_types = getattr(col.filter, 'html_input_types', {})
             for_js[col_key] = opdict = {}
             for op in col.filter.operators:
                 opdict[op.key] = {
                     'field_type': op.field_type,
-                    'hint': op.hint
+                    'hint': op.hint,
                 }
+                html_input_type = html_input_types.get(op, 'text')
+                opdict[op.key]['html_input_type'] = html_input_type
 
         if self.grid.can_search():
             for_js['search'] = {'contains': {'field_type': None}}

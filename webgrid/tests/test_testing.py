@@ -277,10 +277,10 @@ class TestGridBase(testing.GridBase):
     def filters(self):
         return (
             ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
+             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
             ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
-             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME)"),
+            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
+             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)"),
         )
 
     def setup_method(self, _):
@@ -314,10 +314,10 @@ class TestGridBasePG(testing.GridBase):
     def filters(self):
         return (
             ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
+             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
             ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
-             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)"),
+            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
+             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)"),
         )
 
 
@@ -339,10 +339,10 @@ class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
     def filters(self):
         return (
             ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts = '2018-01-01 05:30:00.000000'"),
+             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
             ('due_date', 'eq', '2018-01-01', "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%I:%M %p'),
-             "WHERE persons.start_time = CAST('01:30:00.000000' AS TIME)"),
+            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
+             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)"),
         )
 
 

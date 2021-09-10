@@ -884,7 +884,7 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-12-31 00:00:00.000000' "
             "AND '2010-12-31 23:59:59.999999'")
-        assert filter.value1_set_with == '12/31/2010'
+        assert filter.value1_set_with == '2010-12-31'
 
     def test_eq_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='eq')
@@ -904,8 +904,11 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_eq_with_time(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('eq', '12/31/2010 10:26:27')
-        self.assert_filter_query(filter, "WHERE persons.createdts = '2010-12-31 10:26:27.000000'")
-        assert filter.value1_set_with == '12/31/2010 10:26 AM'
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts BETWEEN '2010-12-31 10:26:27.000000' AND "
+            "'2010-12-31 10:26:27.999999'")
+        assert filter.value1_set_with == '2010-12-31T10:26'
 
     def test_not_eq(self):
         filter = DateTimeFilter(Person.createdts)
@@ -914,7 +917,7 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts NOT BETWEEN '2010-12-31 00:00:00.000000' AND "
             "'2010-12-31 23:59:59.999999'")
-        assert filter.value1_set_with == '12/31/2010'
+        assert filter.value1_set_with == '2010-12-31'
 
     def test_not_eq_default(self):
         filter = DateFilter(Person.createdts, default_op='!eq')
@@ -928,7 +931,10 @@ class TestDateTimeFilter(CheckFilterBase):
     def test_not_eq_with_time(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('!eq', '12/31/2010 10:26:27')
-        self.assert_filter_query(filter, "WHERE persons.createdts != '2010-12-31 10:26:27.000000'")
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts NOT BETWEEN '2010-12-31 10:26:27.000000' AND "
+            "'2010-12-31 10:26:27.999999'")
 
     def test_lte(self):
         filter = DateTimeFilter(Person.createdts)
@@ -936,7 +942,7 @@ class TestDateTimeFilter(CheckFilterBase):
         self.assert_filter_query(filter, "WHERE persons.createdts <= '2010-12-31 23:59:59.999999'")
         filter.set('lte', '12/31/2010', '')
         self.assert_filter_query(filter, "WHERE persons.createdts <= '2010-12-31 23:59:59.999999'")
-        assert filter.value1_set_with == '12/31/2010'
+        assert filter.value1_set_with == '2010-12-31'
         with pytest.raises(formencode.Invalid):
             filter.set('lte', '')
         with pytest.raises(formencode.Invalid):
@@ -961,7 +967,7 @@ class TestDateTimeFilter(CheckFilterBase):
         filter = DateTimeFilter(Person.createdts)
         filter.set('gte', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.createdts >= '2010-12-31 00:00:00.000000'")
-        assert filter.value1_set_with == '12/31/2010'
+        assert filter.value1_set_with == '2010-12-31'
         with pytest.raises(formencode.Invalid):
             filter.set('gte', '')
         with pytest.raises(formencode.Invalid):
@@ -1013,8 +1019,8 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-01-31 00:00:00.000000' AND "
             "'2010-12-31 23:59:59.999999'")
-        assert filter.value1_set_with == '01/31/2010 12:00 AM'
-        assert filter.value2_set_with == '12/31/2010 11:59 PM'
+        assert filter.value1_set_with == '2010-01-31T00:00'
+        assert filter.value2_set_with == '2010-12-31T23:59'
 
     def test_between_default(self):
         filter = DateTimeFilter(Person.createdts, default_op='between')
@@ -1050,8 +1056,8 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2010-01-31 10:00:00.000000' AND "
             "'2010-12-31 10:59:59.000000'")
-        assert filter.value1_set_with == '01/31/2010 10:00 AM'
-        assert filter.value2_set_with == '12/31/2010 10:59 AM'
+        assert filter.value1_set_with == '2010-01-31T10:00'
+        assert filter.value2_set_with == '2010-12-31T10:59'
 
     def test_between_with_explicit_midnight(self):
         filter = DateTimeFilter(Person.createdts)
@@ -1381,39 +1387,46 @@ class TestDateTimeFilter(CheckFilterBase):
 
 
 class TestTimeFilter(CheckFilterBase):
-    def dialect_time(self, time_str):
+    def dialect_time(self, time_str, is_end=False):
+        seconds = '59.999999' if is_end else '00.000000'
         sql = {
-            'sqlite': f'CAST(\'{time_str}:00.000000\' AS TIME)',
-            'postgresql': f'CAST(\'{time_str}:00.000000\' AS TIME WITHOUT TIME ZONE)',
-            'mssql': f'CAST(\'{time_str}:00.000000\' AS TIME)',
+            'sqlite': f'CAST(\'{time_str}:{seconds}\' AS TIME)',
+            'postgresql': f'CAST(\'{time_str}:{seconds}\' AS TIME WITHOUT TIME ZONE)',
+            'mssql': f'CAST(\'{time_str}:{seconds}\' AS TIME)',
         }
         return sql.get(db.engine.dialect.name)
 
     def test_eq(self):
         time_string = self.dialect_time('11:30')
+        time_string_end = self.dialect_time('11:30', is_end=True)
         filter = TimeFilter(Person.start_time)
-        filter.set('eq', '11:30 am')
-        self.assert_filter_query(filter,
-                                 "WHERE persons.start_time = " + time_string)
+        filter.set('eq', '11:30')
+        self.assert_filter_query(
+            filter,
+            f"WHERE persons.start_time BETWEEN {time_string} AND {time_string_end}"
+        )
 
     def test_not_eq(self):
         time_string = self.dialect_time('23:30')
+        time_string_end = self.dialect_time('23:30', is_end=True)
         filter = TimeFilter(Person.start_time)
-        filter.set('!eq', '11:30 pm')
-        self.assert_filter_query(filter,
-                                 "WHERE persons.start_time != " + time_string)
+        filter.set('!eq', '23:30')
+        self.assert_filter_query(
+            filter,
+            f"WHERE persons.start_time NOT BETWEEN {time_string} AND {time_string_end}"
+        )
 
     def test_lte(self):
-        time_string = self.dialect_time('09:00')
+        time_string = self.dialect_time('09:00', is_end=True)
         filter = TimeFilter(Person.start_time)
-        filter.set('lte', '9:00 am')
+        filter.set('lte', '9:00')
         self.assert_filter_query(filter,
                                  "WHERE persons.start_time <= " + time_string)
 
     def test_gte(self):
         time_string = self.dialect_time('10:15')
         filter = TimeFilter(Person.start_time)
-        filter.set('gte', '10:15 am')
+        filter.set('gte', '10:15')
         self.assert_filter_query(filter,
                                  "WHERE persons.start_time >= " + time_string)
 
@@ -1421,7 +1434,7 @@ class TestTimeFilter(CheckFilterBase):
         time_start = self.dialect_time('09:00')
         time_end = self.dialect_time('17:00')
         filter = TimeFilter(Person.start_time)
-        filter.set('between', '9:00 am', '5:00 pm')
+        filter.set('between', '9:00', '17:00')
         self.assert_filter_query(
             filter,
             f"WHERE persons.start_time BETWEEN {time_start} AND {time_end}")
@@ -1430,7 +1443,7 @@ class TestTimeFilter(CheckFilterBase):
         time_start = self.dialect_time('09:00')
         time_end = self.dialect_time('17:00')
         filter = TimeFilter(Person.start_time)
-        filter.set('!between', '9:00 am', '5:00 pm')
+        filter.set('!between', '9:00', '17:00')
         self.assert_filter_query(
             filter,
             f"WHERE persons.start_time NOT BETWEEN {time_start} AND {time_end}")

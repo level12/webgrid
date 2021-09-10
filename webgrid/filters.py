@@ -818,13 +818,13 @@ class _DateMixin(object):
             ops.not_between.key
         ):
             # !!!: localize
-            self.value1_set_with = self.value1.strftime('%m/%d/%Y')
+            self.value1_set_with = self.value1.strftime('%Y-%m-%d')
         if isinstance(self.value2, dt.date) and self.op in (
             ops.between.key,
             ops.not_between.key
         ):
             # !!!: localize
-            self.value2_set_with = self.value2.strftime('%m/%d/%Y')
+            self.value2_set_with = self.value2.strftime('%Y-%m-%d')
 
     def _between_range(self):
         if self.value1 is None:
@@ -1066,6 +1066,14 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         ops.last_month, ops.this_year
     )
     input_types = 'input', 'select', 'input2'
+    html_input_types = {
+        ops.eq: 'date',
+        ops.not_eq: 'date',
+        ops.less_than_equal: 'date',
+        ops.greater_than_equal: 'date',
+        ops.between: 'date',
+        ops.not_between: 'date',
+    }
 
     def __init__(self, sa_col, _now=None, default_op=None, default_value1=None,
                  default_value2=None):
@@ -1198,6 +1206,14 @@ class DateTimeFilter(DateFilter):
         _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
         of the true `datetime.now()`. Defaults to None.
     """
+    html_input_types = {
+        ops.eq: 'datetime-local',
+        ops.not_eq: 'datetime-local',
+        ops.less_than_equal: 'datetime-local',
+        ops.greater_than_equal: 'datetime-local',
+        ops.between: 'datetime-local',
+        ops.not_between: 'datetime-local',
+    }
     op_to_query = ImmutableDict({**DateFilter.op_to_query, **{
         ops.today: lambda self, query, today: query.filter(self.sa_col.between(
             ensure_datetime(today),
@@ -1260,10 +1276,10 @@ class DateTimeFilter(DateFilter):
             )
         ),
         ops.eq: lambda self, query, today: (
-            query.filter(self._eq_clause()) if self._has_date_only1 else None
+            query.filter(self._eq_clause())
         ),
         ops.not_eq: lambda self, query, today: (
-            query.filter(~self._eq_clause()) if self._has_date_only1 else None
+            query.filter(~self._eq_clause())
         ),
         ops.less_than_equal: lambda self, query, today: query.filter(
             self.sa_col <= ensure_datetime(
@@ -1298,16 +1314,16 @@ class DateTimeFilter(DateFilter):
         )
         if isinstance(self.value1, dt.datetime) and self.op in ops_single_val + ops_double_val:
             # !!!: localize
-            self.value1_set_with = self.value1.strftime('%m/%d/%Y %I:%M %p')
+            self.value1_set_with = self.value1.strftime('%Y-%m-%dT%H:%M')
             if self.op in ops_single_val and self._has_date_only1:
                 # !!!: localize
-                self.value1_set_with = self.value1.strftime('%m/%d/%Y')
+                self.value1_set_with = self.value1.strftime('%Y-%m-%d')
         if isinstance(self.value2, dt.datetime) and self.op in ops_double_val:
             # !!!: localize
-            self.value2_set_with = self.value2.strftime('%m/%d/%Y %I:%M %p')
+            self.value2_set_with = self.value2.strftime('%Y-%m-%dT%H:%M')
             if self._has_date_only2:
                 # !!!: localize
-                self.value2_set_with = self.value2.strftime('%m/%d/%Y 11:59 PM')
+                self.value2_set_with = self.value2.strftime('%Y-%m-%dT23:59')
 
     def _between_clause(self):
         if self._has_date_only2:
@@ -1318,9 +1334,14 @@ class DateTimeFilter(DateFilter):
         return self.sa_col.between(ensure_datetime(self.value1), right_side)
 
     def _eq_clause(self):
-        left_side = ensure_datetime(self.value1.date())
-        right_side = ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999))
-        return self.sa_col.between(left_side, right_side)
+        if self._has_date_only1:
+            left_side = ensure_datetime(self.value1.date())
+            right_side = ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999))
+            return self.sa_col.between(left_side, right_side)
+        if self.value1 and self.value1.microsecond == 0:
+            left_side = self.value1
+            right_side = self.value1 + dt.timedelta(microseconds=999999)
+            return self.sa_col.between(left_side, right_side)
 
     def _process_datetime(self, value, is_value2):
         try:
@@ -1394,9 +1415,17 @@ class TimeFilter(FilterBase):
     operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
                  ops.not_between, ops.empty, ops.not_empty)
     input_types = 'input', 'input2'
+    html_input_types = {
+        ops.eq: 'time',
+        ops.not_eq: 'time',
+        ops.less_than_equal: 'time',
+        ops.greater_than_equal: 'time',
+        ops.between: 'time',
+        ops.not_between: 'time',
+    }
 
     # !!!: localize
-    time_format = '%I:%M %p'
+    time_format = '%H:%M'
 
     def apply(self, query):
         if self.op == self.default_op and self.value1 is None:
@@ -1412,14 +1441,22 @@ class TimeFilter(FilterBase):
 
         # Casting this because some SQLAlchemy dialects (MSSQL) convert the value to datetime
         # before binding.
-        val = sa.cast(self.value1, sa.Time)
+        endval = val = sa.cast(self.value1, sa.Time)
+        if self.value1:
+            endval = sa.cast(
+                (
+                    dt.datetime.combine(dt.date.today(), self.value1)
+                    + dt.timedelta(seconds=59, microseconds=999999)
+                ).time(),
+                sa.Time
+            )
 
         if self.op == ops.eq:
-            query = query.filter(self.sa_col == val)
+            query = query.filter(self.sa_col.between(val, endval))
         elif self.op == ops.not_eq:
-            query = query.filter(self.sa_col != val)
+            query = query.filter(~self.sa_col.between(val, endval))
         elif self.op == ops.less_than_equal:
-            query = query.filter(self.sa_col <= val)
+            query = query.filter(self.sa_col <= endval)
         elif self.op == ops.greater_than_equal:
             query = query.filter(self.sa_col >= val)
         else:

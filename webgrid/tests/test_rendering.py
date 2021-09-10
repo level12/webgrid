@@ -558,11 +558,11 @@ class TestHtmlRenderer(object):
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['createdts'])
         assert '<input id="createdts_input1" name="v1(createdts)" type="text" value=' + \
-            '"02/15/2012 12:00 AM" />' in filter_html, filter_html
+            '"2012-02-15T00:00" />' in filter_html, filter_html
 
         filter_html = g.html.filtering_col_inputs2(g.key_column_map['createdts'])
         assert '<input id="createdts_input2" name="v2(createdts)" type="text" value=' + \
-            '"02/16/2012 11:59 PM" />' in filter_html, filter_html
+            '"2012-02-16T23:59" />' in filter_html, filter_html
 
     @_inrequest('/thepage?op(firstname)=foobar&v1(firstname)=baz')
     def test_filtering_invalid_operator(self):
