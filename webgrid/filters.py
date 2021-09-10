@@ -1276,10 +1276,10 @@ class DateTimeFilter(DateFilter):
             )
         ),
         ops.eq: lambda self, query, today: (
-            query.filter(self._eq_clause()) if self._has_date_only1 else None
+            query.filter(self._eq_clause())
         ),
         ops.not_eq: lambda self, query, today: (
-            query.filter(~self._eq_clause()) if self._has_date_only1 else None
+            query.filter(~self._eq_clause())
         ),
         ops.less_than_equal: lambda self, query, today: query.filter(
             self.sa_col <= ensure_datetime(
@@ -1334,9 +1334,14 @@ class DateTimeFilter(DateFilter):
         return self.sa_col.between(ensure_datetime(self.value1), right_side)
 
     def _eq_clause(self):
-        left_side = ensure_datetime(self.value1.date())
-        right_side = ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999))
-        return self.sa_col.between(left_side, right_side)
+        if self._has_date_only1:
+            left_side = ensure_datetime(self.value1.date())
+            right_side = ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999))
+            return self.sa_col.between(left_side, right_side)
+        if self.value1 and self.value1.microsecond == 0:
+            left_side = self.value1
+            right_side = self.value1 + dt.timedelta(microseconds=999999)
+            return self.sa_col.between(left_side, right_side)
 
     def _process_datetime(self, value, is_value2):
         try:
@@ -1410,9 +1415,17 @@ class TimeFilter(FilterBase):
     operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
                  ops.not_between, ops.empty, ops.not_empty)
     input_types = 'input', 'input2'
+    html_input_types = {
+        ops.eq: 'time',
+        ops.not_eq: 'time',
+        ops.less_than_equal: 'time',
+        ops.greater_than_equal: 'time',
+        ops.between: 'time',
+        ops.not_between: 'time',
+    }
 
     # !!!: localize
-    time_format = '%I:%M %p'
+    time_format = '%H:%M'
 
     def apply(self, query):
         if self.op == self.default_op and self.value1 is None:
@@ -1428,14 +1441,22 @@ class TimeFilter(FilterBase):
 
         # Casting this because some SQLAlchemy dialects (MSSQL) convert the value to datetime
         # before binding.
-        val = sa.cast(self.value1, sa.Time)
+        endval = val = sa.cast(self.value1, sa.Time)
+        if self.value1:
+            endval = sa.cast(
+                (
+                    dt.datetime.combine(dt.date.today(), self.value1)
+                    + dt.timedelta(seconds=59, microseconds=999999)
+                ).time(),
+                sa.Time
+            )
 
         if self.op == ops.eq:
-            query = query.filter(self.sa_col == val)
+            query = query.filter(self.sa_col.between(val, endval))
         elif self.op == ops.not_eq:
-            query = query.filter(self.sa_col != val)
+            query = query.filter(~self.sa_col.between(val, endval))
         elif self.op == ops.less_than_equal:
-            query = query.filter(self.sa_col <= val)
+            query = query.filter(self.sa_col <= endval)
         elif self.op == ops.greater_than_equal:
             query = query.filter(self.sa_col >= val)
         else:
