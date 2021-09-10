@@ -1,6 +1,43 @@
 Changelog
 =========
 
+0.4.0 released 2021-09-10
+-------------------------
+
+- Use HTML5 date/time input types for filters (76f74b9_)
+- Support arrow-type columns with date filter (2eedfdc_)
+- Allow enum filter type to be set on filter class (e0a3ac2_)
+- Allow adding columns on grid instance (84bbee3_)
+- Allow columns to be reordered by given keys (affcb54_)
+- Ensure columns get keyed with their unique names (7549824_)
+- Clean up search value handling (426ee92_)
+- Warn developer of openpyxl requirement for xlsx testing (2c6613d_)
+- Resolve werkzeug Href deprecation (1dc5688_)
+- Resolve flask attachment_name deprecation (f2e6931_)
+- Set header action to post/get depending on manager args loaders (45cbb69_)
+- Fix args loader session key handling (f7b40c6_)
+- Set request context in testing GridBase as needed (e55979b_)
+- Add JSON renderer and flask API (274b6bc_)
+- Made compatible with sqlalchemy 1.4
+- Dropped python 3.6 tests, added 3.9
+- Removed blazeweb tests due to incompatibility with sqlalchemy 1.4
+
+.. _76f74b9: https://github.com/level12/webgrid/commit/76f74b9
+.. _2eedfdc: https://github.com/level12/webgrid/commit/2eedfdc
+.. _e0a3ac2: https://github.com/level12/webgrid/commit/e0a3ac2
+.. _84bbee3: https://github.com/level12/webgrid/commit/84bbee3
+.. _affcb54: https://github.com/level12/webgrid/commit/affcb54
+.. _7549824: https://github.com/level12/webgrid/commit/7549824
+.. _426ee92: https://github.com/level12/webgrid/commit/426ee92
+.. _2c6613d: https://github.com/level12/webgrid/commit/2c6613d
+.. _1dc5688: https://github.com/level12/webgrid/commit/1dc5688
+.. _f2e6931: https://github.com/level12/webgrid/commit/f2e6931
+.. _45cbb69: https://github.com/level12/webgrid/commit/45cbb69
+.. _f7b40c6: https://github.com/level12/webgrid/commit/f7b40c6
+.. _e55979b: https://github.com/level12/webgrid/commit/e55979b
+.. _274b6bc: https://github.com/level12/webgrid/commit/274b6bc
+
+
 0.3.7 released 2021-02-16
 -------------------------
 
