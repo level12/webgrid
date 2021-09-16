@@ -817,6 +817,10 @@ class TestJSONRenderer:
                 'enable_search': True,
                 'enable_sort': True,
                 'export_targets': ['xls', 'xlsx'],
+                'sortable_columns': [
+                    'firstname', 'inactive', 'status', 'createdts', 'due_date', 'sortorder',
+                    'state', 'numericcol', 'account_type',
+                ],
                 'filters': {
                     'account_type': {
                         'operators': [

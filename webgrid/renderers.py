@@ -262,6 +262,9 @@ class JSON(Renderer):
     def serialized_order_by(self):
         return [self.serialize_sort(sort) for sort in self.grid.order_by]
 
+    def serialized_sortable_columns(self):
+        return [col.key for col in filter(lambda col: col.can_sort, self.grid.columns)]
+
     def asdict(self):
         grid = types.Grid(
             errors=[],
@@ -282,6 +285,7 @@ class JSON(Renderer):
                 export_targets=list(self.grid.allowed_export_targets.keys()),
                 enable_search=self.grid.enable_search,
                 enable_sort=self.grid.sorter_on,
+                sortable_columns=self.serialized_sortable_columns(),
                 filters=self.serialized_filter_specs(),
             ),
             state=types.GridState(

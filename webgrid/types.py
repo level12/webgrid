@@ -132,6 +132,7 @@ class GridSpec:
     export_targets: List[str]
     enable_search: bool
     enable_sort: bool
+    sortable_columns: List[str]
     filters: Dict[str, FilterSpec] = field(default_factory=dict)
 
 
