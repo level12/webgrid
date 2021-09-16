@@ -1703,7 +1703,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         pp_qsk = 'perpage'
         if pp_qsk in args:
             per_page = self.apply_validator(fev.Int, args[pp_qsk], pp_qsk)
-            if per_page is None or per_page < 1:
+            if per_page is None:
+                per_page = self.__class__.per_page
+            elif per_page < 1:
                 per_page = 1
             self.per_page = per_page
 

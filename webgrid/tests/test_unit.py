@@ -667,9 +667,16 @@ class TestQueryStringArgs(object):
     def test_qs_perpage_invalid(self):
         pg = PeopleGrid()
         pg.apply_qs_args()
-        assert pg.on_page == 2
-        assert pg.per_page == 1
+        assert pg.on_page == 1
+        assert pg.per_page == 50
         assert pg.user_warnings[0] == '"perpage" grid argument invalid, ignoring'
+
+    def test_qs_paging_defaults(self):
+        pg = PeopleGrid()
+        pg.apply_qs_args(grid_args = {'onpage': None, 'perpage': None})
+        assert pg.on_page == 1
+        assert pg.per_page == 50
+        assert not pg.user_warnings
 
     @_inrequest('/foo?perpage=-1&onpage=2')
     def test_qs_perpage_negative(self):
