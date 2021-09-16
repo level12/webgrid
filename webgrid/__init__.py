@@ -1657,7 +1657,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             'search' in args
             and self.can_search()
         ):
-            self.search_value = args['search'].strip()
+            self.search_value = args['search'].strip() if args['search'] else None
 
     def _apply_filtering(self, args):
         """Turn request/session args into filter settings.
