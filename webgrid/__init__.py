@@ -984,6 +984,16 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                 new_col
             )
 
+    def drop_columns(self, column_keys):
+        self.columns = list(filter(
+            lambda col: col.key not in tolist(column_keys),
+            self.columns
+        ))
+        for key in tolist(column_keys):
+            self.key_column_map.pop(key, None)
+            self.filtered_cols.pop(key, None)
+            self.subtotal_cols.pop(key, None)
+
     def post_init(self):
         """Provided for subclasses to run post-initialization customizations.
         """
