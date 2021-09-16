@@ -202,6 +202,10 @@ class WebGridAPI(WebGrid):
         """Create the grid instance from the registered class/creator."""
         return grid_cls_or_creator()
 
+    def api_init_grid_post(self, grid):
+        """Hook to run API-level init on every grid after instantiation"""
+        pass
+
     def api_on_render_limit_exceeded(self, grid):
         """Export failed due to number of records. Returns a JSON response."""
         return flask.jsonify(error='too many records for render target')
@@ -227,6 +231,7 @@ class WebGridAPI(WebGrid):
             flask.abort(404)
 
         grid = self.api_init_grid(self._registered_grids.get(grid_ident))
+        self.api_init_grid_post(grid)
 
         # Make the API as flexible as possible to accept JSON post requests for grids
         # that may be used in other areas of the application, hence managed by a different
