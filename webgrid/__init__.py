@@ -147,6 +147,7 @@ class Column(object):
     xls_width = None
     xls_num_format = None
     xls_style = None
+    json_type_helper = None
     _render_in = 'html', 'xls', 'xlsx', 'csv', 'json'
     _visible = True
 
@@ -487,6 +488,7 @@ class BoolColumn(Column):
 
         false_label (str, optional): String to use for the false case.
     """
+    json_type_helper = 'boolean'
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
                  reverse=False, true_label=_('True'), false_label=_('False'),
@@ -620,6 +622,7 @@ class DateColumn(DateColumnBase):
     html_format = '%m/%d/%Y'
     csv_format = '%Y-%m-%d'
     xls_num_format = 'm/dd/yyyy'
+    json_type_helper = 'date'
 
 
 class DateTimeColumn(DateColumnBase):
@@ -639,6 +642,7 @@ class DateTimeColumn(DateColumnBase):
     html_format = '%m/%d/%Y %I:%M %p'
     csv_format = '%Y-%m-%d %H:%M:%S%z'
     xls_num_format = 'mm/dd/yyyy hh:mm am/pm'
+    json_type_helper = 'datetime'
 
 
 class TimeColumn(DateColumnBase):
@@ -658,6 +662,7 @@ class TimeColumn(DateColumnBase):
     html_format = '%I:%M %p'
     csv_format = '%H:%M'
     xls_num_format = 'hh:mm am/pm'
+    json_type_helper = 'time'
 
 
 class NumericColumn(Column):
@@ -712,6 +717,7 @@ class NumericColumn(Column):
         self.trailneg = trailneg
         self.xls_neg_red = xls_neg_red
         self.format_as = format_as
+        self.json_type_helper = f'number_{format_as}'
 
     def html_decimal_format_opts(self, data):
         """Return tuple of options to expand for decimalfmt arguments.

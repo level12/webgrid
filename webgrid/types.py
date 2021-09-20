@@ -129,6 +129,7 @@ class GridSettings:
 class GridSpec:
     columns: List[Dict[str, str]]
     column_groups: List[ColumnGroup]
+    column_types: List[Dict[str, str]]
     export_targets: List[str]
     enable_search: bool
     enable_sort: bool

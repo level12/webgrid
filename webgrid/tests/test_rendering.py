@@ -814,6 +814,17 @@ class TestJSONRenderer:
                 'column_groups': [
                     {'columns': ['firstname', 'inactive'], 'label': 'foo'}
                 ],
+                'column_types': {
+                    'account_type': None,
+                    'createdts': 'datetime',
+                    'due_date': 'date',
+                    'emails': None,
+                    'firstname': None,
+                    'full_name': None,
+                    'inactive': 'boolean',
+                    'numericcol': 'number_general',
+                    'status': None,
+                },
                 'enable_search': True,
                 'enable_sort': True,
                 'export_targets': ['xls', 'xlsx'],

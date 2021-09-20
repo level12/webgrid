@@ -203,6 +203,9 @@ class JSON(Renderer):
     def serialized_columns(self):
         return {col.key: str(col.label) for col in self.columns}
 
+    def serialized_column_types(self):
+        return {col.key: col.json_type_helper for col in self.columns}
+
     def serialize_column_group(self, label, columns):
         return types.ColumnGroup(
             label=label,
@@ -282,6 +285,7 @@ class JSON(Renderer):
             spec=types.GridSpec(
                 columns=self.serialized_columns(),
                 column_groups=self.serialized_column_groups(),
+                column_types=self.serialized_column_types(),
                 export_targets=list(self.grid.allowed_export_targets.keys()),
                 enable_search=self.grid.enable_search,
                 enable_sort=self.grid.sorter_on,
