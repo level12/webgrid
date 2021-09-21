@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 class ValidationError(Exception):
@@ -15,7 +15,7 @@ class FieldValidationError(ValidationError):
 @dataclass
 class Filter:
     op: str
-    value1: str
+    value1: Union[str, List[str]]
     value2: Optional[str] = None
 
 
@@ -42,7 +42,7 @@ class Sort:
 class FilterOperator:
     key: str
     label: str
-    field_type: str
+    field_type: Optional[str]
     hint: Optional[str] = None
 
 

@@ -851,16 +851,18 @@ class TestJSONRenderer:
                     },
                     'createdts': {
                         'operators': [
-                            {'field_type': 'input', 'hint': None, 'key': 'eq', 'label': 'is'},
-                            {'field_type': 'input', 'hint': None, 'key': '!eq', 'label': 'is not'},
-                            {'field_type': 'input', 'hint': None, 'key': 'lte',
+                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'eq',
+                             'label': 'is'},
+                            {'field_type': 'input.datetime-local', 'hint': None, 'key': '!eq',
+                             'label': 'is not'},
+                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'lte',
                              'label': 'less than or equal'},
-                            {'field_type': 'input', 'hint': None, 'key': 'gte',
+                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'gte',
                              'label': 'greater than or equal'},
-                            {'field_type': '2inputs', 'hint': None, 'key': 'between',
-                             'label': 'between'},
-                            {'field_type': '2inputs', 'hint': None, 'key': '!between',
-                             'label': 'not between'},
+                            {'field_type': '2inputs.datetime-local', 'hint': None,
+                             'key': 'between', 'label': 'between'},
+                            {'field_type': '2inputs.datetime-local', 'hint': None,
+                             'key': '!between', 'label': 'not between'},
                             {'field_type': 'input', 'hint': 'days', 'key': 'da',
                              'label': 'days ago'},
                             {'field_type': 'input', 'hint': 'days', 'key': 'ltda',
@@ -888,7 +890,21 @@ class TestJSONRenderer:
                             {'field_type': None, 'hint': None, 'key': 'thisyear',
                              'label': 'this year'}
                         ],
-                        'primary_op': None
+                        'primary_op': None,
+                        'options': [
+                            {'key': 1, 'value': '01-Jan'},
+                            {'key': 2, 'value': '02-Feb'},
+                            {'key': 3, 'value': '03-Mar'},
+                            {'key': 4, 'value': '04-Apr'},
+                            {'key': 5, 'value': '05-May'},
+                            {'key': 6, 'value': '06-Jun'},
+                            {'key': 7, 'value': '07-Jul'},
+                            {'key': 8, 'value': '08-Aug'},
+                            {'key': 9, 'value': '09-Sep'},
+                            {'key': 10, 'value': '10-Oct'},
+                            {'key': 11, 'value': '11-Nov'},
+                            {'key': 12, 'value': '12-Dec'},
+                        ]
                     },
                     'firstname': {
                         'operators': [
@@ -993,6 +1009,20 @@ class TestJSONRenderer:
                 {'key': 'firstname', 'flag_desc': False},
                 {'key': 'status', 'flag_desc': True},
             ],
+            'export_to': None,
+        }
+
+    def test_json_format_lists(self):
+        grid = PeopleGrid()
+        account_type = grid.column('account_type')
+        account_type.filter.set('is', ['admin', 'manager'])
+        assert self.get_json(grid)['settings'] == {
+            'filters': {
+                'account_type': {'op': 'is', 'value1': ['admin', 'manager'], 'value2': None},
+            },
+            'paging': {'pager_on': True, 'on_page': 1, 'per_page': 50},
+            'search_expr': None,
+            'sort': [],
             'export_to': None,
         }
 

@@ -505,6 +505,8 @@ class OptionsFilterBase(FilterBase):
         if self.op in (ops.is_, ops.not_is) and not (self.value1 or self.default_op):
             self.op = None
 
+        self.value1_set_with = values
+
     def process(self, value):
         """Apply the `value_modifier` to a value."""
         if self.value_modifier is not None:
@@ -982,6 +984,27 @@ class _DateMixin(object):
                 pass
             return base_expr
         return expr
+
+    def serialize_filter_operator(self, op):
+        field_type = op.field_type
+        if op in self.html_input_types:
+            field_type += '.' + self.html_input_types[op]
+        return types.FilterOperator(
+            key=op.key,
+            label=op.display,
+            field_type=field_type,
+            hint=op.hint,
+        )
+
+    def serialize_filter_spec(self):
+        base_spec = super().serialize_filter_spec()
+        return types.OptionsFilterSpec(
+            operators=base_spec.operators,
+            primary_op=base_spec.primary_op,
+            options=[
+                self.serialize_filter_option(key, value)
+                for key, value in self.options_seq],
+        )
 
 
 class _DateOpQueryMixin:

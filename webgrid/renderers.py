@@ -238,14 +238,6 @@ class JSON(Renderer):
             if col.filter.is_active
         }
 
-    def serialize_filter_operator(self, op):
-        return types.FilterOperator(
-            key=op.key,
-            label=op.display,
-            field_type=op.field_type,
-            hint=op.hint,
-        )
-
     def serialized_filter_specs(self):
         return {
             col.key: col.filter.serialize_filter_spec()
