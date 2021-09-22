@@ -1,6 +1,26 @@
 Changelog
 =========
 
+0.4.1 released 2021-09-22
+-------------------------
+
+- include HTML field types in serialized filter spec output (e130489_)
+- add column type helpers to JSON definition (a255035_)
+- ensure paging defaults are followed if not set in args (2834a23_)
+- handle None search value coming from args (84c4af5_)
+- allow columns to be dropped from a grid instance (195942a_)
+- add sortable column key list to JSON render grid spec (deb5f6b_)
+- API: add post-init setup hook (56b4e96_)
+
+.. _e130489: https://github.com/level12/webgrid/commit/e130489
+.. _a255035: https://github.com/level12/webgrid/commit/a255035
+.. _2834a23: https://github.com/level12/webgrid/commit/2834a23
+.. _84c4af5: https://github.com/level12/webgrid/commit/84c4af5
+.. _195942a: https://github.com/level12/webgrid/commit/195942a
+.. _deb5f6b: https://github.com/level12/webgrid/commit/deb5f6b
+.. _56b4e96: https://github.com/level12/webgrid/commit/56b4e96
+
+
 0.4.0 released 2021-09-10
 -------------------------
 
