@@ -673,7 +673,7 @@ class TestQueryStringArgs(object):
 
     def test_qs_paging_defaults(self):
         pg = PeopleGrid()
-        pg.apply_qs_args(grid_args = {'onpage': None, 'perpage': None})
+        pg.apply_qs_args(grid_args={'onpage': None, 'perpage': None})
         assert pg.on_page == 1
         assert pg.per_page == 50
         assert not pg.user_warnings
