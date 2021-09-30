@@ -158,8 +158,6 @@ class TestTextFilterWithCaseSensitiveDialect(CheckFilterBase):
         tf = self.get_filter()
         tf.set('eq', 'foo')
         query_term = "'foo'"
-        if db.engine.dialect.name == 'mssql':
-            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
         self.assert_in_query(query, f'WHERE upper(persons.firstname) = upper({query_term})')
 
@@ -167,8 +165,6 @@ class TestTextFilterWithCaseSensitiveDialect(CheckFilterBase):
         tf = self.get_filter()
         tf.set('!eq', 'foo')
         query_term = "'foo'"
-        if db.engine.dialect.name == 'mssql':
-            query_term = f'N{query_term}'
         query = tf.apply(db.session.query(Person.id))
         self.assert_in_query(query, f'WHERE upper(persons.firstname) != upper({query_term})')
 

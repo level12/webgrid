@@ -556,7 +556,7 @@ class TestGrid(object):
                 "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
             ),
             'mssql': (
-                "HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE N'%foo%'"
+                "HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE '%foo%'"
             )
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
