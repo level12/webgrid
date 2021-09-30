@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.2 released 2021-09-30
+-------------------------
+
+- support additional types for query-to-string (e76b7e0_)
+
+.. _e76b7e0: https://github.com/level12/webgrid/commit/e76b7e0
+
+
 0.4.1 released 2021-09-22
 -------------------------
 
