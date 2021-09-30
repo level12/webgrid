@@ -38,6 +38,10 @@ def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
                 return "'" + value.strftime('%Y-%m-%d') + "'"
             elif isinstance(value, datetime.time):
                 return "'{:%H:%M:%S.%f}'".format(value)
+            elif isinstance(value, datetime.timedelta):
+                return str(value)
+            elif isinstance(value, str):
+                return f"'{value}'"
             elif value is None:
                 return 'NULL'
             else:
