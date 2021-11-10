@@ -152,6 +152,8 @@ class FilterBase(object):
     init_attrs_for_instance = ()
     # current HTML renderer allows for "input", "input2", and/or "select"
     input_types = 'input',
+    # match operators to the HTML5 type(s)
+    html_input_types = {}
     # does this filter take a list of values in it's set() method
     receives_list = False
     # does this filter apply to the HAVING clause
@@ -310,10 +312,13 @@ class FilterBase(object):
         return None
 
     def serialize_filter_operator(self, op):
+        field_type = op.field_type
+        if op in self.html_input_types:
+            field_type += '.' + self.html_input_types[op]
         return types.FilterOperator(
             key=op.key,
             label=op.display,
-            field_type=op.field_type,
+            field_type=field_type,
             hint=op.hint,
         )
 
@@ -984,17 +989,6 @@ class _DateMixin(object):
                 pass
             return base_expr
         return expr
-
-    def serialize_filter_operator(self, op):
-        field_type = op.field_type
-        if op in self.html_input_types:
-            field_type += '.' + self.html_input_types[op]
-        return types.FilterOperator(
-            key=op.key,
-            label=op.display,
-            field_type=field_type,
-            hint=op.hint,
-        )
 
     def serialize_filter_spec(self):
         base_spec = super().serialize_filter_spec()
