@@ -636,6 +636,42 @@ class OptionsEnumFilter(OptionsFilterBase):
         return self.value_modifier.to_python(value)
 
 
+class OptionsEnumArrayFilter(OptionsEnumFilter):
+    """Handle filtering array fields having an enum type.
+
+    Uses SA's any/contains operators, while correcting for enum type discrepancy.
+
+    Note, this is known to work with Postgres, but has not been tested on other platforms."""
+
+    def get_search_expr(self):
+        """Match up a search value to option display, grab the corresponding keys, and search."""
+        # The important thing to remember here is that a user will be searching for the displayed
+        # value, not the key that generated it. We need to do some prep work to search options
+        # to get the keys needed for lookup into the data source.
+        def search(value):
+            matching_keys = self.match_keys_for_value(value)
+            return self.sa_col.contains(matching_keys)
+        return search
+
+    def apply(self, query):
+        """Query modifier to apply the needed clauses for filter inputs."""
+        if self.op == self.ops.is_:
+            if len(self.value1) == 1 and self.value1[0]:
+                return query.filter(self.sa_col.any(self.value1[0].name))
+            elif len(self.value1) > 1:
+                return query.filter(self.sa_col.contains(self.value1))
+            else:
+                return query
+        if self.op == self.ops.not_is:
+            if len(self.value1) == 1 and self.value1[0]:
+                return query.filter(~self.sa_col.any(self.value1[0].name))
+            elif len(self.value1) > 1:
+                return query.filter(~self.sa_col.contains(self.value1))
+            else:
+                return query
+        return super().apply(query)
+
+
 class TextFilter(FilterBase):
     """Filter with single freeform text input."""
     operators = (ops.eq, ops.not_eq, ops.contains, ops.not_contains, ops.empty, ops.not_empty)
