@@ -132,3 +132,12 @@ class Stopwatch(db.Model, DefaultMixin):
     stop_time_lap2 = sa.Column(sa.DateTime)
     start_time_lap3 = sa.Column(sa.DateTime)
     stop_time_lap3 = sa.Column(sa.DateTime)
+
+
+if db.engine.dialect.name == 'postgresql':
+    class ArrayTable(db.Model, DefaultMixin):
+        __tablename__ = 'array_table'
+
+        id = sa.Column(sa.Integer, primary_key=True)
+        account_type = sa.Column(
+            sa.dialects.postgresql.ARRAY(sa.Enum(AccountType, name='person_account_type')))

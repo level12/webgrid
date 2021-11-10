@@ -655,14 +655,14 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
 
     def apply(self, query):
         """Query modifier to apply the needed clauses for filter inputs."""
-        if self.op == self.ops.is_:
+        if self.op == ops.is_:
             if len(self.value1) == 1 and self.value1[0]:
                 return query.filter(self.sa_col.any(self.value1[0].name))
             elif len(self.value1) > 1:
                 return query.filter(self.sa_col.contains(self.value1))
             else:
                 return query
-        if self.op == self.ops.not_is:
+        if self.op == ops.not_is:
             if len(self.value1) == 1 and self.value1[0]:
                 return query.filter(~self.sa_col.any(self.value1[0].name))
             elif len(self.value1) > 1:

@@ -8,9 +8,11 @@ import formencode
 
 from webgrid.filters import Operator
 from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilter, DateFilter, \
-    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter, AggregateIntFilter
+    DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter, AggregateIntFilter, \
+    OptionsEnumArrayFilter
 from webgrid.testing import query_to_str
 from webgrid_ta.model.entities import ArrowRecord, Person, db, AccountType
+from webgrid_ta.model import entities as ents
 
 from .helpers import ModelBase
 
@@ -1647,6 +1649,30 @@ class TestEnumFilter(CheckFilterBase):
         filter = AccountTypeFilter(Person.account_type).new_instance()
         filter.set('is', ['admin'])
         self.assert_filter_query(filter, "WHERE persons.account_type = 'admin'")
+
+
+@pytest.mark.skipif(
+    db.engine.dialect.name != 'postgresql',
+    reason='current filter depends on PG array type and cannot use the generic'
+)
+class TestEnumArrayFilter(CheckFilterBase):
+    def test_is(self):
+        filter = OptionsEnumArrayFilter(
+            ents.ArrayTable.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', ['admin'])
+        self.assert_filter_query(filter, "WHERE 'admin' = ANY (array_table.account_type)")
+
+    def test_is_multiple(self):
+        filter = OptionsEnumArrayFilter(
+            ents.ArrayTable.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', ['admin', 'manager'])
+        self.assert_filter_query(filter, "WHERE array_table.account_type @> ('admin', 'manager')")
+
+    def test_literal_value(self):
+        filter = OptionsEnumArrayFilter(
+            ents.ArrayTable.account_type, enum_type=AccountType).new_instance()
+        filter.set('is', [AccountType.admin])
+        self.assert_filter_query(filter, "WHERE 'admin' = ANY (array_table.account_type)")
 
 
 class TestIntrospect(CheckFilterBase):
