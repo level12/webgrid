@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.4.3 released 2021-11-10
+-------------------------
+
+- support array type in test query building (13be909_)
+- add an enum filter that supports PG array type (faa2e64_)
+- support html input type designation for JSON on all filters (f60efac_)
+
+.. _13be909: https://github.com/level12/webgrid/commit/13be909
+.. _faa2e64: https://github.com/level12/webgrid/commit/faa2e64
+.. _f60efac: https://github.com/level12/webgrid/commit/f60efac
+
+
 0.4.2 released 2021-09-30
 -------------------------
 
