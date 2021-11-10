@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.4 released 2021-11-10
+-------------------------
+
+- bug fix in option array enum filter (4f09060_)
+
+.. _4f09060: https://github.com/level12/webgrid/commit/4f09060
+
+
 0.4.3 released 2021-11-10
 -------------------------
 
