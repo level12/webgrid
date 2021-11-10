@@ -42,6 +42,12 @@ def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
                 return str(value)
             elif isinstance(value, str):
                 return f"'{value}'"
+            elif isinstance(value, list) and isinstance(type_, sqlalchemy.ARRAY):
+                elements = [
+                    self.render_literal_value(list_val, type_.item_type)
+                    for list_val in value
+                ]
+                return f"({', '.join(elements)})"
             elif value is None:
                 return 'NULL'
             else:
