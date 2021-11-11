@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.5 released 2021-11-11
+-------------------------
+
+- fix array enum filter search expression for empty sets (39bfc1a_)
+
+.. _39bfc1a: https://github.com/level12/webgrid/commit/39bfc1a
+
+
 0.4.4 released 2021-11-10
 -------------------------
 
