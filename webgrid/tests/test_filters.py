@@ -1674,6 +1674,12 @@ class TestEnumArrayFilter(CheckFilterBase):
         filter.set('is', [AccountType.admin])
         self.assert_filter_query(filter, "WHERE 'admin' = ANY (array_table.account_type)")
 
+    def test_search_expression(self):
+        filter = OptionsEnumArrayFilter(
+            ents.ArrayTable.account_type, enum_type=AccountType).new_instance()
+        assert 'account_type @>' in str(filter.get_search_expr()('admin'))
+        assert filter.get_search_expr()('foo') is None
+
 
 class TestIntrospect(CheckFilterBase):
     def test_new_instance(self):

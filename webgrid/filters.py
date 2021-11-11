@@ -650,7 +650,13 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
         # to get the keys needed for lookup into the data source.
         def search(value):
             matching_keys = self.match_keys_for_value(value)
-            return self.sa_col.contains(matching_keys)
+            # contains doesn't have the same behavior as in_. In_ guards against empty sets
+            # since no record is in the null set, but contains with an empty set will return
+            # every record. Make sure we have something to contain, or else don't return an
+            # expression at all.
+            if matching_keys:
+                return self.sa_col.contains(matching_keys)
+            return None
         return search
 
     def apply(self, query):
