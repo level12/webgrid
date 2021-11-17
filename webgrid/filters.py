@@ -455,16 +455,13 @@ class OptionsFilterBase(FilterBase):
                     _("can't use value_modifier='auto' when option keys are {key_type}",
                       key_type=type(first_key))
                 )
-        else:
-            # if its not the string 'auto' and its not a formencode validator, assume
-            # its a callable and wrap with a formencode validator
-            if not hasattr(self.value_modifier, 'to_python'):
-                if not hasattr(self.value_modifier, '__call__'):
-                    raise TypeError(
-                        _('value_modifier must be the string "auto", have a "to_python" attribute, '
-                          'or be a callable')
-                    )
-                self.value_modifier = feval.Wrapper(to_python=self.value_modifier)
+        elif not hasattr(self.value_modifier, 'to_python'):
+            if not hasattr(self.value_modifier, '__call__'):
+                raise TypeError(
+                    _('value_modifier must be the string "auto", have a "to_python" attribute, '
+                      'or be a callable')
+                )
+            self.value_modifier = feval.Wrapper(to_python=self.value_modifier)
 
     def set(self, op, values, value2=None):
         """Set the filter op/values to be used by query modifiers.
@@ -507,8 +504,11 @@ class OptionsFilterBase(FilterBase):
         #
         # however, we have to test the operator first, because if it is empty
         # or !empty, then it would make sense for self.value1 to be empty.
-        if self.op in (ops.is_, ops.not_is) and not (self.value1 or self.default_op):
-            self.op = None
+        if (
+            self.op in (ops.is_, ops.not_is)
+            and not self.value1
+            and not self.default_op
+        ):            self.op = None
 
         self.value1_set_with = values
 
@@ -971,7 +971,7 @@ class _DateMixin(object):
                      second_date=last_day.strftime('%m/%d/%Y'))
         else:
             # !!!: localize
-            target_date = first_day if first_day else last_day
+            target_date = first_day or last_day
             return _('{descriptor}{date}',
                      descriptor=prefix,
                      date=target_date.strftime('%m/%d/%Y'))
@@ -1238,14 +1238,13 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             return None
 
         if value is None:
-            if is_value2:
-                if self.op in (ops.between, ops.not_between):
-                    value = ''
-                else:
-                    return None
-            else:
+            if not is_value2:
                 raise formencode.Invalid(gettext('invalid date'), value, self)
 
+            if self.op in (ops.between, ops.not_between):
+                value = ''
+            else:
+                return None                
         if self.op == ops.select_month:
             if is_value2:
                 return feval.Int(not_empty=False, min=1900, max=9999).to_python(value)
@@ -1429,14 +1428,13 @@ class DateTimeFilter(DateFilter):
             return None
 
         if value is None:
-            if is_value2:
-                if self.op in (ops.between, ops.not_between):
-                    value = ''
-                else:
-                    return None
-            else:
+            if not is_value2:
                 raise formencode.Invalid(gettext('invalid date'), value, self)
 
+            if self.op in (ops.between, ops.not_between):
+                value = ''
+            else:
+                return None                
         if self.op == ops.select_month:
             if is_value2:
                 return feval.Int(not_empty=False, min=1900, max=9999).to_python(value)
