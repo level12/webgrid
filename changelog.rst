@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.6 released 2021-11-17
+-------------------------
+
+- provide all column labels in JSON render (ab28bfe_)
+
+.. _ab28bfe: https://github.com/level12/webgrid/commit/ab28bfe
+
+
 0.4.5 released 2021-11-11
 -------------------------
 
