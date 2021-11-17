@@ -201,7 +201,10 @@ class JSON(Renderer):
         return 'json'
 
     def serialized_columns(self):
-        return {col.key: str(col.label) for col in self.columns}
+        """Usually we would use the renderer's column list. For JSON, though, we want to
+        supply any labels possible for use in a front-end app. The front-end needs to
+        know names for filters, for example."""
+        return {col.key: str(col.label) for col in self.grid.columns}
 
     def serialized_column_types(self):
         return {col.key: col.json_type_helper for col in self.columns}

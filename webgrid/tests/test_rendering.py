@@ -809,6 +809,8 @@ class TestJSONRenderer:
                     'full_name': 'Full Name',
                     'inactive': 'Active',
                     'numericcol': 'Number',
+                    'sortorder': 'Sort Order',
+                    'state': 'State',
                     'status': 'Status',
                 },
                 'column_groups': [
