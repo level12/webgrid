@@ -55,7 +55,7 @@ else:
 
 class CustomJsonEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime.date) or isinstance(obj, arrow.Arrow):
+        if isinstance(obj, (datetime.date, arrow.Arrow)):
             return obj.isoformat()
 
         try:
@@ -154,10 +154,7 @@ class RequestJsonLoader(ArgsLoader):
 
     def get_args(self, grid, previous_args):
         data = self.manager.request_json()
-        if data:
-            current_args = self.json_to_args(data)
-        else:
-            current_args = MultiDict()
+        current_args = self.json_to_args(data) if data else MultiDict()
         current_args.update(previous_args)
         return current_args
 
@@ -341,7 +338,7 @@ class WebSessionArgsLoader(ArgsLoader):
         #   and also as the default args for this grid
         web_session = self.manager.web_session()
         if 'dgsessions' not in web_session:
-            web_session['dgsessions'] = dict()
+            web_session['dgsessions'] = {}
         dgsessions = web_session['dgsessions']
         grid_session_key = args.get('session_key') or grid.session_key
         # work with a copy here
@@ -406,9 +403,8 @@ class WebSessionArgsLoader(ArgsLoader):
 
         if 'dgreset' in previous_args:
             # Request has a reset. Do nothing else.
-            if grid.session_on:
-                self.remove_grid_session(previous_args.get('session_key') or grid.session_key)
-                self.remove_grid_session(grid.default_session_key)
+            self.remove_grid_session(previous_args.get('session_key') or grid.session_key)
+            self.remove_grid_session(grid.default_session_key)
             return MultiDict(dict(dgreset=1, session_key=previous_args.get('session_key')))
 
         # From here on, work with a copy so as not to mutate the incoming args
