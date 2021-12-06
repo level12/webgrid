@@ -869,6 +869,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         unconfirmed_export_limit (int): Ask for confirmation before exporting more than this many
         records. Set to None to disable. Default 10000.
 
+        query_select_from (selectable): Entity, table, or other selectable(s) to use as the query
+        from. If attributes like query_filter are used along with select_from, SQLAlchemy may
+        require the select_from to precede the filtering.
+
         query_joins (tuple): Tuple of joins to bring the query together for all columns. May
         have just the join object, or also conditions.
         e.g. [Blog], ([Blog.category], ), or [(Blog, Blog.active == sa.true())]
@@ -902,6 +906,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     # filter at once
     enable_search = True
 
+    # Base selectable(s) to be used in the FROM clause of the query
+    query_select_from = None
     # List of joins to bring the query together for all columns. May have just the join object,
     # or also conditions
     # e.g. [Blog], ([Blog.category], ), or [(Blog, Blog.active == sa.true())]
@@ -1472,6 +1478,9 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             column._query_idx = idx
         cols = [col.expr for col in self.columns if col.expr is not None]
         query = self.manager.sa_query(*cols)
+
+        if self.query_select_from is not None:
+            query = query.select_from(*tolist(self.query_select_from))
 
         for join_terms in (tolist(self.query_joins) or tuple()):
             query = query.join(*tolist(join_terms))

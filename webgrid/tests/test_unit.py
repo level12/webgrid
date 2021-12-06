@@ -601,6 +601,14 @@ class TestGrid(object):
         grid.apply_qs_args()
         assert_in_query(grid, 'ORDER BY stopwatches.id, persons.id')
 
+    def test_query_select_from(self):
+        grid = self.KeyGrid()
+        grid.query_joins = None
+        grid.query_select_from = Stopwatch
+        query = grid.build_query()
+        assert len(query._from_obj) == 1
+        assert query._from_obj[0] == Stopwatch.__table__
+
 
 class TestQueryStringArgs(object):
 
