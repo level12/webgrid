@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.7 released 2021-12-06
+-------------------------
+
+- add query_select_from grid attribute (56425a6_)
+
+.. _56425a6: https://github.com/level12/webgrid/commit/56425a6
+
+
 0.4.6 released 2021-11-17
 -------------------------
 
