@@ -440,7 +440,8 @@ class FrameworkManager(ABC):
     Provides common framework-related properties and methods.
 
     Class Attributes:
-        jinja_loader (jinja.Loader): Template loader to use for HTML rendering.
+        jinja_loader (jinja.Loader): Template loader to use for HTML rendering, or a lambda
+        function to create one
 
         args_loaders (ArgsLoader[]): Iterable of classes to use for loading grid args, in order
         of priority
@@ -449,7 +450,7 @@ class FrameworkManager(ABC):
         disable. Default 12.
 
     """
-    jinja_loader = jinja.PackageLoader('webgrid', 'templates')
+    jinja_loader = lambda self: jinja.PackageLoader('webgrid', 'templates')
     args_loaders = (
         RequestArgsLoader,
         WebSessionArgsLoader,
@@ -460,6 +461,8 @@ class FrameworkManager(ABC):
         self.init_db(db)
 
         self.jinja_loader = jinja_loader or self.jinja_loader
+        if not isinstance(self.jinja_loader, jinja.BaseLoader) and callable(self.jinja_loader):
+            self.jinja_loader = self.jinja_loader()
         self.args_loaders = args_loaders or self.args_loaders
         if session_max_hours is not None:
             # condition must account for possibility of 0 being passed in
