@@ -1495,11 +1495,11 @@ class TestOptionsFilter(CheckFilterBase):
         expr_factory = FooFilter(Person.state).new_instance().get_search_expr()
         assert callable(expr_factory)
         expr = expr_factory('foo')
-        assert str(expr) == 'persons.state IN ([POSTCOMPILE_state_1])'
+        assert str(expr) == 'persons.state IN (__[POSTCOMPILE_state_1])'
         assert expr.right.value == ['foo']
 
         expr = expr_factory('ba')
-        assert str(expr) == 'persons.state IN ([POSTCOMPILE_state_1])'
+        assert str(expr) == 'persons.state IN (__[POSTCOMPILE_state_1])'
         assert expr.right.value == ['bar', 5]
 
     def test_is(self):
