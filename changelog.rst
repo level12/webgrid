@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.8 released 2022-03-08
+-------------------------
+
+- allow jinja_loader to be loaded at runtime (4851cc7_)
+
+.. _4851cc7: https://github.com/level12/webgrid/commit/4851cc7
+
+
 0.4.7 released 2021-12-06
 -------------------------
 
