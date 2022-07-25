@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.9 released 2022-07-25
+-------------------------
+
+- add a shortcut route to report grid count without other info (9d9a973_)
+
+.. _9d9a973: https://github.com/level12/webgrid/commit/9d9a973
+
+
 0.4.8 released 2022-03-08
 -------------------------
 
