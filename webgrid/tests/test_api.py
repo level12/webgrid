@@ -88,6 +88,11 @@ class TestFlaskAPI:
         resp = test_app.post('/webgrid-api/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
+    def test_default_route_count(self, api_manager, test_app):
+        register_grid(api_manager, 'foo', create_grid_cls(api_manager))
+        resp = test_app.post('/webgrid-api/foo/count', {})
+        assert resp.json['count'] == 1
+
     def test_custom_route(self, app, test_app):
         class GridManager(WebGridAPI):
             api_route = '/custom-routing/<grid_ident>'

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import json
 
 import flask
 
@@ -170,6 +171,9 @@ class WebGridAPI(WebGrid):
         blueprint.route(self.api_route, methods=('POST', ))(
             self.api_view_method
         )
+        blueprint.route(self.api_route + '/count', methods=('POST', ))(
+            self.api_count_view_method
+        )
 
         if app.config.get('TESTING'):
             @blueprint.route(self.api_route_prefix + '/testing/__csrf__', methods=('GET', ))
@@ -219,14 +223,7 @@ class WebGridAPI(WebGrid):
         except webgrid.renderers.RenderLimitExceeded:
             return self.api_on_render_limit_exceeded(grid)
 
-    def api_view_method(self, grid_ident):
-        """Main API view method. Returns JSON-rendered grid or desired export.
-
-        No authentication/authorization is explicit here. Be sure to apply generic
-        auth or set up ``check_auth`` on specific grids, if authorization is needed.
-
-        If the ``grid_ident`` is not registered, response is 404.
-        """
+    def generate_requested_grid(self, grid_ident):
         if grid_ident not in self._registered_grids:
             flask.abort(404)
 
@@ -242,6 +239,18 @@ class WebGridAPI(WebGrid):
         grid.check_auth()
         grid.apply_qs_args(add_user_warnings=False)
 
+        return grid
+
+    def api_view_method(self, grid_ident):
+        """Main API view method. Returns JSON-rendered grid or desired export.
+
+        No authentication/authorization is explicit here. Be sure to apply generic
+        auth or set up ``check_auth`` on specific grids, if authorization is needed.
+
+        If the ``grid_ident`` is not registered, response is 404.
+        """
+        grid = self.generate_requested_grid(grid_ident)
+
         if grid.export_to:
             return self.api_export_response(grid)
 
@@ -251,3 +260,17 @@ class WebGridAPI(WebGrid):
 
         # not using jsonify here because the JSON renderer returns a string
         return flask.Response(renderer(), mimetype='application/json')
+
+    def api_count_view_method(self, grid_ident):
+        """API view method to count records without returning the records and other grid info.
+        Returns a dict with a count key.
+
+        No authentication/authorization is explicit here. Be sure to apply generic
+        auth or set up ``check_auth`` on specific grids, if authorization is needed.
+
+        If the ``grid_ident`` is not registered, response is 404.
+        """
+        grid = self.generate_requested_grid(grid_ident)
+
+        # not using jsonify here because the JSON renderer returns a string
+        return flask.Response(json.dumps({'count': grid.record_count}), mimetype='application/json')
