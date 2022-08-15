@@ -1210,7 +1210,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             that key, prepend with a "-".
             E.g. `grid.set_sort('author', '-post_date')`
         """
-        self.clear_record_cache()
+        self.clear_record_cache(preserve_count=True)
         self.order_by = []
 
         for key in args:
@@ -1232,14 +1232,19 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             per_page (int): Record limit for each page.
             on_page (int): With `per_page`, computes the offset.
         """
-        self.clear_record_cache()
+        self.clear_record_cache(preserve_count=True)
         self.per_page = per_page
         self.on_page = on_page
 
-    def clear_record_cache(self):
+    def clear_record_cache(self, preserve_count=False):
         """Reset records and record count cached from previous queries.
+
+        Args:
+            preserve_count (bool): Direct grid to retain count of records, effectively removing
+            only the table of records itself.
         """
-        self._record_count = None
+        if not preserve_count:
+            self._record_count = None
         self._records = None
 
     @property

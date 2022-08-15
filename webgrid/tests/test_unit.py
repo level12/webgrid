@@ -358,6 +358,33 @@ class TestGrid(object):
         for idx, call in enumerate(m_debug.call_args_list):
             assert re.match(expected[idx], call[0][0])
 
+    @mock.patch('logging.Logger.debug')
+    def test_record_count_preserved_during_sort(self, m_debug):
+        g = self.TG()
+        assert g.record_count == 5
+        assert m_debug.call_count == 3
+        g.set_sort('firstname')
+        assert g.record_count == 5
+        assert m_debug.call_count == 3
+
+    @mock.patch('logging.Logger.debug')
+    def test_record_count_preserved_during_paging(self, m_debug):
+        g = self.TG()
+        assert g.record_count == 5
+        assert m_debug.call_count == 3
+        g.set_paging(25, 1)
+        assert g.record_count == 5
+        assert m_debug.call_count == 3
+
+    @mock.patch('logging.Logger.debug')
+    def test_record_count_cleared_during_filter(self, m_debug):
+        g = self.KeyGrid()
+        g.record_count
+        assert m_debug.call_count == 3
+        g.set_filter('id', 'eq', '5')
+        g.record_count
+        assert m_debug.call_count == 6
+
     def test_column_iterators_for_rendering(self):
         class TG(Grid):
             Column('C1', Person.firstname)
