@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.10 released 2022-08-15
+--------------------------
+
+- prevent count queries from re-executing due to sort/page options (0cf55e6_)
+
+.. _0cf55e6: https://github.com/level12/webgrid/commit/0cf55e6
+
+
 0.4.9 released 2022-07-25
 -------------------------
 
