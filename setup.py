@@ -16,7 +16,7 @@ develop_requires = [
     'openpyxl',
     'psycopg2-binary',
     # pinned to version in our package index.
-    'pyodbc==4.0.30',
+    'pyodbc==4.0.34',
     'pytest',
     'pytest-cov',
     'Flask',
