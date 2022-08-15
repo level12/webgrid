@@ -85,12 +85,12 @@ class TestFlaskAPI:
 
     def test_default_route(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
-        resp = test_app.post('/webgrid-api/foo', {})
+        resp = test_app.post_json('/webgrid-api/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
     def test_default_route_count(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
-        resp = test_app.post('/webgrid-api/foo/count', {})
+        resp = test_app.post_json('/webgrid-api/foo/count', {})
         assert resp.json['count'] == 1
 
     def test_custom_route(self, app, test_app):
@@ -100,11 +100,11 @@ class TestFlaskAPI:
         api_manager = GridManager()
         api_manager.init_app(app)
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
-        resp = test_app.post('/custom-routing/foo', {})
+        resp = test_app.post_json('/custom-routing/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
     def test_grid_not_registered(self, api_manager, test_app):
-        test_app.post('/webgrid-api/foo', {}, status=404)
+        test_app.post_json('/webgrid-api/foo', {}, status=404)
 
     def test_grid_registered_twice(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
@@ -113,18 +113,18 @@ class TestFlaskAPI:
 
     def test_csrf_missing_token(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
-        resp = test_app.post('/webgrid-api/foo', {}, status=400)
+        resp = test_app.post_json('/webgrid-api/foo', {}, status=400)
         assert 'The CSRF token is missing.' in resp
 
     def test_csrf_missing_token_but_no_protection(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
-        test_app.post('/webgrid-api/foo', {}, status=200)
+        test_app.post_json('/webgrid-api/foo', {}, status=200)
 
     def test_csrf_missing_session(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
         with test_app.app.test_request_context():
             csrf_token = flask_wtf.csrf.generate_csrf()
-        resp = test_app.post(
+        resp = test_app.post_json(
             '/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token},
             status=400)
         assert 'The CSRF session token is missing.' in resp
@@ -132,7 +132,7 @@ class TestFlaskAPI:
     def test_csrf_invalid(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
         test_app.get('/webgrid-api/testing/__csrf__').body
-        resp = test_app.post(
+        resp = test_app.post_json(
             '/webgrid-api/foo', {}, headers={'X-CSRFToken': 'my-bad-token'},
             status=400)
         assert 'The CSRF token is invalid.' in resp
@@ -140,7 +140,7 @@ class TestFlaskAPI:
     def test_csrf_protected(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
         csrf_token = test_app.get('/webgrid-api/testing/__csrf__').body
-        resp = test_app.post(
+        resp = test_app.post_json(
             '/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token})
         assert resp.json['records'] == [{"foo": "bar"}]
 
@@ -163,7 +163,7 @@ class TestFlaskAPI:
             allowed_export_targets = {'json': MyRenderer}
 
         register_grid(api_manager, 'foo', Grid)
-        resp = test_app.post('/webgrid-api/foo', {})
+        resp = test_app.post_json('/webgrid-api/foo', {})
         assert resp.json == 'render result'
 
     def test_grid_default_renderer(self, api_manager, test_app):
@@ -171,7 +171,7 @@ class TestFlaskAPI:
             manager = api_manager
 
         register_grid(api_manager, 'foo', Grid)
-        resp = test_app.post('/webgrid-api/foo', {})
+        resp = test_app.post_json('/webgrid-api/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
     def test_grid_auth(self, api_manager, test_app):
@@ -183,10 +183,10 @@ class TestFlaskAPI:
                     flask.abort(403)
 
         register_grid(api_manager, 'foo', Grid)
-        resp = test_app.post('/webgrid-api/foo', {})
+        resp = test_app.post_json('/webgrid-api/foo', {})
         assert resp.json['records'] == [{"foo": "bar"}]
 
-        test_app.post('/webgrid-api/foo?bad', {}, status=403)
+        test_app.post_json('/webgrid-api/foo?bad', {}, status=403)
 
     def test_grid_args_applied(self, api_manager, test_app):
         Grid = create_grid_cls(api_manager)
