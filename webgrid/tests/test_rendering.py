@@ -980,11 +980,24 @@ class TestJSONRenderer:
                     'status': 'in process',
                 },
             ],
+            'totals': {
+                'page': None,
+                'grand': None,
+            },
         }
         grid = PeopleGrid()
         group = ColumnGroup('foo')
         grid.column('firstname').group = grid.column('inactive').group = group
         assert self.get_json(grid) == expected
+
+    def test_subtotals(self):
+        grid = PGAllTotals()
+        grid.set_paging(1, 1)
+        grid_json = self.get_json(grid)
+        assert grid_json['totals'] == {
+            'page': {'numericcol': '2.13'},
+            'grand': {'numericcol': '6.39'},
+        }
 
     def test_warnings(self):
         grid = PeopleGrid()

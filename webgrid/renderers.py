@@ -253,6 +253,17 @@ class JSON(Renderer):
     def serialized_records(self):
         return [self.serialize_record(record) for record in self.grid.records]
 
+    def serialize_totals_record(self, record):
+        cols = filter(lambda col: col.key in self.grid.subtotal_cols, self.columns)
+        return {col.key: col.render('json', record) for col in cols}
+
+    def serialized_totals(self):
+        serialize = lambda record: self.serialize_totals_record(record) if record else None
+        return {
+            'page': serialize(self.grid.page_totals),
+            'grand': serialize(self.grid.grand_totals),
+        }
+
     def serialize_sort(self, sort):
         key, flag_desc = sort
         return types.Sort(key=key, flag_desc=flag_desc)
@@ -293,6 +304,7 @@ class JSON(Renderer):
                 warnings=self.grid.user_warnings,
             ),
             records=self.serialized_records(),
+            totals=self.serialized_totals(),
         )
         return asdict(grid)
 
@@ -926,13 +938,11 @@ class HTML(GroupMixin, Renderer):
         for rownum, record in enumerate(self.grid.records):
             rows.append(self.table_tr(rownum, record))
         # process subtotals (if any)
-        if rows and self.grid.subtotals in ('page', 'all') and \
-                self.grid.subtotal_cols:
+        if rows and self.grid.page_totals:
             rows.append(
                 self.table_pagetotals(rownum + 1, self.grid.page_totals)
             )
-        if rows and self.grid.subtotals in ('grand', 'all') and \
-                self.grid.subtotal_cols:
+        if rows and self.grid.grand_totals:
             rows.append(
                 self.table_grandtotals(rownum + 2, self.grid.grand_totals)
             )
