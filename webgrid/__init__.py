@@ -1380,13 +1380,20 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     def page_totals(self):
         """Executes query to retrieve subtotals for the filtered query on the current page.
 
+        For page totals to be queried/returned, the grid's `subtotals` must be page/all
+        and one or more columns must have subtotals configured.
+
         A single result record is returned, which will have fields corresponding to all of the
         grid columns (same as a record returned in the general records query).
 
         Returns:
-            Any: Single result record.
+            Any: Single result record, or None if page totals are not configured.
         """
-        if self._page_totals is None:
+        if (
+            self._page_totals is None
+            and self.subtotals in ('page', 'all')
+            and self.subtotal_cols
+        ):
             self._page_totals = self._totals_col_results(page_totals_only=True)
         return self._page_totals
 
@@ -1394,13 +1401,20 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     def grand_totals(self):
         """Executes query to retrieve subtotals for the filtered query.
 
+        For grand totals to be queried/returned, the grid's `subtotals` must be grand/all
+        and one or more columns must have subtotals configured.
+
         A single result record is returned, which will have fields corresponding to all of the
         grid columns (same as a record returned in the general records query).
 
         Returns:
-            Any: Single result record.
+            Any: Single result record, or None if grand totals are not configured.
         """
-        if self._grand_totals is None:
+        if (
+            self._grand_totals is None
+            and self.subtotals in ('grand', 'all')
+            and self.subtotal_cols
+        ):
             self._grand_totals = self._totals_col_results(page_totals_only=False)
         return self._grand_totals
 

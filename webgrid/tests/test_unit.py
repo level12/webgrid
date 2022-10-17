@@ -108,9 +108,29 @@ class TestGrid(object):
             for idx, call in enumerate(m_debug.call_args_list):
                 assert re.match(expected[idx], call[0][0])
 
+    def test_subtotal_computed(self):
+        def TestGrid(subtotals_val):
+            class CTG(Grid):
+                subtotals = subtotals_val
+                Column('Sum Total', Person.numericcol.label('something'), has_subtotal='sum')
+            return CTG
+
+        Person.testing_create(numericcol=5)
+        Person.testing_create(numericcol=10)
+
+        assert TestGrid('none')().grand_totals is None
+        assert TestGrid('none')().page_totals is None
+        assert TestGrid('grand')().page_totals is None
+        assert TestGrid('page')().grand_totals is None
+        assert TestGrid('grand')().grand_totals.something == 15
+        assert TestGrid('page')().page_totals.something == 15
+        assert TestGrid('all')().grand_totals.something == 15
+        assert TestGrid('all')().page_totals.something == 15
+
     @mock.patch('logging.Logger.debug')
     def test_subtotal_sum_by_default(self, m_debug):
         class CTG(Grid):
+            subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal=True)
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
@@ -128,6 +148,7 @@ class TestGrid(object):
 
     def test_subtotal_sum(self):
         class CTG(Grid):
+            subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal='sum')
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
@@ -137,6 +158,7 @@ class TestGrid(object):
 
     def test_subtotal_avg(self):
         class CTG(Grid):
+            subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal='avg')
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
@@ -146,6 +168,7 @@ class TestGrid(object):
 
     def test_subtotal_expr_string(self):
         class CTG(Grid):
+            subtotals = 'grand'
             ratio_expr = Person.numericcol / Person.sortorder
             Column('Numeric', Person.numericcol.label('numeric_col'), has_subtotal=True)
             Column('Ints', Person.floatcol.label('float_col'), has_subtotal=True)
@@ -161,6 +184,7 @@ class TestGrid(object):
         sum_ = sasql.functions.sum
 
         class CTG(Grid):
+            subtotals = 'grand'
             ratio_expr = Person.numericcol / Person.sortorder
             Column('Numeric', Person.numericcol.label('numeric_col'), has_subtotal=True)
             Column('Ints', Person.floatcol.label('float_col'), has_subtotal=True)

@@ -70,6 +70,12 @@ class ColumnGroup:
 
 
 @dataclass
+class GridTotals:
+    page: Optional[Dict[str, Any]] = None
+    grand: Optional[Dict[str, Any]] = None
+
+
+@dataclass
 class GridSettings:
     search_expr: Optional[str] = None
     filters: Dict[str, Filter] = field(default_factory=dict)
@@ -150,4 +156,5 @@ class Grid:
     spec: GridSpec
     state: GridState
     records: List[Dict[str, Any]]
+    totals: GridTotals
     errors: List[str]
