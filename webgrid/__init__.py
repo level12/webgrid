@@ -17,6 +17,8 @@ from formencode import Invalid
 import formencode.validators as fev
 import sqlalchemy as sa
 import sqlalchemy.sql as sasql
+from werkzeug.datastructures import MultiDict
+from werkzeug.urls import url_encode
 
 from .extensions import gettext as _
 from .renderers import HTML, XLS, XLSX
@@ -813,6 +815,73 @@ class ColumnGroup(object):
     def __init__(self, label, class_=None):
         self.label = label
         self.class_ = class_
+
+
+class QueryStringBuilder:
+    arg_factories = (
+        'session',
+        'search',
+        'paging',
+        'sort',
+        'filter',
+    )
+
+    def __init__(self, grid, include_session=False):
+        self.grid = grid
+        self.include_session = include_session
+
+    def __call__(self):
+        return self.build()
+
+    def args_session(self):
+        if not self.include_session:
+            return []
+        return [('session_key', self.grid.session_key)]
+
+    def args_search(self):
+        if not self.grid.search_value:
+            return []
+        return [('search', self.grid.search_value)]
+
+    def args_paging(self):
+        grid_args = []
+        if self.grid.on_page != self.grid.__class__.on_page:
+            grid_args.append(('onpage', self.grid.on_page))
+        if self.grid.per_page != self.grid.__class__.per_page:
+            grid_args.append(('perpage', self.grid.per_page))
+        return grid_args
+
+    def args_sort(self):
+        # sort args are stored as tuple of (key, flag_desc)
+        return map(
+            lambda item: (f'sort{item[0]}', ('-' if item[1][1] else '') + item[1][0]),
+            enumerate(self.grid.order_by, 1),
+        )
+
+    def args_filter(self):
+        # for any filters, we only want to include args if the filter is set
+        grid_args = []
+        for col in self.grid.filtered_cols.values():
+            _filter = col.filter
+            if not _filter.is_active:
+                continue
+            grid_args.append((f'op({col.key})', _filter.op))
+            if _filter.value1:
+                grid_args.extend(map(
+                    lambda item: (f'v1({col.key})', item),
+                    tolist(_filter.value1),
+                ))
+            if _filter.value2:
+                grid_args.append((f'v2({col.key})', _filter.value2))
+        return grid_args
+
+    def build(self):
+        grid_args = []
+        for _factory_key in self.arg_factories:
+            grid_args.extend(getattr(self, f'args_{_factory_key}')())
+
+        # note: sorting is not strictly necessary but ensures order of keys for testing
+        return url_encode(MultiDict(grid_args), sort=True)
 
 
 class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
@@ -1648,6 +1717,18 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         raise Exception(
             'Paging is enabled, but query does not have ORDER BY clause required for MSSQL'
         )
+
+    def build_qs_args(self, include_session=False):
+        """Build a URL query string based on current grid attributes.
+
+        This is designed to be framework-agnostic and not require a request context. Usually
+        the result would be used in a background task or similar (i.e. outside the flow of the
+        rendered grid), so typically the session key is unnecessary.
+
+        Args:
+            include_session (bool, optional): Include session_key in the string. Defaults to False.
+        """
+        return QueryStringBuilder(self, include_session)()
 
     def apply_qs_args(self, add_user_warnings=True, grid_args=None):
         """Process args from manager for filter/page/sort/export.
