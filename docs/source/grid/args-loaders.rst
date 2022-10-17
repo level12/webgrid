@@ -1,3 +1,5 @@
+.. _args-loaders:
+
 Arguments Loaders
 =================
 
@@ -11,9 +13,22 @@ framework manager. The most common use case will use the manager.
 Managed arguments
 -----------------
 
-The common use case supported by the defaults has the framework manager providing arguments. In
-this scenario, simply call `apply_qs_args` or `build` to have the grid load these for use in
-queries and rendering::
+The grid manager uses "args loaders" (subclasses of ``ArgsLoader``) to supply grid
+configuration. These loaders each represent a source of configuration. For instance, a
+loader can pull args from the GET query string, a POSTed form, etc.
+
+Args loaders are run in order of priority, with the highest-priority loader first. The first
+loader gets a blank MultiDict as input, and then the results are chain-loaded through the
+list of loaders.
+
+The default setup provides request URL arguments to the first loader, and then
+applies session information as needed. Some cases where you might want to do something
+different from the default:
+- The grid has options filters with a large number of options to select
+- The grid has a lot of complexity that would be cleaner as POSTs rather than GETs
+
+To use managed arguments with the default priority loaders, simply call ``apply_qs_args``
+or ``build`` to have the grid load these for use in queries and rendering::
 
     class PeopleGrid(Grid):
         Column('Name', entities.Person.name)
@@ -23,13 +38,40 @@ queries and rendering::
     grid = PeopleGrid()
     grid.apply_qs_args()
 
+Customizing the loader list on a managed grid requires setting the ``args_loaders`` iterable
+on the manager. This can be set as a class attribute or provided in the manager's constructor.
 
-To load the arguments, the grid manager uses "args loaders" - subclasses of ArgsLoader. These
-loaders are run in order of priority, and they are chained: each loader's input is the output of
-the previous loader. The first loader gets a blank MultiDict as input.
+As a class attribute::
 
-The default setup provides request URL arguments to the first loader, and then
-applies session information as needed.
+    from webgrid import BaseGrid
+    from webgrid.extensions import RequestArgsLoader, RequestFormLoader, WebSessionArgsLoader
+    from webgrid.flask import WebGrid
+
+    class GridManager(WebGrid):
+        args_loaders = (
+            RequestArgsLoader,    # part of the default, takes args from URL query string
+            RequestFormLoader,    # use args present in the POSTed form
+            WebSessionArgsLoader, # part of the default, but lower priority from the form POST
+        )
+
+    class Grid(BaseGrid):
+        manager = GridManager()
+
+Using the manager's constructor to customize the loader list::
+
+    from webgrid import BaseGrid
+    from webgrid.extensions import RequestArgsLoader, RequestFormLoader, WebSessionArgsLoader
+    from webgrid.flask import WebGrid
+
+    class Grid(BaseGrid):
+        manager = WebGrid(
+            args_loaders = (
+                RequestArgsLoader,    # part of the default, takes args from URL query string
+                RequestFormLoader,    # use args present in the POSTed form
+                WebSessionArgsLoader, # part of the default, but lower priority from the form POST
+            )
+        )
+
 
 .. autoclass:: webgrid.extensions.ArgsLoader
     :members:

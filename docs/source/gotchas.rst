@@ -70,7 +70,7 @@ it in session/request loads::
 
 **Query string too long**
 
-Submitting the header form directs to a GET request with args for all page/filter/sort information.
+Submitting the header form typically directs to a GET request with args for all page/filter/sort information.
 While we trim out any filter inputs we can to keep the string size manageable, with enough filters
 selected, the query can overflow the limits of the target server.
 
@@ -78,8 +78,14 @@ This scenario comes up most commonly with multiselect filters having lots of opt
 selected results in the full filter value arg being added to the query string, and so it will
 easily cause the overflow.
 
-There is no good solution yet in WebGrid for this issue. In practice, the instance is rather rare.
-Configure your nginx/apache/etc. parameters accordingly for maximum request size.
+The solution is to use the form POSTed args loader (``RequestFormLoader``), which will direct the
+UI form to use a POST instead of a GET. This is not the default due to backwards-compatibility, since
+many views using WebGrid are GET-only routes. However, the default may change in the future.
+
+Please refer to :ref:`args-loaders` for details about customizing the loading of grid configuration.
+
+An alternative solution would be to configure your nginx/apache/etc. parameters accordingly for
+maximum request size.
 
 **Overriding the session**
 
