@@ -671,6 +671,8 @@ class TestQueryStringArgs(object):
         else:
             assert_in_query(pg, 'LIMIT 1 OFFSET 1')
 
+        assert pg.build_qs_args() == 'onpage=2&perpage=1'
+
     @_inrequest('/foo?perpage=5&onpage=foo')
     def test_qs_onpage_invalid(self):
         pg = PeopleGrid()
@@ -678,6 +680,7 @@ class TestQueryStringArgs(object):
         assert pg.on_page == 1
         assert pg.per_page == 5
         assert pg.user_warnings[0] == '"onpage" grid argument invalid, ignoring'
+        assert pg.build_qs_args() == 'perpage=5'
 
     @_inrequest('/foo?perpage=5&onpage=-1')
     def test_qs_onpage_negative(self):
@@ -712,6 +715,7 @@ class TestQueryStringArgs(object):
         assert pg.on_page == 1
         assert pg.per_page == 50
         assert not pg.user_warnings
+        assert pg.build_qs_args() == ''
 
     @_inrequest('/foo?perpage=-1&onpage=2')
     def test_qs_perpage_negative(self):
@@ -727,6 +731,7 @@ class TestQueryStringArgs(object):
         pg.apply_qs_args()
         assert pg.order_by == [('firstname', False), ('status', True)]
         assert pg.user_warnings[0] == 'can\'t sort on invalid key "foo"'
+        assert pg.build_qs_args() == 'sort1=firstname&sort2=-status'
 
     @_inrequest('/foo?sort1=fullname&sort2=firstname&sort3=-status')
     def test_qs_sorting_not_allowed(self):
@@ -758,6 +763,11 @@ class TestQueryStringArgs(object):
         assert pg.columns[4].filter.op == 'is'
         assert pg.columns[4].filter.value1 == [first_id, second_id]
         assert pg.columns[4].filter.value2 is None
+
+        assert pg.build_qs_args() == (
+            'op(firstname)=eq&op(status)=is&v1(firstname)=fn001'
+            f'&v1(status)={first_id}&v1(status)={second_id}'
+        )
 
     @_inrequest('/foo')
     def test_qs_filtering_default_op(self):
