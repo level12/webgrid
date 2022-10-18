@@ -1,6 +1,22 @@
 Changelog
 =========
 
+0.4.11 released 2022-10-18
+--------------------------
+
+- further clarity on args loaders, the order they run, how results are chained, etc. (9b89854_)
+- enable grid to build a query string from attributes (400967d_)
+- provide totals in rendered JSON output (20fe558_)
+- update dataclass type documentation for usage of JSON grid i/o (35ae887_)
+- clarify args loader documentation (7ab8d57_)
+
+.. _9b89854: https://github.com/level12/webgrid/commit/9b89854
+.. _400967d: https://github.com/level12/webgrid/commit/400967d
+.. _20fe558: https://github.com/level12/webgrid/commit/20fe558
+.. _35ae887: https://github.com/level12/webgrid/commit/35ae887
+.. _7ab8d57: https://github.com/level12/webgrid/commit/7ab8d57
+
+
 0.4.10 released 2022-08-15
 --------------------------
 
