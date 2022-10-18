@@ -17,9 +17,9 @@ The grid manager uses "args loaders" (subclasses of ``ArgsLoader``) to supply gr
 configuration. These loaders each represent a source of configuration. For instance, a
 loader can pull args from the GET query string, a POSTed form, etc.
 
-Args loaders are run in order of priority, with the highest-priority loader first. The first
-loader gets a blank MultiDict as input, and then the results are chain-loaded through the
-list of loaders.
+The first loader on the list gets a blank MultiDict as input. Then, results from each loader
+are chained to the next one on the list. Each loader may accept or override the values from
+the previous output. The last loader gets the final word on configuration sent to the grid.
 
 The default setup provides request URL arguments to the first loader, and then
 applies session information as needed. Some cases where you might want to do something
@@ -27,7 +27,7 @@ different from the default:
 - The grid has options filters with a large number of options to select
 - The grid has a lot of complexity that would be cleaner as POSTs rather than GETs
 
-To use managed arguments with the default priority loaders, simply call ``apply_qs_args``
+To use managed arguments with the default loaders, simply call ``apply_qs_args``
 or ``build`` to have the grid load these for use in queries and rendering::
 
     class PeopleGrid(Grid):
