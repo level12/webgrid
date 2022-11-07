@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import datetime as dt
+import json
 import re
 from decimal import Decimal
 from os import path
@@ -13,6 +15,7 @@ from werkzeug.datastructures import MultiDict
 
 from webgrid import Column, BoolColumn, YesNoColumn
 from webgrid.extensions import (
+    CustomJsonEncoder,
     RequestArgsLoader,
     RequestFormLoader,
     RequestJsonLoader,
@@ -1327,3 +1330,24 @@ class TestWebSessionArgsLoader:
         loader.get_args(pg, MultiDict([]))
 
         assert '_PeopleGrid' in flask.session['dgsessions']
+
+
+class TestCustomJSONEncoder:
+    def dump(self, value):
+        return json.dumps(value, cls=CustomJsonEncoder)
+
+    def test_date(self):
+        assert self.dump(dt.date(2022, 5, 31)) == '"2022-05-31"'
+
+    def test_arrow(self):
+        assert self.dump(arrow.get(2022, 5, 31)) == '"2022-05-31T00:00:00+00:00"'
+
+    def test_decimal(self):
+        assert self.dump(Decimal('5')) == '5.0'
+
+    def test_custom_unhandled(self):
+        class Foo:
+            def __str__(self):
+                return 'I am awesome'
+
+        assert self.dump(Foo()) == '"I am awesome"'

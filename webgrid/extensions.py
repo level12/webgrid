@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import datetime
+from decimal import Decimal
 import json
 from pathlib import Path
 import re
@@ -6,7 +8,6 @@ from typing import Any, Dict
 import warnings
 
 import arrow
-import datetime
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
 
@@ -57,6 +58,8 @@ class CustomJsonEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.date) or isinstance(obj, arrow.Arrow):
             return obj.isoformat()
+        elif isinstance(obj, Decimal):
+            return float(obj)
 
         try:
             return super().default(obj)

@@ -954,7 +954,7 @@ class TestJSONRenderer:
                     'firstname': 'fn004',
                     'full_name': 'fn004 ln004',
                     'inactive': 'Yes',
-                    'numericcol': '2.13',
+                    'numericcol': 2.13,
                     'status': None,
                 },
                 {
@@ -965,7 +965,7 @@ class TestJSONRenderer:
                     'firstname': 'fn002',
                     'full_name': 'fn002 ln002',
                     'inactive': 'Yes',
-                    'numericcol': '2.13',
+                    'numericcol': 2.13,
                     'status': 'pending',
                 },
                 {
@@ -976,7 +976,7 @@ class TestJSONRenderer:
                     'firstname': 'fn001',
                     'full_name': 'fn001 ln001',
                     'inactive': 'Yes',
-                    'numericcol': '2.13',
+                    'numericcol': 2.13,
                     'status': 'in process',
                 },
             ],
@@ -995,8 +995,8 @@ class TestJSONRenderer:
         grid.set_paging(1, 1)
         grid_json = self.get_json(grid)
         assert grid_json['totals'] == {
-            'page': {'numericcol': '2.13'},
-            'grand': {'numericcol': '6.39'},
+            'page': {'numericcol': 2.13},
+            'grand': {'numericcol': 6.39},
         }
 
     def test_warnings(self):
