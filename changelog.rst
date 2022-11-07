@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.12 released 2022-11-07
+--------------------------
+
+- handle Decimal type more cleanly when rendering JSON (f8ea07d_)
+
+.. _f8ea07d: https://github.com/level12/webgrid/commit/f8ea07d
+
+
 0.4.11 released 2022-10-18
 --------------------------
 
