@@ -229,7 +229,7 @@ function datagrid_toggle_filter_inputs(jq_filter_tr) {
             fields2.val('');
         }
 
-        datetimePolyfill.replaceInputs.bind(datetimePolyfill)();
+        wgDatetimePolyfill.replaceInputs.bind(wgDatetimePolyfill)();
     }
 }
 
@@ -345,14 +345,14 @@ value. */
     } else {
 
         // Browser globals
-        window.DatetimePolyfill = factory();
+        window.WGDatetimePolyfill = factory();
     }
 
 }(function( ) {
 
     'use strict';
 
-    function DatetimePolyfill(initOptions) {
+    function WGDatetimePolyfill(initOptions) {
         const defaultOptions = {force: false};
         const options = {
             ...defaultOptions,
@@ -379,7 +379,9 @@ value. */
 
         this.replaceInputs = function() {
             const replacedInputs = [];
-            const inputs = document.querySelectorAll('input[type="datetime"],input[type="datetime-local"]');
+            const inputs = document.querySelectorAll(
+                '.datagrid input[type="datetime"], .datagrid input[type="datetime-local"]'
+            );
 
             const onChangeFunc = function(input, inpDate, inpTime) {
                 const valueDate = inpDate.value;
@@ -437,12 +439,18 @@ value. */
                     inpTime.value = values[1];
                 }
 
-                input.parentNode.appendChild(inpDate);
-                input.parentNode.appendChild(inpTime);
-
                 const divEl = document.createElement('div');
                 divEl.style.clear = 'left';
-                input.parentNode.appendChild(divEl);
+
+                if(input.nextSibling){
+                    input.parentNode.insertBefore(inpDate, input.nextSibling);
+                    input.parentNode.insertBefore(inpTime, input.nextSibling);
+                    input.parentNode.insertBefore(divEl, input.nextSibling);
+                }else{
+                    input.parentNode.appendChild(inpDate);
+                    input.parentNode.appendChild(inpTime);
+                    input.parentNode.appendChild(divEl);
+                }
 
                 replacedInputs.push(input);
             });
@@ -487,7 +495,7 @@ value. */
         this.init(options.force);
     }
 
-    return DatetimePolyfill;
+    return WGDatetimePolyfill;
 }));
 
-const datetimePolyfill = new DatetimePolyfill();
+const wgDatetimePolyfill = new WGDatetimePolyfill();
