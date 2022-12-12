@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.4.13 released 2022-12-12
+--------------------------
+
+- better namespacing of datetime filter control JS (e884310_)
+
+.. _e884310: https://github.com/level12/webgrid/commit/e884310
+
+
 0.4.12 released 2022-11-07
 --------------------------
 
