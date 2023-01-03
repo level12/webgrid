@@ -285,7 +285,9 @@ class Column(object):
         column._query_key = self._query_key
 
         if self.filter:
-            column.filter = self.filter.new_instance(dialect=grid.manager.db.engine.dialect, col=column.expr)
+            column.filter = self.filter.new_instance(
+                dialect=grid.manager.db.engine.dialect, col=column.expr
+            )
 
         column.head = BlankObject()
         column.head.hah = HTMLAttributes(self.kwargs)
