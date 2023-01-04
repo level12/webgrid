@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict
 import io
 from operator import itemgetter
-import warnings
 from collections import defaultdict
 import json
 
@@ -14,10 +13,9 @@ from blazeutils.functional import identity
 from markupsafe import Markup
 
 from blazeutils.containers import HTMLAttributes, LazyDict
-from blazeutils.datastructures import BlankObject
 from blazeutils.helpers import tolist
 from blazeutils.jsonh import jsonmod
-from blazeutils.spreadsheets import Writer, WriterX, xlsxwriter
+from blazeutils.spreadsheets import WriterX, xlsxwriter
 from blazeutils.strings import reindent, randnumerics
 import jinja2 as jinja
 from werkzeug.datastructures import MultiDict
@@ -42,11 +40,6 @@ try:
     from speaklater import is_lazy_string
 except ImportError:
     is_lazy_string = lambda value: False  # noqa: E731
-
-try:
-    import xlwt
-except ImportError:
-    xlwt = None
 
 
 def fix_xls_value(value):
@@ -1171,10 +1164,6 @@ class HTML(GroupMixin, Renderer):
             renderer (str): Export key (e.g. xlsx, csv) for rendering target."""
         return self.current_url(export_to=renderer)
 
-    def xls_url(self):
-        warnings.warn('xls_url is deprecated. Use export_url instead.', DeprecationWarning)
-        return self.export_url('xls')
-
     def _get_filter_select_info(self):
         return _('Add Filter:'), self.filtering_add_filter_select()
 
@@ -1217,168 +1206,6 @@ class HTML(GroupMixin, Renderer):
             filter_label=filter_label,
             filter_select=filter_select,
         )
-
-
-class XLS(Renderer):
-    mime_type = 'application/vnd.ms-excel'
-
-    @property
-    def name(self):
-        return 'xls'
-
-    def __init__(self, grid, max_col_width=150):
-        warnings.warn(
-            "XLS support is deprecated and will be removed in a future version",
-            DeprecationWarning
-        )
-        super().__init__(grid)
-        self.define_styles()
-        self.col_contents_widths = defaultdict(int)
-        self.max_col_width = max_col_width
-
-    def render(self):
-        return self.build_sheet()
-
-    def can_render(self):
-        total_rows = self.grid.record_count + 1
-        if self.grid.subtotals != 'none':
-            total_rows += 1
-        return total_rows <= 65536 and sum(1 for _ in self.columns) <= 256
-
-    def define_styles(self):
-        self.style = BlankObject()
-        self.style.bold = xlwt.easyxf('font: bold True;')
-
-    def sanitize_sheet_name(self, sheet_name):
-        return sheet_name if len(sheet_name) <= 30 else (sheet_name[:27] + '...')
-
-    def build_sheet(self, wb=None, sheet_name=None):
-        if xlwt is None:
-            # !!!: translate?
-            raise ImportError('you must have xlwt installed to use Excel renderer')
-
-        if not self.can_render():
-            raise RenderLimitExceeded('Unable to render XLS sheet')
-
-        if wb is None:
-            wb = xlwt.Workbook()
-        sheet = wb.add_sheet(
-            self.sanitize_sheet_name(sheet_name or self.grid.ident)
-        )
-        xlh = Writer(sheet)
-
-        self.sheet_header(xlh)
-        self.sheet_body(xlh)
-        self.sheet_footer(xlh)
-        self.adjust_col_widths(sheet)
-
-        return wb
-
-    def sheet_header(self, xlh):
-        pass
-
-    def sheet_body(self, xlh):
-        self.body_headings(xlh)
-        self.body_records(xlh)
-
-    def sheet_footer(self, xlh):
-        pass
-
-    def register_col_width(self, col, value):
-        if value is None:
-            return
-        self.col_contents_widths[col.key] = max(
-            self.col_contents_widths[col.key],
-            col.xls_width_calc(value)
-        )
-
-    def adjust_col_widths(self, ws):
-        for idx, col in enumerate(self.columns):
-            max_registered_width = self.col_contents_widths[col.key]
-            final_width = min(max_registered_width, self.max_col_width)
-
-            # width calculation is 1/256th of width of zero character, using the
-            # first font that occurs in the Excel file
-            # the following calculation seems to get it done alright
-            ws.col(idx).width = int((final_width + 3) * 256)
-
-    def body_headings(self, xlh):
-        for col in self.columns:
-            self.register_col_width(col, col.label)
-            xlh.awrite(fix_xls_value(col.label), self.style.bold)
-        xlh.newrow()
-
-    def body_records(self, xlh):
-        # turn off paging
-        self.grid.set_paging(None, None)
-
-        rownum = 0
-        for rownum, record in enumerate(self.grid.records):
-            self.record_row(xlh, rownum, record)
-
-        # totals
-        if rownum and self.grid.subtotals != 'none' \
-                and self.grid.subtotal_cols:
-            self.totals_row(xlh, rownum + 1, self.grid.grand_totals)
-
-    def record_row(self, xlh, rownum, record):
-        for col in self.columns:
-            self.record_cell(xlh, col, record)
-        xlh.newrow()
-
-    def totals_row(self, xlh, rownum, record):
-        colspan = 0
-        firstcol = True
-        totals_xf = xlwt.easyxf('font: bold on; border: top thin')
-        for col in self.columns:
-            if col.key not in list(self.grid.subtotal_cols.keys()):
-                if firstcol:
-                    colspan += 1
-                else:
-                    xlh.awrite('', totals_xf)
-                continue
-            if firstcol:
-                numrecords = self.grid.record_count
-                bufferval = ngettext('Totals ({num} record):',
-                                     'Totals ({num} records):',
-                                     numrecords)
-                xlh.ws.write_merge(
-                    xlh.rownum,
-                    xlh.rownum,
-                    xlh.colnum,
-                    xlh.colnum + colspan - 1,
-                    fix_xls_value(bufferval),
-                    totals_xf
-                )
-                xlh.colnum = xlh.colnum + colspan
-                firstcol = False
-                colspan = 0
-            self.total_cell(xlh, col, record)
-        xlh.newrow()
-
-    def record_cell(self, xlh, col, record):
-        value = col.render('xls', record)
-        self.register_col_width(col, value)
-        stymat = col.xlwt_stymat_calc(value)
-        xlh.awrite(fix_xls_value(value), stymat)
-
-    def total_cell(self, xlh, col, record):
-        value = col.render('xls', record)
-        self.register_col_width(col, value)
-        stymat = col.xlwt_stymat_init()
-        stymat.font.bold = True
-        stymat.borders.top = xlwt.Formatting.Borders.THIN
-        xlh.awrite(fix_xls_value(value), stymat)
-
-    def file_name(self):
-        return '{0}_{1}.xls'.format(self.grid.ident, randnumerics(6))
-
-    def as_response(self, wb=None, sheet_name=None):
-        wb = self.build_sheet(wb, sheet_name)
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-        return self.grid.manager.file_as_response(buffer, self.file_name(), self.mime_type)
 
 
 class XLSX(GroupMixin, Renderer):

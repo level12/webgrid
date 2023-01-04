@@ -3,7 +3,6 @@ import datetime as dt
 from decimal import Decimal as D
 
 from blazeutils.containers import HTMLAttributes
-import mock
 import pytest
 
 from webgrid import Column, LinkColumnBase, \
@@ -170,26 +169,6 @@ class TestColumn(object):
         assert g.columns[4].xls_width_calc(dt.date(2012, 1, 1)) == 1
         assert g.columns[5].xls_width_calc(dt.date(2012, 1, 1)) == 1
 
-    def test_xls_style_setting(self):
-        class LinkColumn(LinkColumnBase):
-            pass
-
-        class TG(Grid):
-            Column('C1', Person.firstname, xls_style='font: bold True')
-            LinkColumn('C2', Person.lastname, xls_style='font: bold True')
-            BoolColumn('C3', Person.inactive, xls_style='font: bold True')
-            YesNoColumn('C4', Person.inactive.label('yesno'), xls_style='font: bold True')
-            DateColumn('Date', Person.due_date, xls_style='font: bold True')
-            DateColumn('DateTime', Person.createdts, xls_style='font: bold True')
-        g = TG()
-
-        assert g.columns[0].xls_style == 'font: bold True'
-        assert g.columns[1].xls_style == 'font: bold True'
-        assert g.columns[2].xls_style == 'font: bold True'
-        assert g.columns[3].xls_style == 'font: bold True'
-        assert g.columns[4].xls_style == 'font: bold True'
-        assert g.columns[5].xls_style == 'font: bold True'
-
     def test_xls_number_format_setting(self):
         class LinkColumn(LinkColumnBase):
             pass
@@ -220,12 +199,12 @@ class TestColumn(object):
 
             Column('C1', Person.firstname)
             Column('C1.5', Person.firstname.label('fn2'), render_in=None)
-            LinkColumn('C2', Person.lastname, render_in='xls')
-            BoolColumn('C3', Person.inactive, render_in=('xls', 'html'))
+            LinkColumn('C2', Person.lastname, render_in='xlsx')
+            BoolColumn('C3', Person.inactive, render_in=('xlsx', 'html'))
             YesNoColumn('C4', Person.inactive.label('yesno'), render_in='xlsx')
-            DateColumn('Date', Person.due_date, render_in='xls')
-            DateColumn('DateTime', Person.createdts, render_in='xls')
-            BoolColumn('C5', Person.inactive, render_in=['xls', 'html'])
+            DateColumn('Date', Person.due_date, render_in='xlsx')
+            DateColumn('DateTime', Person.createdts, render_in='xlsx')
+            BoolColumn('C5', Person.inactive, render_in=['xlsx', 'html'])
             Column('C6', Person.firstname.label('fn3'),
                    render_in=lambda self: self.grid.c6_render_in)
             Column('C7', Person.firstname.label('fn4'),
@@ -236,20 +215,16 @@ class TestColumn(object):
 
         g = TG()
 
-        assert g.columns[0].render_in == ('html', 'xls', 'xlsx', 'csv', 'json')
+        assert g.columns[0].render_in == ('html', 'xlsx', 'csv', 'json')
         assert g.columns[1].render_in == tuple()
-        assert g.columns[2].render_in == ('xls',)
-        assert g.columns[3].render_in == ('xls', 'html')
+        assert g.columns[2].render_in == ('xlsx',)
+        assert g.columns[3].render_in == ('xlsx', 'html')
         assert g.columns[4].render_in == ('xlsx',)
-        assert g.columns[5].render_in == ('xls',)
-        assert g.columns[6].render_in == ('xls',)
-        assert g.columns[7].render_in == ('xls', 'html')
+        assert g.columns[5].render_in == ('xlsx',)
+        assert g.columns[6].render_in == ('xlsx',)
+        assert g.columns[7].render_in == ('xlsx', 'html')
         assert g.columns[8].render_in == ('csv',)
         assert g.columns[9].render_in == ('csv', 'xlsx')
-
-        g.c6_render_in = 'xls'
-        assert g.columns[8].render_in == ('xls',)
-        assert g.columns[9].render_in == ('xls', 'xlsx')
 
     def test_visible_setting(self):
         class TestGrid(Grid):
@@ -324,45 +299,6 @@ class TestColumn(object):
             == '_($* #,##0_);_($* (#,##0);_($* "-"??_);_(@_)'
         )
         assert c.xls_construct_format(c.xls_fmt_percent) == '0%;-0%'
-
-    def test_number_format_xlwt_stymat_init(self):
-        # nothing specified defaults to 'general'
-        with mock.patch('webgrid.xlwt') as m_xlwt:
-            class TG(Grid):
-                NumericColumn('C1', Person.numericcol)
-            TG()
-            m_xlwt.easyxf.assert_called_once_with(None, '#,##0.00;[RED]-#,##0.00')
-
-        # something else as the number format
-        with mock.patch('webgrid.xlwt') as m_xlwt:
-            class TG(Grid):
-                NumericColumn('C1', Person.numericcol, format_as='foo', xls_num_format='bar')
-            TG()
-            m_xlwt.easyxf.assert_called_once_with(None, 'bar')
-
-        # accounting
-        with mock.patch('webgrid.xlwt') as m_xlwt:
-            class TG(Grid):
-                NumericColumn('C1', Person.numericcol, format_as='accounting')
-            TG()
-            m_xlwt.easyxf.assert_called_once_with(
-                None,
-                '_($* #,##0.00_);[RED]_($* (#,##0.00);_($* "-"??_);_(@_)'
-            )
-
-        # percent
-        with mock.patch('webgrid.xlwt') as m_xlwt:
-            class TG(Grid):
-                NumericColumn('C1', Person.numericcol, format_as='percent')
-            TG()
-            m_xlwt.easyxf.assert_called_once_with(None, '0.00%;[RED]-0.00%')
-
-        # none
-        with mock.patch('webgrid.xlwt') as m_xlwt:
-            class TG(Grid):
-                NumericColumn('C1', Person.numericcol, format_as=None)
-            TG()
-            m_xlwt.easyxf.assert_called_once_with(None, None)
 
     def test_post_init(self):
         class TG(Grid):

@@ -9,7 +9,6 @@ import io
 import arrow
 import openpyxl
 import pytest
-import xlrd
 import xlsxwriter
 from markupsafe import Markup
 from pyquery import PyQuery
@@ -32,7 +31,6 @@ from webgrid.renderers import (
     CSV,
     HTML,
     JSON,
-    XLS,
     XLSX,
     RenderLimitExceeded,
     render_html_attributes,
@@ -336,18 +334,9 @@ class TestHtmlRenderer(object):
         assert '/thepage?dgreset=1&onpage=1&perpage=5' == g.html.current_url(dgreset=1)
 
     @_inrequest('/thepage?perpage=5&onpage=1')
-    def test_xls_url(self):
-        g = self.get_grid()
-        with pytest.warns(DeprecationWarning,
-                          match='xls_url is deprecated. Use export_url instead.'):
-            url = g.html.xls_url()
-        assert url == '/thepage?export_to=xls&onpage=1&perpage=5'
-
-    @_inrequest('/thepage?perpage=5&onpage=1')
     def test_export_url(self):
         g = self.get_grid()
         assert g.html.export_url('xlsx') == '/thepage?export_to=xlsx&onpage=1&perpage=5'
-        assert g.html.export_url('xls') == '/thepage?export_to=xls&onpage=1&perpage=5'
         assert g.html.export_url('csv') == '/thepage?export_to=csv&onpage=1&perpage=5'
 
     @_inrequest('/thepage?onpage=3')
@@ -737,15 +726,11 @@ class TestFooterRendersCorrectly(object):
         g = PeopleGrid()
         g.html
         assert '<a class="export-link" href="/?export_to=xlsx">XLSX</a>' in g.html()
-        assert '<a class="export-link" href="/?export_to=xls">XLS</a>' in g.html()
-        # make sure we are rendering the separator
-        assert '&nbsp;|' in g.html()
 
     @_inrequest('/')
     def test_people_html_footer_only_csv(self):
         g = PeopleCSVGrid()
         g.html
-        assert '<a class="export-link" href="/?export_to=xls">XLS</a>' not in g.html()
         assert '<a class="export-link" href="/?export_to=csv">CSV</a>' in g.html()
 
 
@@ -809,7 +794,6 @@ class TestJSONRenderer:
                     'full_name': 'Full Name',
                     'inactive': 'Active',
                     'numericcol': 'Number',
-                    'sortorder': 'Sort Order',
                     'state': 'State',
                     'status': 'Status',
                 },
@@ -829,9 +813,9 @@ class TestJSONRenderer:
                 },
                 'enable_search': True,
                 'enable_sort': True,
-                'export_targets': ['xls', 'xlsx'],
+                'export_targets': ['xlsx'],
                 'sortable_columns': [
-                    'firstname', 'inactive', 'status', 'createdts', 'due_date', 'sortorder',
+                    'firstname', 'inactive', 'status', 'createdts', 'due_date',
                     'state', 'numericcol', 'account_type',
                 ],
                 'filters': {
@@ -1050,84 +1034,6 @@ class TestJSONRenderer:
         assert reloaded['records'] == [
             {'created_utc': '2016-08-10T01:02:03+00:00'}
         ]
-
-
-class TestXLSRenderer(object):
-
-    def test_some_basics(self):
-        g = render_in_grid(PeopleGrid, 'xls')(per_page=1)
-        buffer = io.BytesIO()
-        wb = g.xls()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        book = xlrd.open_workbook(file_contents=buffer.getvalue())
-        sh = book.sheet_by_name('render_in_grid')
-        # headers
-        assert sh.ncols == 10
-        assert sh.cell_value(0, 0) == 'First Name'
-        assert sh.cell_value(0, 7) == 'Sort Order'
-
-        # last data row
-        assert sh.cell_value(3, 0) == 'fn001'
-        assert sh.cell_value(3, 7) == 1
-        assert sh.nrows == 4
-
-    def test_subtotals_with_no_records(self):
-        g = PGGrandTotals()
-        g.column('firstname').filter.op = 'eq'
-        g.column('firstname').filter.value1 = 'foobar'
-        buffer = io.BytesIO()
-        wb = g.xls()
-        wb.save(buffer)
-        buffer.seek(0)
-
-    def test_long_grid_name(self):
-        class PeopleGridWithAReallyReallyLongName(PeopleGrid):
-            pass
-        g = PeopleGridWithAReallyReallyLongName()
-        buffer = io.BytesIO()
-        wb = g.xls()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        book = xlrd.open_workbook(file_contents=buffer.getvalue())
-        book.sheet_by_name('people_grid_with_a_really_r...')
-
-    def test_can_render(self):
-        class FakeCountsGrid(PeopleGrid):
-            def __init__(self, record_count, col_count, has_subtotals):
-                self._num_records = record_count
-                self._col_count = col_count
-                self.subtotals = 'all' if has_subtotals else 'none'
-                super(FakeCountsGrid, self).__init__()
-
-            @property
-            def record_count(self):
-                return self._num_records
-
-            def iter_columns(self, render_type):
-                for _ in range(self._col_count):
-                    yield None
-
-        assert FakeCountsGrid(65535, 256, False).xls.can_render() is True
-        assert FakeCountsGrid(65536, 256, False).xls.can_render() is False
-        assert FakeCountsGrid(65535, 256, True).xls.can_render() is False
-        assert FakeCountsGrid(65534, 256, True).xls.can_render() is True
-        assert FakeCountsGrid(65535, 257, False).xls.can_render() is False
-
-    def test_render_error(self):
-        class Renderer(XLS):
-            def can_render(self):
-                return False
-
-        class TestGrid(PeopleGrid):
-            def set_renderers(self):
-                super(TestGrid, self).set_renderers()
-                self.xls = Renderer(self)
-
-        with pytest.raises(RenderLimitExceeded):
-            TestGrid().xls()
 
 
 class TestXLSXRenderer(object):
@@ -1385,21 +1291,3 @@ class TestArrowDate(object):
         })
         assert g.column('created_utc').filter.is_active
         g.record_count
-
-    def test_xls(self):
-        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
-        g = ArrowGrid()
-        buffer = io.BytesIO()
-        wb = g.xls()
-        wb.save(buffer)
-        buffer.seek(0)
-
-        book = xlrd.open_workbook(file_contents=buffer.getvalue())
-        sh = book.sheet_by_name('arrow_grid')
-        # headers
-        assert sh.cell_value(0, 0) == 'Created'
-        # data row
-        assert (
-            dt.datetime(*xlrd.xldate_as_tuple(sh.cell_value(1, 0), sh.book.datemode)[:6])
-            == dt.datetime(2016, 8, 10, 1, 2, 3)
-        )

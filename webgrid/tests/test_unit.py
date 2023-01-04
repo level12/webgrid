@@ -416,13 +416,13 @@ class TestGrid(object):
         class TG(Grid):
             Column('C1', Person.firstname)
             Column('C1.5', Person.firstname.label('fn2'), render_in=None)
-            Column('C2', Person.lastname, render_in='xls')
-            BoolColumn('C3', Person.inactive, render_in=('xls', 'html'))
+            Column('C2', Person.lastname, render_in='xlsx')
+            BoolColumn('C3', Person.inactive, render_in=('xlsx', 'html'))
             YesNoColumn('C4', Person.inactive.label('yesno'), render_in='html')
             Column('C5', Person.firstname.label('fn3'), render_in='xlsx')
             Column('C6', Person.firstname.label('fn4'), render_in=('csv'))
             Column('C7', Person.firstname.label('fn5'),
-                   render_in=('xls', 'xlsx', 'html', 'csv'), visible=False)
+                   render_in=('xlsx', 'html', 'csv'), visible=False)
 
         tg = TG()
 
@@ -432,19 +432,14 @@ class TestGrid(object):
         assert html_cols[1].key == 'inactive'
         assert html_cols[2].key == 'yesno'
 
-        xls_cols = tuple(tg.iter_columns('xls'))
-        assert len(xls_cols) == 3
-        assert xls_cols[0].key == 'firstname'
-        assert xls_cols[1].key == 'lastname'
-        assert xls_cols[2].key == 'inactive'
-
         xlsx_cols = tuple(tg.iter_columns('xlsx'))
-        assert len(xlsx_cols) == 2
+        assert len(xlsx_cols) == 4
         assert xlsx_cols[0].key == 'firstname'
-        assert xlsx_cols[1].key == 'fn3'
+        assert xlsx_cols[1].key == 'lastname'
+        assert xlsx_cols[2].key == 'inactive'
+        assert xlsx_cols[3].key == 'fn3'
         csv_cols = tuple(tg.iter_columns('csv'))
         assert len(csv_cols) == 2
-        assert xls_cols[0].key == 'firstname'
         assert csv_cols[1].key == 'fn4'
 
     def test_grid_inheritance(self):
@@ -459,7 +454,6 @@ class TestGrid(object):
         assert pg.columns[1].key == 'lastname'
 
     def test_export_as_response(self):
-        export_xls = mock.MagicMock()
         export_xlsx = mock.MagicMock()
 
         class TG(Grid):
@@ -467,20 +461,11 @@ class TestGrid(object):
 
             def set_renderers(self):
                 super(TG, self).set_renderers()
-                self.xls = export_xls
                 self.xlsx = export_xlsx
 
         grid = TG()
-        grid.set_export_to('xls')
-        grid.export_as_response()
-        export_xls.as_response.assert_called_once_with(None, None)
-        export_xlsx.as_response.assert_not_called()
-
-        export_xls.reset_mock()
-
         grid.set_export_to('xlsx')
         grid.export_as_response()
-        export_xls.as_response.assert_not_called()
         export_xlsx.as_response.assert_called_once_with(None, None)
 
         grid = TG()
@@ -502,10 +487,6 @@ class TestGrid(object):
         grid.set_export_to('csv')
         grid.export_as_response()
         export_csv.as_response.assert_called_once_with()
-
-        grid = TG()
-        with pytest.raises(ValueError, match='No export format set'):
-            grid.export_as_response('xls')
 
     def test_search_expressions_filtering_nones(self):
         class NonSearchingFilter(FilterBase):
@@ -882,12 +863,6 @@ class TestQueryStringArgs(object):
 
         # this will fail if we are not using SA expressions correctly to sort
         g.records
-
-    @_inrequest('/thepage?export_to=xls')
-    def test_export_to_xls(self):
-        g = PeopleGrid()
-        g.apply_qs_args()
-        assert g.export_to == 'xls'
 
     @_inrequest('/thepage?export_to=xlsx')
     def test_export_to_xlsx(self):

@@ -28,9 +28,7 @@ develop_requires = [
     'sqlalchemy_pyodbc_mssql',
     'sqlalchemy_utils',
     'wrapt',
-    'xlrd',
     'xlsxwriter',
-    'xlwt',
 ]
 
 cdir = osp.abspath(osp.dirname(__file__))
