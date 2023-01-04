@@ -920,7 +920,6 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     per_page = 50
     on_page = 1
     hide_controls_box = False
-    hide_excel_link = False
     # enables keyed session store of grid arguments
     session_on = True
     # enables page/grand subtotals: none|page|grand|all
@@ -966,11 +965,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self._records = None
         self._page_totals = None
         self._grand_totals = None
-        if self.hide_excel_link is True:
-            warnings.warn(
-                "Hide excel link is deprecated, you should just override allowed_export_targets instead", # noqa
-                DeprecationWarning
-            )
+
         if self.allowed_export_targets is None:
             self.allowed_export_targets = {}
             # If the grid doesn't define any export targets

@@ -289,17 +289,6 @@ class TestHtmlRenderer(object):
         tg = TGrid()
         assert 'Add Filter' not in tg.html()
 
-    @_inrequest('/')
-    def test_hide_excel_deprecated(self):
-        class TGrid(Grid):
-            hide_excel_link = True
-            Column('Test', Person.id)
-        with pytest.warns(
-            DeprecationWarning,
-            match='Hide excel link is deprecated, you should just override allowed_export_targets instead'  # noqa
-        ):
-            TGrid()
-
     def get_grid(self, **kwargs):
         g = SimpleGrid(**kwargs)
         g.set_records(self.key_data)
