@@ -5,7 +5,6 @@ import logging
 import sys
 import six
 import time
-import warnings
 
 from blazeutils.containers import HTMLAttributes
 from blazeutils.datastructures import BlankObject, OrderedDict
