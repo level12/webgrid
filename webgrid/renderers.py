@@ -15,9 +15,10 @@ from markupsafe import Markup
 from blazeutils.containers import HTMLAttributes, LazyDict
 from blazeutils.helpers import tolist
 from blazeutils.jsonh import jsonmod
-from blazeutils.spreadsheets import WriterX, xlsxwriter
+from blazeutils.spreadsheets import WriterX, xlsxwriter, openpyxl
 from blazeutils.strings import reindent, randnumerics
 import jinja2 as jinja
+from openpyxl.utils import get_column_letter
 from werkzeug.datastructures import MultiDict
 from werkzeug.routing import Map, Rule
 
@@ -1258,7 +1259,11 @@ class XLSX(GroupMixin, Renderer):
         """Apply stored column widths to the XLSX worksheet."""
         for idx, col in enumerate(self.columns):
             if col.key in self.col_widths:
-                writer.ws.set_column(idx, idx, self.col_widths[col.key])
+                if openpyxl:
+                    col_ltr = get_column_letter(idx+1)
+                    writer.ws.column_dimensions[col_ltr].width = self.col_widths[col.key]
+                else:
+                    writer.ws.set_column(idx, idx, self.col_widths[col.key])
 
     def build_sheet(self, wb=None, sheet_name=None):
         """Create and populate a worksheet for the current grid.
@@ -1274,30 +1279,33 @@ class XLSX(GroupMixin, Renderer):
         Returns:
             Workbook: Created/supplied workbook with the rendered worksheet added.
         """
-        if xlsxwriter is None:
-            raise ImportError('you must have xlsxwriter installed to use the XLSX renderer')
 
         if not self.can_render():
             raise RenderLimitExceeded('Unable to render XLSX sheet')
 
         if wb is None:
             buf = io.BytesIO()
-            wb = xlsxwriter.Workbook(buf, options={'in_memory': True})
+            wb = WorkbookBase(buf, options={'in_memory': True})
 
-        sheet = wb.add_worksheet(self.sanitize_sheet_name(sheet_name or self.grid.ident))
+        # sheet = wb.add_worksheet(self.sanitize_sheet_name(sheet_name or self.grid.ident))
+
+        sheet = wb._workbook.worksheets[0]
         writer = WriterX(sheet)
 
         self.sheet_header(writer, wb)
         self.sheet_body(writer, wb)
         self.sheet_footer(writer, wb)
         self.adjust_column_widths(writer)
-
+        breakpoint()
         return wb
 
     def render(self):
         buf = io.BytesIO()
-        with xlsxwriter.Workbook(buf, options={'in_memory': True}) as wb:
-            return self.build_sheet(wb)
+        if xlsxwriter:
+            with xlsxwriter.Workbook(buf, options={'in_memory': True}) as wb:
+                return self.build_sheet(wb)
+        else:
+            return self.build_sheet()
 
     def can_render(self):
         total_rows = self.grid.record_count + 1
@@ -1469,6 +1477,8 @@ class XLSX(GroupMixin, Renderer):
         wb = self.build_sheet(wb, sheet_name)
         if not wb.fileclosed:
             wb.close()
+        if openpyxl:
+            wb.to_file()
         wb.filename.seek(0)
         return self.grid.manager.file_as_response(wb.filename, self.file_name(), self.mime_type)
 
