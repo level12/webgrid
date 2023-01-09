@@ -540,6 +540,7 @@ class DateColumnBase(Column):
         #   how to handle it
         if arrow and isinstance(data, arrow.Arrow):
             data = data.datetime
+        # Excel can't use timezone data, so strip it out
         if isinstance(data, dt.datetime) and data.tzinfo is not None:
             data = data.replace(tzinfo=None)
         return data
