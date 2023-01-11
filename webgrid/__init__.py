@@ -291,10 +291,7 @@ class Column(object):
         column.head.hah = HTMLAttributes(self.kwargs)
         column.body = BlankObject()
         column.body.hah = HTMLAttributes(self.kwargs)
-        if xlwt is not None:
-            column.xlwt_stymat = self.xlwt_stymat_init()
-        else:
-            column.xlwt_stymat = None
+        column.xlwt_stymat = self.xlwt_stymat_init() if xlwt is not None else None
 
         # try to be smart about which attributes should get copied to the
         # new instance by looking for attributes on the class that have the
@@ -556,9 +553,12 @@ class DateColumnBase(Column):
 
     def _format_datetime(self, data, format):
         # if we have an arrow date, allow html_format to use that functionality
-        if arrow and isinstance(data, arrow.Arrow):
-            if data.strftime(format) == format:
-                return data.format(format)
+        if (
+            arrow
+            and isinstance(data, arrow.Arrow)
+            and data.strftime(format) == format
+        ):
+            return data.format(format)
         return data.strftime(format)
 
     def render_html(self, record, hah):
@@ -1683,9 +1683,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                 # remove any redundant names, whichever comes first is what we will keep
                 if col.key in redundant:
                     continue
-                else:
-                    sort_display.append(col.key)
-                    redundant.append(col.key)
+                sort_display.append(col.key)
+                redundant.append(col.key)
                 query = col.apply_sort(query, flag_desc)
         if sort_display:
             log.debug(','.join(sort_display))

@@ -121,11 +121,7 @@ class Renderer(ABC):
 class GroupMixin:
     def has_groups(self):
         """Returns True if any of the renderer's columns is part of a column group."""
-        for col in self.columns:
-            if col.group:
-                return True
-
-        return False
+        return any(col.group for col in self.columns)
 
     def get_group_heading_colspans(self):
         """Computes the number of columns spanned by various groups.
@@ -407,9 +403,10 @@ class HTML(GroupMixin, Renderer):
 
     def filtering_fields(self):
         """Table rows for the filter area."""
-        rows = []
-        for col in six.itervalues(self.grid.filtered_cols):
-            rows.append(self.filtering_table_row(col))
+        rows = [
+            self.filtering_table_row(col)
+            for col in six.itervalues(self.grid.filtered_cols)
+        ]
         rows = Markup('\n'.join(rows))
 
         top_row = ''
@@ -450,10 +447,7 @@ class HTML(GroupMixin, Renderer):
     def filtering_col_op_select(self, col):
         """Render select box for filter Operator options."""
         filter = col.filter
-        if not filter.is_display_active:
-            current_selected = ''
-        else:
-            current_selected = filter.op
+        current_selected = '' if not filter.is_display_active else filter.op
 
         primary_op = filter.primary_op or filter.operators[0]
         is_primary = lambda op: 'primary' if op == primary_op else None  # noqa: E731
@@ -855,9 +849,7 @@ class HTML(GroupMixin, Renderer):
 
     def table_column_headings(self):
         """Combine all rendered column headings and return as Markup."""
-        headings = []
-        for col in self.columns:
-            headings.append(self.table_th(col))
+        headings = [self.table_th(col) for col in self.columns]
         th_str = '\n'.join(headings)
         th_str = reindent(th_str, 12)
         return Markup(th_str)
@@ -902,10 +894,7 @@ class HTML(GroupMixin, Renderer):
         Sortable columns are rendered as links with the needed URL args."""
         label = col.label
         if self.grid.sorter_on and col.can_sort:
-            url_args = {}
-            url_args['dgreset'] = None
-            url_args['sort2'] = None
-            url_args['sort3'] = None
+            url_args = {'dgreset': None, 'sort2': None, 'sort3': None}
             link_attrs = {}
             if self.grid.order_by and len(self.grid.order_by) == 1:
                 current_sort, flag_desc = self.grid.order_by[0]
@@ -966,10 +955,7 @@ class HTML(GroupMixin, Renderer):
         row_hah = HTMLAttributes()
 
         # add odd/even classes to the rows
-        if (rownum + 1) % 2 == 1:
-            row_hah.class_ += 'odd'
-        else:
-            row_hah.class_ += 'even'
+        row_hah.class_ += 'odd' if (rownum + 1) % 2 == 1 else 'even'
 
         for styler in self.grid._rowstylers:
             styler(self.grid, rownum, row_hah, record)
@@ -994,9 +980,7 @@ class HTML(GroupMixin, Renderer):
         row_hah = self.table_tr_styler(rownum, record)
 
         # get the <td>s for this row
-        cells = []
-        for col in self.columns:
-            cells.append(self.table_td(col, record))
+        cells = [self.table_td(col, record) for col in self.columns]
 
         return self.table_tr_output(cells, row_hah)
 
@@ -1021,11 +1005,11 @@ class HTML(GroupMixin, Renderer):
                                      '{label} ({num} records):',
                                      numrecords,
                                      label=label)
-                buffer_hah = {
-                    'colspan': colspan,
-                    'class': 'totals-label'
-                }
                 if colspan:
+                    buffer_hah = {
+                        'colspan': colspan,
+                        'class': 'totals-label'
+                    }                    
                     cells.append(self._render_jinja(
                         '<td{{attrs|wg_attributes}}>{{val}}</td>',
                         attrs=buffer_hah,
@@ -1143,15 +1127,16 @@ class HTML(GroupMixin, Renderer):
 
     def reset_url(self, session_reset=True):
         """Generate a URL that will trigger a reset of the grid's UI options."""
-        url_args = {}
-        url_args['perpage'] = None
-        url_args['onpage'] = None
-        url_args['search'] = None
-        url_args['sort1'] = None
-        url_args['sort2'] = None
-        url_args['sort3'] = None
-        url_args['export_to'] = None
-        url_args['datagrid-add-filter'] = None
+        url_args = {
+            'perpage': None,
+            'onpage': None,
+            'search': None,
+            'sort1': None,
+            'sort2': None,
+            'sort3': None,
+            'export_to': None,
+            'datagrid-add-filter': None,
+        }
 
         for col in six.itervalues(self.grid.filtered_cols):
             url_args['op({0})'.format(col.key)] = None
@@ -1681,9 +1666,7 @@ class CSV(Renderer):
 
         Note, column groups do not have real meaning in the CSV context, so
         they are left out here."""
-        headings = []
-        for col in self.columns:
-            headings.append(col.label)
+        headings = [col.label for col in self.columns]
         self.writer.writerow(headings)
 
     def body_records(self):
@@ -1696,9 +1679,7 @@ class CSV(Renderer):
         self.grid.set_paging(None, None)
 
         for rownum, record in enumerate(self.grid.records):
-            row = []
-            for col in self.columns:
-                row.append(col.render('csv', record))
+            row = [col.render('csv', record) for col in self.columns]
             self.writer.writerow(row)
 
     def as_response(self):
