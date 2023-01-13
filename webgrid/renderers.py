@@ -1300,7 +1300,8 @@ class WorkbookBase:
     @property
     def filename(self):
         '''
-        A misnomer but is consistent with xlsxwriter. This actually returns the file handle, in this case a BytesIO
+        A misnomer but is consistent with xlsxwriter. This actually returns the file handle,
+        in this case a BytesIO
         '''
         if not self._file:
             buf = io.BytesIO()
@@ -1314,8 +1315,8 @@ class WorkbookBase:
     @property
     def fileclosed(self):
         '''
-        Property does not exist in openpyxl like it does in xlsxwriter, and trying to close an already
-        closed book does not seem to cause issues.
+        Property does not exist in openpyxl like it does in xlsxwriter,
+        and trying to close an already closed book does not seem to cause issues.
         '''
         return False
 
@@ -1407,7 +1408,8 @@ class XLSX(GroupMixin, Renderer):
 
                 # Only use certain keys, as they become style attributes
                 style_dict = {
-                    key: style_dict[key] for key in ['font', 'alignment', 'border', 'number_format'] if key in style_dict
+                    key: style_dict[key] for key in ['font', 'alignment', 'border', 'number_format']
+                    if key in style_dict
                 }
                 return wb.add_named_style(style_dict, col.key)
             return
@@ -1429,7 +1431,7 @@ class XLSX(GroupMixin, Renderer):
         for idx, col in enumerate(self.columns):
             if col.key in self.col_widths:
                 if openpyxl and hasattr(writer.ws, 'column_dimensions'):
-                    col_ltr = get_column_letter(idx+1)
+                    col_ltr = get_column_letter(idx + 1)
                     writer.ws.column_dimensions[col_ltr].width = self.col_widths[col.key]
                 else:
                     writer.ws.set_column(idx, idx, self.col_widths[col.key])
