@@ -11,7 +11,7 @@ from blazeutils.datastructures import BlankObject, OrderedDict
 from blazeutils.helpers import tolist
 from blazeutils.numbers import decimalfmt
 from blazeutils.strings import case_cw2us, randchars
-from blazeutils.spreadsheets import xlsxwriter
+from blazeutils.spreadsheets import xlsxwriter, openpyxl
 from formencode import Invalid
 import formencode.validators as fev
 import sqlalchemy as sa
@@ -972,7 +972,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             self.allowed_export_targets = {}
             # If the grid doesn't define any export targets
             # lets setup the export target for xlsx if we have the requirement
-            if xlsxwriter is not None:
+            if openpyxl or xlsxwriter:
                 self.allowed_export_targets['xlsx'] = XLSX
         self.set_renderers()
         self.export_to = None

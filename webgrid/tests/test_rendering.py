@@ -5,6 +5,7 @@ import datetime as dt
 from enum import Enum
 import json
 import io
+from unittest import mock
 
 import arrow
 import openpyxl
@@ -34,6 +35,8 @@ from webgrid.renderers import (
     XLSX,
     RenderLimitExceeded,
     render_html_attributes,
+    WorkbookBase,
+    xlsxwriter_workbook_factory,
 )
 from webgrid_ta.grids import (
     ArrowCSVGrid,
@@ -1027,11 +1030,21 @@ class TestJSONRenderer:
 
 class TestXLSXRenderer(object):
 
+    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
+    def test_using_xlsxwriter_library(self, m_openpyxl):
+        g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
+        wb = g.xlsx()
+        assert isinstance(wb, xlsxwriter.Workbook)
+
+    def test_using_openpyxl_library(self):
+        g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
+        wb = g.xlsx()
+        assert isinstance(wb, WorkbookBase)
+
     def test_some_basics(self):
         g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
         wb = g.xlsx()
         wb.filename.seek(0)
-
         book = openpyxl.load_workbook(wb.filename)
         sh = book['render_in_grid']
 
@@ -1049,7 +1062,29 @@ class TestXLSXRenderer(object):
         grid = StopwatchGrid()
         wb = grid.xlsx()
         wb.filename.seek(0)
+        book = openpyxl.load_workbook(wb.filename)
+        sheet = book[book.sheetnames[0]]
+        #   [ A | B | C | D | E | F | G | H | I ]
+        # 1 [       | Lap 1 |   | Lap 2 | Lap 3 ]
+        row_values = [cell.value for cell in next(sheet.iter_rows(max_row=1))]
+        assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
+        assert sheet.cell(2, 2).value == 'Label'
+        assert sheet.cell(3, 2).value == 'Watch 1'
+        assert [str(range_) for range_ in sheet.merged_cells.ranges] == [
+            'A1:B1',
+            'C1:D1',
+            # E is a single cell
+            'F1:G1',
+            'H1:I1',
+        ]
+        assert sheet.max_column == 9
 
+    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
+    def test_group_headings_xlsxwriter(self, _):
+        grid = StopwatchGrid()
+        wb = grid.xlsx()
+        wb.filename.seek(0)
+        wb.close()
         book = openpyxl.load_workbook(wb.filename)
         sheet = book[book.sheetnames[0]]
         #   [ A | B | C | D | E | F | G | H | I ]
@@ -1074,7 +1109,19 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-    def test_long_grid_name(self):
+    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
+    def test_long_grid_name_xlsxwriter(self, m_openpyxl):
+        class PeopleGridWithAReallyReallyLongName(PeopleGrid):
+            pass
+        g = PeopleGridWithAReallyReallyLongName()
+        wb = g.xlsx()
+        wb.close()
+        wb.filename.seek(0)
+
+        book = openpyxl.load_workbook(wb.filename)
+        assert book['people_grid_with_a_really_r...']
+
+    def test_long_grid_name_openpyxl(self):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
         g = PeopleGridWithAReallyReallyLongName()
@@ -1082,9 +1129,25 @@ class TestXLSXRenderer(object):
         wb.filename.seek(0)
 
         book = openpyxl.load_workbook(wb.filename)
-        assert book['people_grid_with_a_really_r...']
+        assert book['people_grid_with_a_really_really_long_name']
 
-    def test_totals(self):
+    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
+    def test_totals_xlsxwriter(self, m_op):
+        g = PeopleGrid()
+        g.subtotals = 'grand'
+
+        wb = g.xlsx()
+        wb.filename.seek(0)
+        wb.close()
+
+        book = openpyxl.load_workbook(wb.filename)
+        sheet = book[book.sheetnames[0]]
+        assert sheet.max_row == 5
+        assert sheet.cell(5, 1).value == 'Totals (3 records):'
+        assert sheet.cell(5, 9).value == 6.39
+        assert [str(range_) for range_ in sheet.merged_cells.ranges] == ['A5:H5']
+
+    def test_totals_openpyxl(self):
         g = PeopleGrid()
         g.subtotals = 'grand'
 
@@ -1152,7 +1215,7 @@ class TestXLSXRenderer(object):
 
     def test_xlsx_format_caching(self):
         grid = PeopleGrid()
-        wb = xlsxwriter.Workbook()
+        wb = xlsxwriter_workbook_factory()
         format1 = grid.xlsx.style_for_column(wb, grid.column('status'))
         format2 = grid.xlsx.style_for_column(wb, grid.column('state'))
         format3 = grid.xlsx.style_for_column(wb, grid.column('numericcol'))

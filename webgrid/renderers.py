@@ -7,6 +7,7 @@ import io
 from operator import itemgetter
 from collections import defaultdict
 import json
+from typing import Dict, Union
 
 import six
 from blazeutils.functional import identity
@@ -18,7 +19,7 @@ from blazeutils.jsonh import jsonmod
 from blazeutils.spreadsheets import WriterX, xlsxwriter, openpyxl
 from blazeutils.strings import reindent, randnumerics
 import jinja2 as jinja
-from openpyxl.utils import get_column_letter
+
 from werkzeug.datastructures import MultiDict
 from werkzeug.routing import Map, Rule
 
@@ -31,6 +32,10 @@ from .extensions import (
 from .utils import current_url
 from . import extensions, types
 import csv
+
+if openpyxl:
+    from openpyxl.styles import Font, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
@@ -1209,6 +1214,152 @@ class HTML(GroupMixin, Renderer):
         )
 
 
+def xlsxwriter_workbook_factory(*args, **kwargs):
+    '''
+    Wraps the standard xlsxwriter workbook class with an "adapter" layer to aid in dealing with
+    either openpyxl or xlsxwriter
+    '''
+    class XLSXWriterWorkbook(xlsxwriter.Workbook):
+        def __init__(self, *args, **kwargs):
+            self.use_openpyxl = False
+            super().__init__(*args, **kwargs)
+
+        def merged_totals_cell(self, xlh, value, style, colspan):
+            xlh.ws.merge_range(
+                xlh.rownum,
+                xlh.colnum,
+                xlh.rownum,
+                xlh.colnum + colspan - 1,
+                value,
+                style
+            )
+
+        def merged_heading_cell(self, xlh, value, style, col_index, colspan):
+            xlh.ws.merge_range(
+                0, col_index, 0, col_index + (colspan - 1),
+                value,
+                style
+            )
+
+    if xlsxwriter:
+        return XLSXWriterWorkbook(*args, **kwargs)
+
+
+class WorkbookBase:
+    """
+    Supports both xlsxwriter and openpyxl but matching the API of xlsxwriter to avoid
+    breaking changes.
+
+    Dispatches a workbook class depending on what libraries are available.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        if openpyxl and openpyxl.__class__.__name__ == 'module':
+            return super().__new__(cls)
+        if xlsxwriter:
+            return xlsxwriter_workbook_factory(*args, **kwargs)
+        raise ImportError('You must have either openpyxl or xlsxwriter installed.')
+
+    def __init__(self, *args, **kwargs):
+        self.use_openpyxl = True
+        self._workbook = openpyxl.Workbook()
+        self._file = None
+        self._named_styles = set()
+        self.totals_style_spec = {
+            'font': Font(bold=True),
+            'border': Border(top=Side(border_style='double'))
+        }
+
+        self.heading_style = self.get_heading_style()
+        self.totals_style = self.get_totals_style()
+
+    def add_named_style(self, style: Dict[str, Union[Font, Border, Alignment]], name: str) -> str:
+        '''
+        Registers a named style based on the column key, and caches to avoid name conflicts later.
+        https://openpyxl.readthedocs.io/en/stable/styles.html#creating-a-named-style
+
+        Returns: string representing the name of the named style
+        '''
+
+        if name in self._named_styles:
+            return name
+
+        named_style = openpyxl.styles.NamedStyle(name=name)
+        for key, val in style.items():
+            setattr(named_style, key, val)
+        self._workbook.add_named_style(named_style)
+        self._named_styles.add(name)
+        return named_style.name
+
+    def get_heading_style(self):
+        return self.add_named_style({'font': Font(bold=True)}, 'heading')
+
+    def get_totals_style(self):
+        return self.add_named_style(self.totals_style_spec, 'totals')
+
+    @property
+    def filename(self):
+        '''
+        A misnomer but is consistent with xlsxwriter. This actually returns the file handle, in this case a BytesIO
+        '''
+        if not self._file:
+            buf = io.BytesIO()
+            self._workbook.save(buf)
+            self._file = buf
+        return self._file
+
+    def close(self):
+        self._workbook.close()
+
+    @property
+    def fileclosed(self):
+        '''
+        Property does not exist in openpyxl like it does in xlsxwriter, and trying to close an already
+        closed book does not seem to cause issues.
+        '''
+        return False
+
+    def merged_totals_cell(self, xlh, value, style, colspan):
+        '''
+        openpyxl-specific creation of a merged cell for the totals row
+        '''
+        merged_cells = xlh.ws.cell(
+            row=xlh.rownum,
+            column=xlh.colnum
+        )
+        merged_cells.value = value
+        merged_cells.style = style
+        xlh.ws.merge_cells(
+            start_row=xlh.rownum,
+            start_column=xlh.colnum,
+            end_row=xlh.rownum,
+            end_column=xlh.colnum + colspan - 1
+        )
+
+    def merged_heading_cell(self, xlh, value, style, col_index, colspan):
+        '''
+        openpyxl-specific creation of a merged cell for group headers
+        '''
+        merged_cells = xlh.ws.cell(
+            row=1,
+            column=col_index + 1
+        )
+
+        # The editable cell within a merged cell (top left cell) is a Cell,
+        # while the other cells in that merge will yield a MergedCell, which
+        # has an immutable value
+        if isinstance(merged_cells, openpyxl.cell.Cell):
+            merged_cells.value = value
+
+        merged_cells.style = style
+        xlh.ws.merge_cells(
+            start_row=1,
+            start_column=col_index + 1,
+            end_row=1,
+            end_column=col_index + colspan
+        )
+
+
 class XLSX(GroupMixin, Renderer):
     """Renderer for Excel XLSX output."""
     mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1222,6 +1373,10 @@ class XLSX(GroupMixin, Renderer):
         self._xlsx_format_cache = {}
         self.default_style = {}
         self.col_widths = {}
+
+    def create_workbook(self):
+        buf = io.BytesIO()
+        return WorkbookBase(buf, options={'in_memory': True})
 
     def get_xlsx_format(self, wb, style_dict):
         """
@@ -1243,6 +1398,20 @@ class XLSX(GroupMixin, Renderer):
 
     def style_for_column(self, wb, col):
         """Return a column's style from cached information."""
+        if wb.use_openpyxl:
+            style_dict = getattr(col, 'xlsx_style', None)
+            if style_dict:
+                if 'num_format' in style_dict:
+                    # translate the key for openpyxl
+                    style_dict['number_format'] = style_dict['num_format']
+
+                # Only use certain keys, as they become style attributes
+                style_dict = {
+                    key: style_dict[key] for key in ['font', 'alignment', 'border', 'number_format'] if key in style_dict
+                }
+                return wb.add_named_style(style_dict, col.key)
+            return
+
         if col.key not in self.styles_cache:
             style_dict = getattr(col, 'xlsx_style', self.default_style).copy()
             if col.xls_num_format:
@@ -1259,7 +1428,7 @@ class XLSX(GroupMixin, Renderer):
         """Apply stored column widths to the XLSX worksheet."""
         for idx, col in enumerate(self.columns):
             if col.key in self.col_widths:
-                if openpyxl:
+                if openpyxl and hasattr(writer.ws, 'column_dimensions'):
                     col_ltr = get_column_letter(idx+1)
                     writer.ws.column_dimensions[col_ltr].width = self.col_widths[col.key]
                 else:
@@ -1284,28 +1453,23 @@ class XLSX(GroupMixin, Renderer):
             raise RenderLimitExceeded('Unable to render XLSX sheet')
 
         if wb is None:
-            buf = io.BytesIO()
-            wb = WorkbookBase(buf, options={'in_memory': True})
+            wb = self.create_workbook()
 
-        # sheet = wb.add_worksheet(self.sanitize_sheet_name(sheet_name or self.grid.ident))
-
-        sheet = wb._workbook.worksheets[0]
+        if wb.use_openpyxl:
+            sheet = wb._workbook.worksheets[0]
+            sheet.title = sheet_name or self.grid.ident
+        else:
+            sheet = wb.add_worksheet(self.sanitize_sheet_name(sheet_name or self.grid.ident))
         writer = WriterX(sheet)
 
         self.sheet_header(writer, wb)
         self.sheet_body(writer, wb)
         self.sheet_footer(writer, wb)
         self.adjust_column_widths(writer)
-        breakpoint()
         return wb
 
     def render(self):
-        buf = io.BytesIO()
-        if xlsxwriter:
-            with xlsxwriter.Workbook(buf, options={'in_memory': True}) as wb:
-                return self.build_sheet(wb)
-        else:
-            return self.build_sheet()
+        return self.build_sheet()
 
     def can_render(self):
         total_rows = self.grid.record_count + 1
@@ -1352,7 +1516,10 @@ class XLSX(GroupMixin, Renderer):
             xlh (WriterX): Helper for writing worksheet cells.
             wb (Workbook): xlsxwriter Workbook object for direct usage.
         """
-        heading_style = wb.add_format({'bold': True})
+        if wb.use_openpyxl:
+            heading_style = wb.heading_style
+        else:
+            heading_style = wb.add_format({'bold': True})
 
         # Render group labels above column headings.
         if self.has_groups():
@@ -1361,13 +1528,13 @@ class XLSX(GroupMixin, Renderer):
                 data = fix_xls_value(group.label) if group else None
                 if colspan == 1:
                     xlh.awrite(data, heading_style)
-                    xlh.ws.write(0, col_index, data, heading_style)
+                    if wb.use_openpyxl:
+                        group_hdr_cell = xlh.ws.cell(row=1, column=col_index + 1)
+                        group_hdr_cell.style = heading_style
+                    else:
+                        xlh.ws.write(0, col_index, data, heading_style)
                 else:
-                    xlh.ws.merge_range(
-                        0, col_index, 0, col_index + (colspan - 1),
-                        data,
-                        heading_style
-                    )
+                    wb.merged_heading_cell(xlh, data, heading_style, col_index, colspan)
 
                 col_index += colspan
 
@@ -1422,15 +1589,21 @@ class XLSX(GroupMixin, Renderer):
         firstcol = True
         base_style_attrs = {
             'bold': True,
-            'top': 6  # Double think border
+            'top': 6  # Double thick border
         }
-        base_style = wb.add_format(base_style_attrs)
+
+        if wb.use_openpyxl:
+            # Default named style for totals row
+            totals_style = wb.totals_style
+        else:
+            totals_style = wb.add_format(base_style_attrs)
+
         for col in self.columns:
             if col.key not in list(self.grid.subtotal_cols.keys()):
                 if firstcol:
                     colspan += 1
                 else:
-                    xlh.awrite('', base_style)
+                    xlh.awrite('', totals_style)
                 continue
             if firstcol:
                 numrecords = self.grid.record_count
@@ -1439,26 +1612,32 @@ class XLSX(GroupMixin, Renderer):
                     's' if numrecords != 1 else '',
                 )
                 if colspan > 1:
-                    xlh.ws.merge_range(
-                        xlh.rownum,
-                        xlh.colnum,
-                        xlh.rownum,
-                        xlh.colnum + colspan - 1,
-                        bufferval,
-                        base_style
-                    )
+                    wb.merged_totals_cell(xlh, bufferval, totals_style, colspan)
                     xlh.colnum = xlh.colnum + colspan
                 else:
-                    xlh.awrite(bufferval, base_style)
+                    xlh.awrite(bufferval, totals_style)
 
                 firstcol = False
                 colspan = 0
 
-            style = base_style_attrs.copy()
-            style.update(getattr(col, 'xlsx_style', self.default_style))
-            style = wb.add_format(style)
-            value = col.render('xlsx', record)
-            xlh.awrite(fix_xls_value(value), style)
+            if not wb.use_openpyxl:
+                style = base_style_attrs.copy()
+                style.update(getattr(col, 'xlsx_style', self.default_style))
+                style = wb.add_format(style)
+                value = col.render('xlsx', record)
+                xlh.awrite(fix_xls_value(value), style)
+            else:
+                style = wb.totals_style_spec.copy()
+                xlsx_style = getattr(col, 'xlsx_style', None)
+                if xlsx_style:
+                    if 'num_format' in xlsx_style:
+                        xlsx_style['number_format'] = xlsx_style['num_format']
+                    style.update(xlsx_style)
+
+                value = col.render('xlsx', record)
+                named_style = wb.add_named_style(style, f'{col.key}_totals')
+                xlh.awrite(fix_xls_value(value), named_style)
+
             self.update_column_width(col, value)
 
         xlh.nextrow()
@@ -1477,8 +1656,6 @@ class XLSX(GroupMixin, Renderer):
         wb = self.build_sheet(wb, sheet_name)
         if not wb.fileclosed:
             wb.close()
-        if openpyxl:
-            wb.to_file()
         wb.filename.seek(0)
         return self.grid.manager.file_as_response(wb.filename, self.file_name(), self.mime_type)
 
