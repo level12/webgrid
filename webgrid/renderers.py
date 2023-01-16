@@ -37,8 +37,6 @@ if openpyxl:
     from openpyxl.styles import Font, Border, Side, Alignment
     from openpyxl.utils import get_column_letter
 
-openpyxl = None
-
 try:
     from morphi.helpers.jinja import configure_jinja_environment
 except ImportError:
