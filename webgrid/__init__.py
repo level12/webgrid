@@ -765,7 +765,7 @@ class ColumnGroup(object):
 
     Args:
         label (str): Grouping label to be rendered for the column set.
-        class_ (str): CSS class name to apply in HTML rendering.
+        class\_ (str): CSS class name to apply in HTML rendering.
     """  # noqa: W605
     label = None
     class_ = None
@@ -864,7 +864,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         qs_prefix (str, optional): Arg name prefix to apply in query string. Useful for having
         multiple unconnected grids on a single page. Defaults to ''.
 
-        class_ (str, optional): CSS class name for main grid div. Defaults to 'datagrid'.
+        class\_ (str, optional): CSS class name for main grid div. Defaults to 'datagrid'.
 
     Class Attributes:
         identifier (str): Optional string identifier used for the ident property.
