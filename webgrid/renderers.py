@@ -1216,27 +1216,17 @@ class HTML(GroupMixin, Renderer):
         )
 
 
-class WorkbookBase:
-    """
-    Supports both xlsxwriter and openpyxl but matching the API of xlsxwriter to avoid
-    breaking changes.
-
-    Dispatches a workbook class depending on what libraries are available.
-    """
-    pass
-
-    # def __new__(cls, *args, **kwargs):
-    #     if openpyxl and openpyxl.__class__.__name__ == 'module':
-    #         return super().__new__(cls)
-    #     if xlsxwriter:
-    #         return XLSXWriterWorkbook(*args, **kwargs)
-    #
-
-
-class XLSXWriterWorkbook(WorkbookBase):
+class XLSXWriterWorkbookManager:
     def __init__(self, *args, **kwargs):
+        self.base_style_attrs = {
+            'bold': True,
+            'top': 6  # Double thick border
+        }
         self._workbook = self.create_workbook()
         self._xlsx_format_cache = {}
+        self.heading_style = self._workbook.add_format({'bold': True})
+        self.totals_style = self._workbook.add_format(self.base_style_attrs)
+
         self.styles_cache = LazyDict()
         self.default_style = {}
         super().__init__(*args, **kwargs)
@@ -1305,8 +1295,18 @@ class XLSXWriterWorkbook(WorkbookBase):
     def filename(self):
         return self._workbook.filename
 
+    def write_group_header(self, xlh, col_index, data):
+        xlh.ws.write(0, col_index, data, self.heading_style)
 
-class OpenpyxlWorkbook(WorkbookBase):
+    def write_totals_row(self, xlh, col, value):
+        style = self.base_style_attrs.copy()
+        default_style = {}
+        style.update(getattr(col, 'xlsx_style', default_style))
+        style = self._workbook.add_format(style)
+        xlh.awrite(fix_xls_value(value), style)
+
+
+class OpenpyxlWorkbookManager:
     def __init__(self, *args, **kwargs):
         self._workbook = openpyxl.Workbook()
         self._file = None
@@ -1431,10 +1431,33 @@ class OpenpyxlWorkbook(WorkbookBase):
         sheet.title = sheet_name
         return sheet
 
+    def write_group_header(self, xlh, col_index, data):
+        group_hdr_cell = xlh.ws.cell(row=1, column=col_index + 1)
+        group_hdr_cell.style = self.heading_style
+
+    def write_totals_row(self, xlh, col, value):
+        style = self.totals_style_spec.copy()
+        xlsx_style = getattr(col, 'xlsx_style', None)
+        if xlsx_style:
+            if 'num_format' in xlsx_style:
+                xlsx_style['number_format'] = xlsx_style['num_format']
+            style.update(xlsx_style)
+
+        named_style = self.add_named_style(style, f'{col.key}_totals')
+        xlh.awrite(fix_xls_value(value), named_style)
+
 
 class XLSX(GroupMixin, Renderer):
     """Renderer for Excel XLSX output."""
     mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+    def __init__(self, grid):
+        self._manager_cls = None
+        super().__init__(grid)
+
+    def __call__(self, manager_cls=None):
+        self._manager_cls = manager_cls
+        return super().__call__()
 
     @property
     def name(self):
@@ -1443,13 +1466,13 @@ class XLSX(GroupMixin, Renderer):
     def init(self):
         self.col_widths = {}
 
-    def create_workbook(self, wb_override_cls=None):
-        if wb_override_cls:
-            return wb_override_cls()
+    def create_workbook(self):
+        if self._manager_cls:
+            return self._manager_cls()
         if openpyxl:
-            return OpenpyxlWorkbook()
+            return OpenpyxlWorkbookManager()
         if xlsxwriter:
-            return XLSXWriterWorkbook()
+            return XLSXWriterWorkbookManager()
         raise ImportError('You must have either openpyxl or xlsxwriter installed.')
 
     def update_column_width(self, col, data):
@@ -1541,10 +1564,6 @@ class XLSX(GroupMixin, Renderer):
             xlh (WriterX): Helper for writing worksheet cells.
             wb (Workbook): xlsxwriter Workbook object for direct usage.
         """
-        if openpyxl:
-            heading_style = wb.heading_style
-        else:
-            heading_style = wb._workbook.add_format({'bold': True})
 
         # Render group labels above column headings.
         if self.has_groups():
@@ -1552,21 +1571,18 @@ class XLSX(GroupMixin, Renderer):
             for group, colspan in self.get_group_heading_colspans():
                 data = fix_xls_value(group.label) if group else None
                 if colspan == 1:
-                    xlh.awrite(data, heading_style)
-                    if openpyxl:
-                        group_hdr_cell = xlh.ws.cell(row=1, column=col_index + 1)
-                        group_hdr_cell.style = heading_style
-                    else:
-                        xlh.ws.write(0, col_index, data, heading_style)
+                    xlh.awrite(data, wb.heading_style)
+                    wb.write_group_header(xlh, col_index, data)
+
                 else:
-                    wb.merged_heading_cell(xlh, data, heading_style, col_index, colspan)
+                    wb.merged_heading_cell(xlh, data, wb.heading_style, col_index, colspan)
 
                 col_index += colspan
 
             xlh.nextrow()
 
         for col in self.columns:
-            xlh.awrite(fix_xls_value(col.label), heading_style)
+            xlh.awrite(fix_xls_value(col.label), wb.heading_style)
             self.update_column_width(col, col.label)
         xlh.nextrow()
 
@@ -1612,23 +1628,13 @@ class XLSX(GroupMixin, Renderer):
         """Render a totals row based on subtotal columns defined in the grid."""
         colspan = 0
         firstcol = True
-        base_style_attrs = {
-            'bold': True,
-            'top': 6  # Double thick border
-        }
-
-        if openpyxl:
-            # Default named style for totals row
-            totals_style = wb.totals_style
-        else:
-            totals_style = wb._workbook.add_format(base_style_attrs)
 
         for col in self.columns:
             if col.key not in list(self.grid.subtotal_cols.keys()):
                 if firstcol:
                     colspan += 1
                 else:
-                    xlh.awrite('', totals_style)
+                    xlh.awrite('', wb.totals_style)
                 continue
             if firstcol:
                 numrecords = self.grid.record_count
@@ -1637,33 +1643,16 @@ class XLSX(GroupMixin, Renderer):
                     's' if numrecords != 1 else '',
                 )
                 if colspan > 1:
-                    wb.merged_totals_cell(xlh, bufferval, totals_style, colspan)
+                    wb.merged_totals_cell(xlh, bufferval, wb.totals_style, colspan)
                     xlh.colnum = xlh.colnum + colspan
                 else:
-                    xlh.awrite(bufferval, totals_style)
+                    xlh.awrite(bufferval, wb.totals_style)
 
                 firstcol = False
                 colspan = 0
 
-            if not openpyxl:
-                style = base_style_attrs.copy()
-                default_style = {}
-                style.update(getattr(col, 'xlsx_style', default_style))
-                style = wb._workbook.add_format(style)
-                value = col.render('xlsx', record)
-                xlh.awrite(fix_xls_value(value), style)
-            else:
-                style = wb.totals_style_spec.copy()
-                xlsx_style = getattr(col, 'xlsx_style', None)
-                if xlsx_style:
-                    if 'num_format' in xlsx_style:
-                        xlsx_style['number_format'] = xlsx_style['num_format']
-                    style.update(xlsx_style)
-
-                value = col.render('xlsx', record)
-                named_style = wb.add_named_style(style, f'{col.key}_totals')
-                xlh.awrite(fix_xls_value(value), named_style)
-
+            value = col.render('xlsx', record)
+            wb.write_totals_row(xlh, col, value)
             self.update_column_width(col, value)
 
         xlh.nextrow()

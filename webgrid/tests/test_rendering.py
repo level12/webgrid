@@ -5,7 +5,6 @@ import datetime as dt
 from enum import Enum
 import json
 import io
-from unittest import mock
 
 import arrow
 import openpyxl
@@ -35,8 +34,8 @@ from webgrid.renderers import (
     XLSX,
     RenderLimitExceeded,
     render_html_attributes,
-    WorkbookBase,
-    xlsxwriter_workbook_factory,
+    OpenpyxlWorkbookManager,
+    XLSXWriterWorkbookManager,
 )
 from webgrid_ta.grids import (
     ArrowCSVGrid,
@@ -1029,17 +1028,15 @@ class TestJSONRenderer:
 
 
 class TestXLSXRenderer(object):
+    def test_using_xlsxwriter_library(self):
+        g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
+        wb = g.xlsx(manager_cls=XLSXWriterWorkbookManager)
+        assert isinstance(wb._workbook, xlsxwriter.workbook.Workbook)
 
-    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
-    def test_using_xlsxwriter_library(self, m_openpyxl):
+    def test_using_openpyxl_library_default(self):
         g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
         wb = g.xlsx()
-        assert isinstance(wb, xlsxwriter.Workbook)
-
-    def test_using_openpyxl_library(self):
-        g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
-        wb = g.xlsx()
-        assert isinstance(wb, WorkbookBase)
+        assert isinstance(wb._workbook, openpyxl.Workbook)
 
     def test_some_basics(self):
         g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
@@ -1079,10 +1076,9 @@ class TestXLSXRenderer(object):
         ]
         assert sheet.max_column == 9
 
-    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
-    def test_group_headings_xlsxwriter(self, _):
+    def test_group_headings_xlsxwriter(self):
         grid = StopwatchGrid()
-        wb = grid.xlsx()
+        wb = grid.xlsx(manager_cls=XLSXWriterWorkbookManager)
         wb.filename.seek(0)
         wb.close()
         book = openpyxl.load_workbook(wb.filename)
@@ -1109,12 +1105,11 @@ class TestXLSXRenderer(object):
         wb = g.xlsx()
         wb.filename.seek(0)
 
-    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
-    def test_long_grid_name_xlsxwriter(self, m_openpyxl):
+    def test_long_grid_name_xlsxwriter(self):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
         g = PeopleGridWithAReallyReallyLongName()
-        wb = g.xlsx()
+        wb = g.xlsx(manager_cls=XLSXWriterWorkbookManager)
         wb.close()
         wb.filename.seek(0)
 
@@ -1125,18 +1120,17 @@ class TestXLSXRenderer(object):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
         g = PeopleGridWithAReallyReallyLongName()
-        wb = g.xlsx()
+        wb = g.xlsx(manager_cls=OpenpyxlWorkbookManager)
         wb.filename.seek(0)
 
         book = openpyxl.load_workbook(wb.filename)
-        assert book['people_grid_with_a_really_really_long_name']
+        assert book['people_grid_with_a_really_r...']
 
-    @mock.patch('webgrid.renderers.openpyxl', autospec=False, spec_set=False)
-    def test_totals_xlsxwriter(self, m_op):
+    def test_totals_xlsxwriter(self):
         g = PeopleGrid()
         g.subtotals = 'grand'
 
-        wb = g.xlsx()
+        wb = g.xlsx(manager_cls=XLSXWriterWorkbookManager)
         wb.filename.seek(0)
         wb.close()
 
@@ -1215,10 +1209,10 @@ class TestXLSXRenderer(object):
 
     def test_xlsx_format_caching(self):
         grid = PeopleGrid()
-        wb = xlsxwriter_workbook_factory()
-        format1 = grid.xlsx.style_for_column(wb, grid.column('status'))
-        format2 = grid.xlsx.style_for_column(wb, grid.column('state'))
-        format3 = grid.xlsx.style_for_column(wb, grid.column('numericcol'))
+        wb = XLSXWriterWorkbookManager()
+        format1 = wb.style_for_column(grid.column('status'))
+        format2 = wb.style_for_column(grid.column('state'))
+        format3 = wb.style_for_column(grid.column('numericcol'))
 
         assert format1 is not None
         assert format2 is not None
@@ -1230,17 +1224,19 @@ class TestXLSXRenderer(object):
         grid = PeopleGrid()
         grid.column('status').xlsx_style = {'bold': True, 'border': 1}
         grid.column('state').xlsx_style = {'bold': True, 'border': 2}
+        wb = XLSXWriterWorkbookManager()
 
-        format1 = grid.xlsx.style_for_column(wb, grid.column('status'))
-        format2 = grid.xlsx.style_for_column(wb, grid.column('state'))
+        format1 = wb.style_for_column(grid.column('status'))
+        format2 = wb.style_for_column(grid.column('state'))
         assert format1 is not format2
 
         grid = PeopleGrid()
         grid.column('status').xlsx_style = {'bold': True, 'border': 1}
         grid.column('state').xlsx_style = {'bold': True, 'border': 1}
+        wb = XLSXWriterWorkbookManager()
 
-        format1 = grid.xlsx.style_for_column(wb, grid.column('status'))
-        format2 = grid.xlsx.style_for_column(wb, grid.column('state'))
+        format1 = wb.style_for_column(grid.column('status'))
+        format2 = wb.style_for_column(grid.column('state'))
         assert format1 is format2
 
 
