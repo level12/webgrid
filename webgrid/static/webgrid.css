@@ -328,3 +328,77 @@ div.ms-parent input[type="checkbox"] {
     border: none;
     margin: 0;
 }
+
+
+@media (min-width: 1025px) {
+    .record-data {
+        text-align: center;
+    }
+
+    .header-mobile {
+        display: none;
+    }
+
+    .cell-justify {
+        text-align: center;
+    }
+}
+
+@media only screen and (max-width: 760px), (min-device-width: 768px) and (max-device-width: 1024px) {
+    /* Force table to not be like tables anymore */
+    .records :is(table, thead, tbody, th, td, tr) {
+        display: block;
+    }
+
+    /* Hide table headers (but not display: none;, for accessibility) */
+    .records thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .records tr {
+        margin: 0 0 1rem 0;
+    }
+
+    .records tr:nth-child(odd) {
+        background: #ccc;
+    }
+
+    .records td {
+        /* Behave  like a "row" */
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+    }
+
+    .records td:before {
+        /* Now like a table header */
+        position: absolute;
+        /* Top/left values mimic padding */
+        top: 0;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+    }
+
+    .record-data {
+        text-align: right;
+    }
+
+    .cell-justify {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-mobile {
+        font-weight: bold;
+    }
+
+}
+
+
+

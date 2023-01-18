@@ -1071,11 +1071,14 @@ class HTML(GroupMixin, Renderer):
             styled_value = Markup('&nbsp;')
         else:
             styled_value = col_value
+        collapsible_label = f'<button class="btn btn-link" data-toggle="collapse" data-target="#{col.key}" aria-expanded="true" aria-controls="{col.key}">Label</button>'
+        mobile_header = '<span class="header-mobile">{{header}}</span>' if col.label else ''
 
         return self._render_jinja(
-            '<td{{attrs|wg_attributes}}>{{value}}</td>',
+            '<td{{attrs|wg_attributes}}><div class="cell-justify">' + mobile_header + '<span class="record-data">{{value}}</span></div></td>',
             attrs=col_hah,
-            value=styled_value
+            value=styled_value,
+            header=col.label
         )
 
     def footer(self):
