@@ -285,7 +285,9 @@ class Column(object):
         column._query_key = self._query_key
 
         if self.filter:
-            column.filter = self.filter.new_instance(dialect=grid.manager.db.engine.dialect)
+            column.filter = self.filter.new_instance(
+                dialect=grid.manager.db.engine.dialect, col=column.expr
+            )
 
         column.head = BlankObject()
         column.head.hah = HTMLAttributes(self.kwargs)
@@ -803,7 +805,7 @@ class EnumColumn(Column):
 
 
 class ColumnGroup(object):
-    """Represents a grouping of grid columns which may be rendered within a group label.
+    r"""Represents a grouping of grid columns which may be rendered within a group label.
 
     Args:
         label (str): Grouping label to be rendered for the column set.
@@ -885,7 +887,7 @@ class QueryStringBuilder:
 
 
 class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
-    """WebGrid grid base class.
+    r"""WebGrid grid base class.
 
     Handles class declarative-style grid description of columns, filterers, and rendering.
 

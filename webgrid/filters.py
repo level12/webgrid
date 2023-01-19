@@ -159,7 +159,7 @@ class FilterBase(object):
     # does this filter apply to the HAVING clause
     is_aggregate = False
 
-    def __init__(self, sa_col, default_op=None, default_value1=None, default_value2=None,
+    def __init__(self, sa_col=None, default_op=None, default_value1=None, default_value2=None,
                  dialect=None):
         # attributes from static instance
         self.sa_col = sa_col
@@ -343,6 +343,8 @@ class FilterBase(object):
         cls = self.__class__
         new_filter = cls(*self._vargs, **self._kwargs)
         new_filter.dialect = kwargs.get('dialect')
+        if 'col' in kwargs and new_filter.sa_col is None:
+            new_filter.sa_col = kwargs['col']
         return new_filter
 
     def __repr__(self):
