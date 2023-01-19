@@ -329,6 +329,9 @@ div.ms-parent input[type="checkbox"] {
     margin: 0;
 }
 
+.expand-btn {
+    display: none;
+}
 
 @media (min-width: 1025px) {
     .record-data {
@@ -348,6 +351,14 @@ div.ms-parent input[type="checkbox"] {
     /* Force table to not be like tables anymore */
     .records :is(table, thead, tbody, th, td, tr) {
         display: block;
+    }
+
+    .records [class^='rowdata'] {
+        display: none;
+    }
+
+    .wg-show {
+        display: block !important;
     }
 
     /* Hide table headers (but not display: none;, for accessibility) */
@@ -373,6 +384,14 @@ div.ms-parent input[type="checkbox"] {
         padding-left: 50%;
     }
 
+    .records [class^="rowdata_"] {
+        display: none;
+    }
+
+    .expand-btn {
+        display: block;
+    }
+
     .records td:before {
         /* Now like a table header */
         position: absolute;
@@ -383,6 +402,8 @@ div.ms-parent input[type="checkbox"] {
         padding-right: 10px;
         white-space: nowrap;
     }
+
+
 
     .record-data {
         text-align: right;
@@ -396,6 +417,7 @@ div.ms-parent input[type="checkbox"] {
 
     .header-mobile {
         font-weight: bold;
+        text-align: left;
     }
 
 }

@@ -26,6 +26,12 @@ $(document).ready(function() {
     $('.datagrid .export-link').click(verify_export);
     $('.datagrid form.header').submit(datagrid_cleanup_before_form_submission);
     _datagrid_is_loaded = true;
+
+    $('[id^="expand-btn-"]').click(function(e) {
+        let rownum = e.target.dataset.rownum;
+        $('.rowdata_' + rownum).toggleClass('wg-show');
+    })
+
 });
 
 /*

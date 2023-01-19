@@ -989,14 +989,15 @@ class HTML(GroupMixin, Renderer):
             tds=Markup(tds_str),
         )
 
-    def table_tr(self, rownum, record):
+    def table_tr(self, rownum, record, expand_label='Expand'):
         """Generate rendered cells and pass to table_tr_output for rendered result."""
         row_hah = self.table_tr_styler(rownum, record)
+        collapsible_label = f'<td class="expand-btn"><button class="btn btn-link w-100" data-rownum="' + str(rownum) + '" id="expand-btn-' + str(rownum) + '" aria-expanded="false">' + expand_label + '</button></td>'
 
         # get the <td>s for this row
-        cells = []
+        cells = [collapsible_label]
         for col in self.columns:
-            cells.append(self.table_td(col, record))
+            cells.append(self.table_td(col, record, rownum))
 
         return self.table_tr_output(cells, row_hah)
 
@@ -1046,7 +1047,7 @@ class HTML(GroupMixin, Renderer):
         count = self.grid.record_count
         return self.table_totals(rownum, record, _('Grand Totals'), count)
 
-    def table_td(self, col, record):
+    def table_td(self, col, record, rownum):
         """Render a table data cell.
 
         Value is obtained for render from the grid column's `render` method. To
@@ -1071,11 +1072,11 @@ class HTML(GroupMixin, Renderer):
             styled_value = Markup('&nbsp;')
         else:
             styled_value = col_value
-        collapsible_label = f'<button class="btn btn-link" data-toggle="collapse" data-target="#{col.key}" aria-expanded="true" aria-controls="{col.key}">Label</button>'
+
         mobile_header = '<span class="header-mobile">{{header}}</span>' if col.label else ''
 
         return self._render_jinja(
-            '<td{{attrs|wg_attributes}}><div class="cell-justify">' + mobile_header + '<span class="record-data">{{value}}</span></div></td>',
+            '<td{{attrs|wg_attributes}} class="rowdata_' + str(rownum) + '"><div class="cell-justify">' + mobile_header + '<span class="record-data">{{value}}</span></div></td>',
             attrs=col_hah,
             value=styled_value,
             header=col.label
