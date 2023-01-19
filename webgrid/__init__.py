@@ -5,7 +5,6 @@ import logging
 import sys
 import six
 import time
-import warnings
 
 from blazeutils.containers import HTMLAttributes
 from blazeutils.datastructures import BlankObject, OrderedDict
@@ -21,7 +20,7 @@ from werkzeug.datastructures import MultiDict
 from werkzeug.urls import url_encode
 
 from .extensions import gettext as _
-from .renderers import HTML, XLS, XLSX
+from .renderers import HTML, XLSX
 from .version import VERSION as __version__  # noqa: F401
 
 # conditional imports to support libs without requiring them
@@ -29,11 +28,6 @@ try:
     import arrow
 except ImportError:
     arrow = None
-
-try:
-    import xlwt
-except ImportError:
-    xlwt = None
 
 log = logging.getLogger(__name__)
 
@@ -122,8 +116,6 @@ class Column(object):
 
         can_sort (bool, optional): Enables column for selection in sort keys. Defaults to True.
 
-        xls_style (Any, optional): Deprecated, used for XLS exports. Defaults to None.
-
         xls_num_format (str, optional): XLSX number/date format. Defaults to None.
 
         render_in (Union(list(str), callable), optional): Targets to render as a column.
@@ -143,14 +135,11 @@ class Column(object):
         xls_width (float, optional): Override to autocalculated width in Excel exports.
 
         xls_num_format (str, optional): Default numeric/date format type.
-
-        xls_style (Any): Deprecated, used for XLS exports.
     """
     xls_width = None
     xls_num_format = None
-    xls_style = None
     json_type_helper = None
-    _render_in = 'html', 'xls', 'xlsx', 'csv', 'json'
+    _render_in = 'html', 'xlsx', 'csv', 'json'
     _visible = True
 
     @property
@@ -206,8 +195,8 @@ class Column(object):
         grid_cls_cols.append(self)
 
     def __init__(self, label, key=None, filter=None, can_sort=True,  # noqa: C901
-                 xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, has_subtotal=False, visible=True, group=None, **kwargs):
+                 xls_width=None, xls_num_format=None, render_in=_None, has_subtotal=False,
+                 visible=True, group=None, **kwargs):
         self.label = label
         self.key = key
         self.filter = filter
@@ -228,8 +217,6 @@ class Column(object):
             self.xls_width = xls_width
         if xls_num_format:
             self.xls_num_format = xls_num_format
-        if xls_style:
-            self.xls_style = xls_style
 
         try:
             is_group_cls = issubclass(type(group), ColumnGroup) or issubclass(group, ColumnGroup)
@@ -293,10 +280,6 @@ class Column(object):
         column.head.hah = HTMLAttributes(self.kwargs)
         column.body = BlankObject()
         column.body.hah = HTMLAttributes(self.kwargs)
-        if xlwt is not None:
-            column.xlwt_stymat = self.xlwt_stymat_init()
-        else:
-            column.xlwt_stymat = None
 
         # try to be smart about which attributes should get copied to the
         # new instance by looking for attributes on the class that have the
@@ -415,24 +398,6 @@ class Column(object):
             return len(value)
         return len(str(value))
 
-    def xlwt_stymat_init(self):
-        """
-            Because Excel gets picky about a lot of styles, its likely that
-            a column will use one style object instance.  This method will
-            be called once.
-
-            If a column needs to support more than one style, override
-            xlwt_stymat_calc()
-        """
-        return xlwt.easyxf(self.xls_style, self.xls_num_format)
-
-    def xlwt_stymat_calc(self, value):
-        """
-            By default, the xlwt style & number format is per-column and not
-            based ont he value.
-        """
-        return self.xlwt_stymat
-
 
 class LinkColumnBase(Column):
     """Base class for columns rendering as links in HTML.
@@ -449,11 +414,11 @@ class LinkColumnBase(Column):
     link_attrs = {}
 
     def __init__(self, label, key=None, filter=None, can_sort=True,
-                 link_label=None, xls_width=None, xls_style=None, xls_num_format=None,
+                 link_label=None, xls_width=None, xls_num_format=None,
                  render_in=_None, has_subtotal=False, visible=True, group=None, **kwargs):
         super().__init__(label, key, filter, can_sort, xls_width,
-                         xls_style, xls_num_format, render_in,
-                         has_subtotal, visible, group=group, **kwargs)
+                         xls_num_format, render_in, has_subtotal, visible,
+                         group=group, **kwargs)
         self.link_label = link_label
 
     def link_to(self, label, url, **kwargs):
@@ -496,10 +461,10 @@ class BoolColumn(Column):
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
                  reverse=False, true_label=_('True'), false_label=_('False'),
-                 xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, has_subtotal=False, visible=True, group=None, **kwargs):
+                 xls_width=None, xls_num_format=None, render_in=_None, has_subtotal=False,
+                 visible=True, group=None, **kwargs):
         super().__init__(label, key_or_filter, key, can_sort, xls_width,
-                         xls_style, xls_num_format, render_in,
+                         xls_num_format, render_in,
                          has_subtotal, visible, group=group, **kwargs)
         self.reverse = reverse
         self.true_label = true_label
@@ -522,10 +487,10 @@ class YesNoColumn(BoolColumn):
     """
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 reverse=False, xls_width=None, xls_style=None, xls_num_format=None,
-                 render_in=_None, has_subtotal=False, visible=True, group=None, **kwargs):
+                 reverse=False, xls_width=None, xls_num_format=None, render_in=_None,
+                 has_subtotal=False, visible=True, group=None, **kwargs):
         super().__init__(label, key_or_filter, key, can_sort, reverse,
-                         _('Yes'), _('No'), xls_width, xls_style, xls_num_format,
+                         _('Yes'), _('No'), xls_width, xls_num_format,
                          render_in, has_subtotal, visible, group=group, **kwargs)
 
 
@@ -544,11 +509,11 @@ class DateColumnBase(Column):
     """
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 html_format=None, csv_format=None, xls_width=None, xls_style=None,
+                 html_format=None, csv_format=None, xls_width=None,
                  xls_num_format=None, render_in=_None, has_subtotal=False, visible=True, group=None,
                  **kwargs):
         super().__init__(label, key_or_filter, key, can_sort, xls_width,
-                         xls_style, xls_num_format, render_in, has_subtotal,
+                         xls_num_format, render_in, has_subtotal,
                          visible, group=group, **kwargs)
         if html_format:
             self.html_format = html_format
@@ -569,7 +534,7 @@ class DateColumnBase(Column):
             return data
         return self._format_datetime(data, self.html_format)
 
-    def render_xls(self, record):
+    def render_xlsx(self, record):
         data = self.extract_and_format_data(record)
         if not data:
             return data
@@ -577,13 +542,10 @@ class DateColumnBase(Column):
         #   how to handle it
         if arrow and isinstance(data, arrow.Arrow):
             data = data.datetime
-        # xlwt has no idea what to do with zone information
+        # Excel can't use timezone data, so strip it out
         if isinstance(data, dt.datetime) and data.tzinfo is not None:
             data = data.replace(tzinfo=None)
         return data
-
-    def render_xlsx(self, record):
-        return self.render_xls(record)
 
     def render_csv(self, record):
         data = self.extract_and_format_data(record)
@@ -705,12 +667,12 @@ class NumericColumn(Column):
     xls_fmt_percent = '0{dec_places}%;{neg_prefix}-0{dec_places}%'
 
     def __init__(self, label, key_or_filter=None, key=None, can_sort=True,
-                 reverse=False, xls_width=None, xls_style=None, xls_num_format=None,
+                 reverse=False, xls_width=None, xls_num_format=None,
                  render_in=_None, format_as='general', places=2, curr='',
                  sep=',', dp='.', pos='', neg='-', trailneg='',
                  xls_neg_red=True, has_subtotal=False, visible=True, group=None, **kwargs):
         super().__init__(label, key_or_filter, key, can_sort, xls_width,
-                         xls_style, xls_num_format, render_in,
+                         xls_num_format, render_in,
                          has_subtotal, visible, group=group, **kwargs)
         self.places = places
         self.curr = curr
@@ -785,12 +747,6 @@ class NumericColumn(Column):
         return {
             'num_format': self.get_num_format()
         }
-
-    def xlwt_stymat_init(self):
-        num_format = self.get_num_format()
-        if num_format:
-            return xlwt.easyxf(self.xls_style, num_format)
-        return Column.xlwt_stymat_init(self)
 
 
 class EnumColumn(Column):
@@ -966,7 +922,6 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
     per_page = 50
     on_page = 1
     hide_controls_box = False
-    hide_excel_link = False
     # enables keyed session store of grid arguments
     session_on = True
     # enables page/grand subtotals: none|page|grand|all
@@ -1012,17 +967,11 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         self._records = None
         self._page_totals = None
         self._grand_totals = None
-        if self.hide_excel_link is True:
-            warnings.warn(
-                "Hide excel link is deprecated, you should just override allowed_export_targets instead", # noqa
-                DeprecationWarning
-            )
+
         if self.allowed_export_targets is None:
             self.allowed_export_targets = {}
             # If the grid doesn't define any export targets
-            # lets setup the export targets for xls and xlsx if we have the requirement
-            if xlwt is not None:
-                self.allowed_export_targets['xls'] = XLS
+            # lets setup the export target for xlsx if we have the requirement
             if xlsxwriter is not None:
                 self.allowed_export_targets['xlsx'] = XLSX
         self.set_renderers()
@@ -1920,7 +1869,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         if not self.export_to:
             raise ValueError('No export format set')
         exporter = getattr(self, self.export_to)
-        if self.export_to in ['xls', 'xlsx']:
+        if self.export_to == 'xlsx':
             return exporter.as_response(wb, sheet_name)
         return exporter.as_response()
 

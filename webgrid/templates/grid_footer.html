@@ -5,17 +5,15 @@
 {%- endif -%}
 
 <div class="footer">
-    {% if grid.hide_excel_link is none or not grid.hide_excel_link %}
-        <div class="excel_links">
-            {% for key, value in grid.allowed_export_targets.items() %}
-                <p>
-                    {% if loop.index == 1 %}{{ _(' Export to ') }}{% endif %}
-                    {% if loop.index != 1 %}&nbsp;|{% endif %}
-                    <a class="export-link" href="{{ renderer.export_url(key) }}">{{ key | upper }}</a>
-                </p>
-            {% endfor %}
-        </div>
-    {% endif %}
+    <div class="excel_links">
+        {% for key, value in grid.allowed_export_targets.items() %}
+            <p>
+                {% if loop.index == 1 %}{{ _(' Export to ') }}{% endif %}
+                {% if loop.index != 1 %}&nbsp;|{% endif %}
+                <a class="export-link" href="{{ renderer.export_url(key) }}">{{ key | upper }}</a>
+            </p>
+        {% endfor %}
+    </div>
 
 
     {% if grid.pager_on %}

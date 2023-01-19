@@ -4,7 +4,6 @@ A collection of utilities for testing webgrid functionality in client applicatio
 import re
 from unittest import mock
 import urllib
-import warnings
 
 try:
     import openpyxl
@@ -12,10 +11,6 @@ except ImportError:
     openpyxl = None
 from pyquery import PyQuery
 import sqlalchemy
-try:
-    import xlrd
-except ImportError:
-    pass
 
 
 def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
@@ -164,64 +159,6 @@ def assert_list_equal(list1, list2):
                 repr(val2)
             )
         )
-
-
-def assert_rendered_xls_matches(rendered_xls, xls_headers, xls_rows):
-    """
-    Verifies that `rendered_xls` has a set of headers and values that match
-    the given parameters.
-
-    NOTE: This method does not perform in-depth analysis of complex workbooks!
-          Assumes up to one row of headers, and data starts immediately after.
-          Multiple worksheets or complex (multi-row) headers *are not verified!*
-
-    :param rendered_xls: binary data passed to xlrd as file_contents
-    :param xls_headers: iterable with length, represents single row of column headers
-    :param xls_rows: list of rows in order as they will appear in the worksheet
-    """
-    warnings.warn(
-        "XLS support is deprecated and will be removed in a future version",
-        DeprecationWarning
-    )
-    assert rendered_xls
-    workbook = xlrd.open_workbook(file_contents=rendered_xls)
-
-    assert workbook.nsheets >= 1
-    sheet = workbook.sheet_by_index(0)
-
-    # # verify the shape of the sheet
-
-    # ## shape of rows (1 row for the headers, 1 for each row of data)
-    nrows = len(xls_rows)
-    if xls_headers:
-        nrows += 1
-    assert nrows == sheet.nrows
-
-    # ## shape of columns
-    ncols = max(
-        len(xls_headers) if xls_headers else 0,
-        max(len(values) for values in xls_rows) if xls_rows else 0
-    )
-    assert ncols == sheet.ncols
-
-    if xls_headers:
-        assert_list_equal(
-            (cell.value for cell in sheet.row(0)),
-            xls_headers
-        )
-
-    if xls_rows:
-        row_iter = sheet.get_rows()
-
-        # skip header row
-        if xls_headers:
-            next(row_iter)
-
-        for row, expected_row in zip(row_iter, xls_rows):
-            assert_list_equal(
-                (cell.value for cell in row),
-                expected_row
-            )
 
 
 def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):

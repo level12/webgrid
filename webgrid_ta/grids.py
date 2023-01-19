@@ -74,7 +74,6 @@ class PeopleGrid(Grid):
     Column(_('Status'), Status.label.label('status'), StatusFilter(Status.id))
     DateTimeColumn(_('Created'), Person.createdts, DateTimeFilter)
     DateColumn(_('Due Date'), 'due_date')
-    Column(_('Sort Order'), Person.sortorder, render_in='xls')
     Column(_('State'), Person.state, render_in='xlsx')
     NumericColumn(_('Number'), Person.numericcol, has_subtotal=True)
     EnumColumn(_('Account Type'), Person.account_type,
