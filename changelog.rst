@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.5.0 released 2023-01-20
+-------------------------
+
+- support openpyxl for XLSX render (in addition to xlsxwriter) (417c75a_)
+- remove deprecated XLS render (85e6bb9_)
+- don't require passing SA column to filter when providing defaults (e0fbc0f_)
+
+.. _417c75a: https://github.com/level12/webgrid/commit/417c75a
+.. _85e6bb9: https://github.com/level12/webgrid/commit/85e6bb9
+.. _e0fbc0f: https://github.com/level12/webgrid/commit/e0fbc0f
+
+
 0.4.13 released 2022-12-12
 --------------------------
 
