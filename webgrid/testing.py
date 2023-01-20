@@ -192,14 +192,18 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
     nrows = len(xlsx_rows)
     if xlsx_headers:
         nrows += len(xlsx_headers)
-    assert max([nrows, 1]) == sheet.max_row
+    assert (
+        max([nrows, 1]) == sheet.max_row
+    ), f'Sheet max row mismatch, {max([nrows, 1])} != {sheet.max_row}'
 
     # ## shape of columns
     ncols = max(
         max(len(values) for values in xlsx_headers) if xlsx_headers else 0,
         max(len(values) for values in xlsx_rows) if xlsx_rows else 0
     )
-    assert max([ncols, 1]) == sheet.max_column
+    assert (
+        max([ncols, 1]) == sheet.max_column
+    ), f'Sheet max column mismatch, {max([ncols, 1])} != {sheet.max_column}'
 
     row_iter = sheet.iter_rows()
 
