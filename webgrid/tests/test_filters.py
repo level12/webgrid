@@ -312,6 +312,9 @@ class TestDateFilter(CheckFilterBase):
     def between_week_sql(self, field_name):
         return f"WHERE {field_name} BETWEEN '2012-01-01' AND '2012-01-07'"
 
+    def between_last_week_sql(self, field_name):
+        return f"WHERE {field_name} BETWEEN '2011-12-25' AND '2011-12-31'"
+
     def test_eq(self, field, field_name):
         filter = DateFilter(field)
         filter.set('eq', '12/31/2010')
@@ -361,6 +364,28 @@ class TestDateFilter(CheckFilterBase):
         filter = DateFilter(field)
         with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
+
+    def test_in_past(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2010, 12, 31))
+        filter.set('past', None)
+        self.assert_filter_query(filter, f"WHERE {field_name} < '2010-12-31'")
+        assert filter.description == 'before 12/31/2010'
+
+    def test_in_past_default(self, field, field_name):
+        filter = DateFilter(field, default_op='past', _now=dt.date(2010, 12, 31))
+        filter.set(None, None)
+        assert filter.description == 'before 12/31/2010'
+
+    def test_in_future(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2010, 12, 31))
+        filter.set('future', None)
+        self.assert_filter_query(filter, f"WHERE {field_name} > '2010-12-31'")
+        assert filter.description == 'after 12/31/2010'
+
+    def test_in_future_default(self, field, field_name):
+        filter = DateFilter(field, default_op='future', _now=dt.date(2010, 12, 31))
+        filter.set(None, None)
+        assert filter.description == 'after 12/31/2010'
 
     def test_gte(self, field, field_name):
         filter = DateFilter(field)
@@ -631,6 +656,29 @@ class TestDateFilter(CheckFilterBase):
         filter.set('thisweek', None)
         self.assert_filter_query(filter, self.between_week_sql(field_name))
         assert filter.description == '01/01/2012 - 01/07/2012'
+
+    def test_last_week(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 4))
+        filter.set('lastweek', None)
+        self.assert_filter_query(filter, self.between_last_week_sql(field_name))
+        assert filter.description == '12/25/2011 - 12/31/2011'
+
+    def test_last_week_default(self, field, field_name):
+        filter = DateFilter(field, default_op='lastweek', _now=dt.date(2012, 1, 4))
+        filter.set(None, None)
+        assert filter.description == '12/25/2011 - 12/31/2011'
+
+    def test_last_week_left_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 1))
+        filter.set('lastweek', None)
+        self.assert_filter_query(filter, self.between_last_week_sql(field_name))
+        assert filter.description == '12/25/2011 - 12/31/2011'
+
+    def test_last_week_right_edge(self, field, field_name):
+        filter = DateFilter(field, _now=dt.date(2012, 1, 7))
+        filter.set('lastweek', None)
+        self.assert_filter_query(filter, self.between_last_week_sql(field_name))
+        assert filter.description == '12/25/2011 - 12/31/2011'
 
     def test_days_operator_with_blank_value(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
@@ -961,6 +1009,30 @@ class TestDateTimeFilter(CheckFilterBase):
         with pytest.raises(formencode.Invalid):
             filter.set('lte', None)
 
+    def test_in_past(self):
+        filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2010, 12, 31))
+        filter.set('past', None)
+        self.assert_filter_query(filter, "WHERE persons.createdts < '2010-12-31 00:00:00.000000'")
+        assert filter.description == 'before 12/31/2010'
+
+    def test_in_past_default(self):
+        filter = DateTimeFilter(
+            Person.createdts, default_op='past', _now=dt.datetime(2010, 12, 31))
+        filter.set(None, None)
+        assert filter.description == 'before 12/31/2010'
+
+    def test_in_future(self):
+        filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2010, 12, 31))
+        filter.set('future', None)
+        self.assert_filter_query(filter, "WHERE persons.createdts > '2010-12-31 23:59:59.999999'")
+        assert filter.description == 'after 12/31/2010'
+
+    def test_in_future_default(self):
+        filter = DateTimeFilter(
+            Person.createdts, default_op='future', _now=dt.datetime(2010, 12, 31))
+        filter.set(None, None)
+        assert filter.description == 'after 12/31/2010'
+
     def test_gte(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('gte', '12/31/2010')
@@ -1239,6 +1311,36 @@ class TestDateTimeFilter(CheckFilterBase):
             filter,
             "WHERE persons.createdts BETWEEN '2012-01-01 00:00:00.000000' AND "
             "'2012-01-07 23:59:59.999999'")
+
+    def test_last_week(self):
+        filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 4, 12, 35))
+        filter.set('lastweek', None)
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts BETWEEN '2011-12-25 00:00:00.000000' AND "
+            "'2011-12-31 23:59:59.999999'")
+
+    def test_last_week_default(self):
+        filter = DateTimeFilter(
+            Person.createdts, default_op='lastweek', _now=dt.datetime(2012, 1, 4, 12, 35))
+        filter.set(None, None)
+        assert filter.description == '12/25/2011 - 12/31/2011'
+
+    def test_last_week_left_edge(self):
+        filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1))
+        filter.set('lastweek', None)
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts BETWEEN '2011-12-25 00:00:00.000000' AND "
+            "'2011-12-31 23:59:59.999999'")
+
+    def test_last_week_right_edge(self):
+        filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 23, 59, 59, 999999))
+        filter.set('lastweek', None)
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts BETWEEN '2011-12-25 00:00:00.000000' AND "
+            "'2011-12-31 23:59:59.999999'")
 
     def test_days_operator_with_empty_value(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
