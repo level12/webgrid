@@ -80,11 +80,14 @@ class ops(object):
     greater_than_equal = Operator('gte', _('greater than or equal'), 'input')
     between = Operator('between', _('between'), '2inputs')
     not_between = Operator('!between', _('not between'), '2inputs')
+    in_past = Operator('past', _('in the past'), None)
+    in_future = Operator('future', _('in the future'), None)
     days_ago = Operator('da', _('days ago'), 'input', 'days')
     less_than_days_ago = Operator('ltda', _('less than days ago'), 'input', 'days')
     more_than_days_ago = Operator('mtda', _('more than days ago'), 'input', 'days')
     today = Operator('today', _('today'), None)
     this_week = Operator('thisweek', _('this week'), None)
+    last_week = Operator('lastweek', _('last week'), None)
     in_less_than_days = Operator('iltd', _('in less than days'), 'input', 'days')
     in_more_than_days = Operator('imtd', _('in more than days'), 'input', 'days')
     in_days = Operator('ind', _('in days'), 'input', 'days')
@@ -824,7 +827,13 @@ class _DateMixin(object):
             today - relativedelta(weekday=SU(-1)),
             today + relativedelta(weekday=calendar.SATURDAY),
         ),
+        ops.last_week: lambda self, today: (
+            today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
+            today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
+        ),
         ops.today: lambda self, today: (today, today),
+        ops.in_past: lambda self, today: (today, today),
+        ops.in_future: lambda self, today: (today, today),
         # ops with both dates populated
         ops.between: lambda self, today: self._between_range(),
         ops.not_between: lambda self, today: self._between_range(),
@@ -913,8 +922,10 @@ class _DateMixin(object):
 
         prefix = {
             ops.more_than_days_ago: _('before '),
+            ops.in_past: _('before '),
             ops.not_between: _('excluding '),
             ops.in_more_than_days: _('after '),
+            ops.in_future: _('after '),
             ops.not_eq: _('excluding '),
             ops.less_than_equal: _('up to '),
             ops.greater_than_equal: _('beginning '),
@@ -959,7 +970,7 @@ class _DateMixin(object):
 
         if self.op in (
             ops.today, ops.eq, ops.not_eq, ops.less_than_equal,
-            ops.greater_than_equal, ops.days_ago,
+            ops.greater_than_equal, ops.days_ago, ops.in_past, ops.in_future,
         ):
             # !!!: localize
             return _('{descriptor}{date}',
@@ -1050,9 +1061,15 @@ class _DateOpQueryMixin:
         ops.today: lambda self, query, today: query.filter(
             self.sa_col == today
         ),
+        ops.in_past: lambda self, query, today: query.filter(self.sa_col < today),
+        ops.in_future: lambda self, query, today: query.filter(self.sa_col > today),
         ops.this_week: lambda self, query, today: query.filter(self.sa_col.between(
             today - relativedelta(weekday=SU(-1)),
             today + relativedelta(weekday=calendar.SATURDAY),
+        )),
+        ops.last_week: lambda self, query, today: query.filter(self.sa_col.between(
+            today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
+            today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
         )),
         ops.select_month: lambda self, query, today: (
             self._month_year_filter(query) if self.value1 and self.value2 else query
@@ -1111,10 +1128,10 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         of the true `datetime.now()`. Defaults to None.
     """
     operators = (
-        ops.eq, ops.not_eq, ops.less_than_equal,
+        ops.eq, ops.not_eq, ops.in_past, ops.in_future, ops.less_than_equal,
         ops.greater_than_equal, ops.between, ops.not_between,
         ops.days_ago, ops.less_than_days_ago, ops.more_than_days_ago,
-        ops.today, ops.this_week, ops.in_days, ops.in_less_than_days,
+        ops.today, ops.this_week, ops.last_week, ops.in_days, ops.in_less_than_days,
         ops.in_more_than_days, ops.empty, ops.not_empty, ops.this_month,
         ops.last_month, ops.select_month, ops.this_year
     )
@@ -1123,8 +1140,8 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         ops.in_less_than_days, ops.in_more_than_days, ops.in_days
     )
     no_value_operators = (
-        ops.empty, ops.not_empty, ops.today, ops.this_week, ops.this_month,
-        ops.last_month, ops.this_year
+        ops.empty, ops.not_empty, ops.today, ops.this_week, ops.last_week, ops.this_month,
+        ops.last_month, ops.this_year, ops.in_past, ops.in_future,
     )
     input_types = 'input', 'select', 'input2'
     html_input_types = {
@@ -1179,8 +1196,8 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             filtered_query = super().apply(query)
 
         if self.op in (
-            ops.today, ops.this_week, ops.select_month, ops.this_month,
-            ops.last_month, ops.this_year,
+            ops.today, ops.this_week, ops.last_week, ops.select_month, ops.this_month,
+            ops.last_month, ops.this_year, ops.in_past, ops.in_future,
         ):
             return filtered_query
 
@@ -1280,10 +1297,23 @@ class DateTimeFilter(DateFilter):
             ensure_datetime(today),
             ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
         )),
+        ops.in_past: lambda self, query, today: query.filter(
+            self.sa_col < ensure_datetime(today),
+        ),
+        ops.in_future: lambda self, query, today: query.filter(
+            self.sa_col > ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
+        ),
         ops.this_week: lambda self, query, today: query.filter(self.sa_col.between(
             ensure_datetime(today - relativedelta(weekday=SU(-1))),
             ensure_datetime(
                 today + relativedelta(weekday=calendar.SATURDAY),
+                time_part=dt.time(23, 59, 59, 999999)
+            ),
+        )),
+        ops.last_week: lambda self, query, today: query.filter(self.sa_col.between(
+            ensure_datetime(today - relativedelta(weekday=SU(-1)) - relativedelta(days=7)),
+            ensure_datetime(
+                today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
                 time_part=dt.time(23, 59, 59, 999999)
             ),
         )),
