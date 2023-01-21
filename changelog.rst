@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.1 released 2023-01-20
+-------------------------
+
+- add date filter options for last week, past, and future (6a6eccc_)
+
+.. _6a6eccc: https://github.com/level12/webgrid/commit/6a6eccc
+
+
 0.5.0 released 2023-01-20
 -------------------------
 
