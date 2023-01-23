@@ -29,7 +29,7 @@ class Car(db.Model, DefaultMixin):
     year = sa.Column(sa.Integer, nullable=False)
 
     radio_id = sa.Column(sa.Integer, sa.ForeignKey(Radio.id), nullable=False)
-    radio = sa.orm.relation(Radio, lazy=False)
+    radio = saorm.relationship(Radio, lazy=False)
 
     def __repr__(self):
         return '<Car %s, %s, %s>' % (self.make, self.model, self.year)
