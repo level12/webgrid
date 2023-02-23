@@ -56,7 +56,9 @@ class TestGridSettings:
         data = self.ok_values(**input_data)
         with pytest.raises(
             types.ValidationError,
-            match=re.escape(f"{subobject}: __init__() got an unexpected keyword argument 'bar'"),
+            match=re.compile(
+                f"{subobject}:.*__init__\(\) got an unexpected keyword argument 'bar'"
+            ),
         ):
             types.GridSettings.from_dict(data)
 
@@ -64,7 +66,7 @@ class TestGridSettings:
         data = self.ok_values(sort=[{'flag_desc': False}])
         with pytest.raises(
             types.ValidationError,
-            match=re.escape("Sort: __init__() missing 1 required positional argument: 'key'"),
+            match=re.compile("Sort:.*__init__\(\) missing 1 required positional argument: 'key'"),
         ):
             types.GridSettings.from_dict(data)
 
