@@ -1073,13 +1073,13 @@ class TestXLSXRenderer(object):
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert [str(range_) for range_ in sheet.merged_cells.ranges] == [
+        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set([
             'A1:B1',
             'C1:D1',
             # E is a single cell
             'F1:G1',
             'H1:I1',
-        ]
+        ])
         assert sheet.max_column == 9
 
     def test_group_headings_xlsxwriter(self):
@@ -1095,13 +1095,13 @@ class TestXLSXRenderer(object):
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert [str(range_) for range_ in sheet.merged_cells.ranges] == [
+        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set([
             'A1:B1',
             'C1:D1',
             # E is a single cell
             'F1:G1',
             'H1:I1',
-        ]
+        ])
         assert sheet.max_column == 9
 
     def test_subtotals_with_no_records(self):
@@ -1176,7 +1176,7 @@ class TestXLSXRenderer(object):
 
         assert sheet.max_row == 6
         assert sheet.cell(6, 1).value == 'Totals (4 records):'
-        assert sheet.merged_cells.ranges == []
+        assert set(sheet.merged_cells.ranges) == set()
 
     def test_can_render(self):
         class FakeCountsGrid(PeopleGrid):
