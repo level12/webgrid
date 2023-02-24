@@ -319,7 +319,9 @@ class Column(object):
         """
         # key style based on key
         try:
-            return record[self.key]
+            if isinstance(record, dict):
+                return record[self.key]
+            return record._mapping[self.key]
         except (TypeError, KeyError):
             pass
 
@@ -1370,7 +1372,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             sa_aggregate_func, _ = self.subtotal_cols[colobj.key]
 
             # column may have a label. If it does, use it
-            if isinstance(colobj.expr, sasql.expression._Label):
+            if isinstance(colobj.expr, sasql.expression.Label):
                 aggregate_this = sasql.text(colobj.key)
             elif colobj.expr is None:
                 aggregate_this = sasql.literal_column(colobj.key)
@@ -1390,7 +1392,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         cols.append(sa.literal(1).label('__is_total__'))
 
         t0 = time.perf_counter()
-        result = self.manager.sa_query(*cols).select_entity_from(SUB).first()
+        query = self.manager.sa_query(*cols)
+        # WARN: probably not future proof
+        query._set_select_from([SUB], True)
+        result = query.first()
         t1 = time.perf_counter()
         log.debug('Totals query ran in {} seconds'.format(t1 - t0))
 
