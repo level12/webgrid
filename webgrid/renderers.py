@@ -36,6 +36,8 @@ import csv
 if openpyxl:
     from openpyxl.styles import Font, Border, Side, Alignment
     from openpyxl.utils import get_column_letter
+else:
+    Font = Border = Side = Alignment = None
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
