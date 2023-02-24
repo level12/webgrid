@@ -12,7 +12,6 @@ develop_requires = [
     'arrow',
     'coverage',
     'mock',
-    'nose',  # required to import some blazeweb helpers
     'openpyxl',
     'psycopg2-binary',
     # pinned to version in our package index.
