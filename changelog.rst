@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.5.2 released 2023-02-24
+-------------------------
+
+- fix openpyxl typing imports when openpyxl not present (d301658_)
+- SQLAlchemy 2.0 compatibility (no breaking change, retains support for SA 1.4) (bfedc8d_)
+
+.. _d301658: https://github.com/level12/webgrid/commit/d301658
+.. _bfedc8d: https://github.com/level12/webgrid/commit/bfedc8d
+
+
 0.5.1 released 2023-01-20
 -------------------------
 
