@@ -3,6 +3,7 @@ import datetime as dt
 from decimal import Decimal as D
 
 from blazeutils.containers import HTMLAttributes
+from blazeutils.datastructures import BlankObject
 import pytest
 
 from webgrid import (
@@ -123,6 +124,18 @@ class TestColumn(object):
         assert isinstance(col.filter, IntFilter)
         assert col.can_sort is False
         assert col.visible is False
+
+    def test_extraction_by_key(self):
+        col = Column('Foo', 'foo')
+        record = {'foo': 'bar', 'other': 'value'}
+        data = col.extract_data(record)
+        assert data == 'bar'
+
+    def test_extraction_by_attribute(self):
+        col = Column('Foo', 'foo')
+        record = BlankObject(foo='bar', other='value')
+        data = col.extract_data(record)
+        assert data == 'bar'
 
     def test_nonkeyed_not_sort(self):
         class TG(Grid):

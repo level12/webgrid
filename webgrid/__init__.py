@@ -322,7 +322,7 @@ class Column(object):
             if isinstance(record, dict):
                 return record[self.key]
             return record._mapping[self.key]
-        except (TypeError, KeyError):
+        except (TypeError, KeyError, AttributeError):
             pass
 
         # index style based on position in query and key
