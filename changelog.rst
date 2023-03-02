@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.3 released 2023-03-02
+-------------------------
+
+- fix column attribute extraction for non-SQLAlchemy records (a090491_)
+
+.. _a090491: https://github.com/level12/webgrid/commit/a090491
+
+
 0.5.2 released 2023-02-24
 -------------------------
 
