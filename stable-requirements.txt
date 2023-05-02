@@ -9,7 +9,7 @@ coverage==6.4.3
 cssselect==1.1.0
 dominate==2.7.0
 et-xmlfile==1.1.0
-Flask==2.2.2
+Flask==2.3.2
 Flask-Bootstrap==3.3.7.1
 Flask-SQLAlchemy==2.5.1
 Flask-WebTest==0.0.9
