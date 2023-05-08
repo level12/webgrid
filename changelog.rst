@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.4 released 2023-05-08
+-------------------------
+
+- match datetime filter granularity to filter input (029d7e3_)
+
+.. _029d7e3: https://github.com/level12/webgrid/commit/029d7e3
+
+
 0.5.3 released 2023-03-02
 -------------------------
 
