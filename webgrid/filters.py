@@ -1420,6 +1420,8 @@ class DateTimeFilter(DateFilter):
         if self._has_date_only2:
             right_side = ensure_datetime(self.value2.date(),
                                          time_part=dt.time(23, 59, 59, 999999))
+        elif self.value2.second == 0 and self.value2.microsecond == 0:
+            right_side = self.value2 + dt.timedelta(seconds=59, microseconds=999999)
         else:
             right_side = self.value2
         return self.sa_col.between(ensure_datetime(self.value1), right_side)
@@ -1429,7 +1431,11 @@ class DateTimeFilter(DateFilter):
             left_side = ensure_datetime(self.value1.date())
             right_side = ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999))
             return self.sa_col.between(left_side, right_side)
-        if self.value1 and self.value1.microsecond == 0:
+        elif self.value1 and self.value1.second == 0:
+            left_side = self.value1
+            right_side = self.value1 + dt.timedelta(seconds=59, microseconds=999999)
+            return self.sa_col.between(left_side, right_side)
+        elif self.value1 and self.value1.microsecond == 0:
             left_side = self.value1
             right_side = self.value1 + dt.timedelta(microseconds=999999)
             return self.sa_col.between(left_side, right_side)

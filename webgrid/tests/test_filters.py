@@ -956,6 +956,15 @@ class TestDateTimeFilter(CheckFilterBase):
             "'2010-12-31 10:26:27.999999'")
         assert filter.value1_set_with == '2010-12-31T10:26'
 
+    def test_eq_with_time_minutes(self):
+        filter = DateTimeFilter(Person.createdts)
+        filter.set('eq', '12/31/2010 10:26')
+        self.assert_filter_query(
+            filter,
+            "WHERE persons.createdts BETWEEN '2010-12-31 10:26:00.000000' AND "
+            "'2010-12-31 10:26:59.999999'")
+        assert filter.value1_set_with == '2010-12-31T10:26'
+
     def test_not_eq(self):
         filter = DateTimeFilter(Person.createdts)
         filter.set('!eq', '12/31/2010')
@@ -1135,7 +1144,7 @@ class TestDateTimeFilter(CheckFilterBase):
         self.assert_filter_query(
             filter,
             "WHERE persons.createdts BETWEEN '2010-01-31 10:00:00.000000' AND "
-            "'2010-12-31 00:00:00.000000'")
+            "'2010-12-31 00:00:59.999999'")
 
     def test_not_between(self):
         filter = DateTimeFilter(Person.createdts)
