@@ -882,7 +882,7 @@ class TestQueryStringArgs(object):
             Column('T', Person.id, IntFilter)
         g = TGrid()
         g.apply_qs_args()
-        assert g.user_warnings[0] == 'T: Please enter an integer value'
+        assert g.user_warnings[0] == 'T: Please enter an integer value.'
 
     @_inrequest('/foo?search=bar')
     def test_qs_search(self):
