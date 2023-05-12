@@ -518,7 +518,10 @@ class OptionsFilterBase(FilterBase):
     def process(self, value):
         """Apply the `value_modifier` to a value."""
         if self.value_modifier is not None:
-            value = self.value_modifier.process(value)
+            validator = self.value_modifier
+            if inspect.isclass(self.value_modifier):
+                validator = validator()
+            value = validator.process(value)
             if value not in self.option_keys:
                 return _NoValue
             if self.default_op and value == -1:

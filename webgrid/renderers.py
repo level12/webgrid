@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import re
 from abc import ABC, abstractmethod
 from dataclasses import asdict
+import inspect
 import io
 from operator import itemgetter
 from collections import defaultdict
@@ -551,6 +552,9 @@ class HTML(GroupMixin, Renderer):
         """Render the multiselect options."""
         # Assume the multiselect filter has been set up with OptionsFilterBase.setup_validator
         selected = filter.value1 or []
+        validator = filter.value_modifier
+        if inspect.isclass(validator):
+            validator = validator()
         return self._render_jinja(
             '''
             {% for value, label in filter.options_seq %}
@@ -570,7 +574,7 @@ class HTML(GroupMixin, Renderer):
             filter=filter,
             field_name=field_name,
             selected=selected,
-            transform=filter.value_modifier.process if filter.value_modifier else lambda x: x,
+            transform=validator.process if validator else lambda x: x,
         )
 
     def filtering_col_inputs2(self, col):
