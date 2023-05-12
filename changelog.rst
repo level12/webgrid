@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.6 released 2023-05-12
+-------------------------
+
+- fix options validator instance (400288b_)
+
+.. _400288b: https://github.com/level12/webgrid/commit/400288b
+
+
 0.5.5 released 2023-05-12
 -------------------------
 
