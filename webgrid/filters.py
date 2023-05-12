@@ -8,8 +8,6 @@ from blazeutils import tolist
 from blazeutils.dates import ensure_date, ensure_datetime
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta, SU
-import formencode
-import formencode.validators as feval
 from sqlalchemy.sql import or_, and_
 import sqlalchemy as sa
 import six
@@ -19,7 +17,7 @@ from .extensions import (
     gettext,
     lazy_gettext as _
 )
-from . import types
+from . import types, validators
 
 try:
     import arrow
@@ -236,7 +234,7 @@ class FilterBase(object):
             value2 (Any, optional): Second filter input value. Defaults to None.
 
         Raises:
-            formencode.Invalid: One or more inputs did not validate.
+            validators.ValueInvalid: One or more inputs did not validate.
         """
         if not op:
             self.default_op = self._default_op() if callable(self._default_op) else self._default_op
@@ -251,15 +249,15 @@ class FilterBase(object):
 
         # set values used in display first, since processing validation may
         #   raise exceptions
-        self.op = feval.OneOf(self.op_keys, not_empty=True).to_python(
-            op or self.default_op
-        )
+        v_required = validators.RequiredValidator()
+        v_oneof = validators.OneOfValidator(self.op_keys)
+        self.op = v_oneof.process(v_required.process(op or self.default_op))
         self.value1_set_with = value1
         self.value2_set_with = value2
         try:
             self.value1 = self.process(value1, False)
             self.value2 = self.process(value2, True)
-        except formencode.Invalid:
+        except validators.ValueInvalid:
             self.error = True
             raise
 
@@ -371,7 +369,7 @@ class OptionsFilterBase(FilterBase):
         the input value(s) in the request. Generally, the options list in the filter will
         have the "true" type in the identifier, but the request will come in with strings.
         If `value_modifier` is "auto", we'll check one of the options IDs with some known
-        types to pick a FormEncode validator. Or, a FormEncode validator can be passed in.
+        types to pick a webgrid validator. Or, a webgrid validator can be passed in.
         Or, pass a callable, and it will be wrapped as a validator. Defaults to "auto".
 
     Class attributes:
@@ -448,28 +446,28 @@ class OptionsFilterBase(FilterBase):
                                    'be determined for {name}', name=self.__class__.__name__))
             first_key = self.option_keys[0]
             if isinstance(first_key, six.string_types) or self.value_modifier is None:
-                self.value_modifier = feval.UnicodeString
+                self.value_modifier = validators.StringValidator()
             elif isinstance(first_key, int):
-                self.value_modifier = feval.Int
+                self.value_modifier = validators.IntValidator()
             elif isinstance(first_key, float):
-                self.value_modifier = feval.Number
+                self.value_modifier = validators.FloatValidator()
             elif isinstance(first_key, D):
-                self.value_modifier = feval.Wrapper(to_python=D)
+                self.value_modifier = validators.DecimalValidator()
             else:
                 raise TypeError(
                     _("can't use value_modifier='auto' when option keys are {key_type}",
                       key_type=type(first_key))
                 )
         else:
-            # if its not the string 'auto' and its not a formencode validator, assume
-            # its a callable and wrap with a formencode validator
-            if not hasattr(self.value_modifier, 'to_python'):
+            # if its not the string 'auto' and its not a webgrid validator, assume
+            # its a callable and wrap with a webgrid validator
+            if not hasattr(self.value_modifier, 'process'):
                 if not hasattr(self.value_modifier, '__call__'):
                     raise TypeError(
-                        _('value_modifier must be the string "auto", have a "to_python" attribute, '
+                        _('value_modifier must be the string "auto", have a "process" attribute, '
                           'or be a callable')
                     )
-                self.value_modifier = feval.Wrapper(to_python=self.value_modifier)
+                self.value_modifier = validators.CustomValidator(processor=self.value_modifier)
 
     def set(self, op, values, value2=None):
         """Set the filter op/values to be used by query modifiers.
@@ -500,7 +498,7 @@ class OptionsFilterBase(FilterBase):
                     v = self.process(v)
                     if v is not _NoValue:
                         self.value1.append(v)
-                except formencode.Invalid:
+                except validators.ValueInvalid:
                     # A normal user should be selecting from the options given,
                     # so if we encounter an Invalid exception, we are going to
                     # assume the value is erronious and just ignore it
@@ -520,7 +518,7 @@ class OptionsFilterBase(FilterBase):
     def process(self, value):
         """Apply the `value_modifier` to a value."""
         if self.value_modifier is not None:
-            value = self.value_modifier.to_python(value)
+            value = self.value_modifier.process(value)
             if value not in self.option_keys:
                 return _NoValue
             if self.default_op and value == -1:
@@ -568,12 +566,12 @@ class OptionsFilterBase(FilterBase):
 class OptionsIntFilterBase(OptionsFilterBase):
     """Base class for filters having a list of options with integer keys.
 
-    Shortcut for using `OptionsFilterBase` and supplying `formencode.validators.Int`
+    Shortcut for using `OptionsFilterBase` and supplying `webgrid.validators.IntValidator`
     as the `value_modifier`.
 
     """
-    def __init__(self, sa_col, value_modifier=feval.Int, default_op=None, default_value1=None,
-                 default_value2=None):
+    def __init__(self, sa_col, value_modifier=validators.IntValidator, default_op=None,
+                 default_value1=None, default_value2=None):
         OptionsFilterBase.__init__(self, sa_col, value_modifier, default_op, default_value1,
                                    default_value2)
 
@@ -638,7 +636,7 @@ class OptionsEnumFilter(OptionsFilterBase):
         if self.value_modifier is None:
             return value
 
-        return self.value_modifier.to_python(value)
+        return self.value_modifier.process(value)
 
 
 class OptionsEnumArrayFilter(OptionsEnumFilter):
@@ -741,7 +739,7 @@ class NumberFilterBase(FilterBase):
     """Base class for filters taking one or two freeform inputs as numbers.
 
     Class attributes:
-        validator (Validator): FormEncode validator to use on input values.
+        validator (Validator): webgrid validator to use on input values.
     """
     operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
                  ops.not_between, ops.empty, ops.not_empty)
@@ -751,8 +749,11 @@ class NumberFilterBase(FilterBase):
             return None
         if self.op in (ops.eq, ops.not_eq, ops.less_than_equal,
                        ops.greater_than_equal) and not is_value2:
-            return self.validator(not_empty=True).to_python(value)
-        return self.validator.to_python(value)
+            v_required = validators.RequiredValidator()
+            return self.validator().process(v_required.process(value))
+        if value is None or value == '':
+            return None
+        return self.validator().process(value)
 
     def get_search_expr(self):
         # This is a naive implementation that simply converts the number column to string and
@@ -772,7 +773,7 @@ class NumberFilterBase(FilterBase):
 
 class IntFilter(NumberFilterBase):
     """Number filter validating inputs as integers."""
-    validator = feval.Int
+    validator = validators.IntValidator
 
 
 class AggregateIntFilter(IntFilter):
@@ -786,7 +787,7 @@ class NumberFilter(NumberFilterBase):
         everything as a decimal.Decimal object
     """
     # our process() doesn't use a validator to return, but parent class does
-    validator = feval.Number
+    validator = validators.FloatValidator
 
     def process(self, value, is_value2):
         # call the validator to ensure the value is in the right format, but
@@ -1213,21 +1214,23 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
     def _process_days_operator(self, value, is_value2):
         if is_value2:
             return None
-        filter_value = feval.Int(not_empty=True).to_python(value)
+        v_required = validators.RequiredValidator()
+        v_int = validators.IntValidator()
+        filter_value = v_int.process(v_required.process(value))
 
         if self.op in (ops.days_ago, ops.less_than_days_ago, ops.more_than_days_ago):
             try:
                 self._get_today() - dt.timedelta(days=filter_value)
             except OverflowError:
-                raise formencode.Invalid(gettext('date filter given is out of range'),
-                                         value, self)
+                raise validators.ValueInvalid(gettext('date filter given is out of range'),
+                                              value, self)
 
         if self.op in (ops.in_days, ops.in_less_than_days, ops.in_more_than_days):
             try:
                 self._get_today() + dt.timedelta(days=filter_value)
             except OverflowError:
-                raise formencode.Invalid(gettext('date filter given is out of range'),
-                                         value, self)
+                raise validators.ValueInvalid(gettext('date filter given is out of range'),
+                                              value, self)
 
         return filter_value
 
@@ -1236,7 +1239,8 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             d = ensure_date(parse(value))
 
             if isinstance(d, (dt.date, dt.datetime)) and d.year < 1900:
-                return feval.Int(min=1900).to_python(d.year)
+                v_range = validators.RangeValidator(min=1900)
+                return v_range.process(d.year)
 
             return d
         except (ValueError, OverflowError):
@@ -1244,7 +1248,7 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             if is_value2 and not value:
                 return self._get_today()
 
-            raise formencode.Invalid(gettext('invalid date'), value, self)
+            raise validators.ValueInvalid(gettext('invalid date'), value, self)
 
     def process(self, value, is_value2):
         # None is ok for default_ops
@@ -1263,12 +1267,16 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
                 else:
                     return None
             else:
-                raise formencode.Invalid(gettext('invalid date'), value, self)
+                raise validators.ValueInvalid(gettext('invalid date'), value, self)
 
         if self.op == ops.select_month:
+            v_int = validators.IntValidator()
+            if value is None or value == '':
+                return None
             if is_value2:
-                return feval.Int(not_empty=False, min=1900, max=9999).to_python(value)
-            return feval.Int(not_empty=False).to_python(value)
+                v_range = validators.RangeValidator(min=1900, max=9999)
+                return v_range.process(v_int.process(value))
+            return v_int.process(value)
 
         if self.op in self.days_operators:
             return self._process_days_operator(value, is_value2)
@@ -1447,7 +1455,7 @@ class DateTimeFilter(DateFilter):
             # allow open ranges when blanks are submitted as a second value
             if is_value2 and not value:
                 return self._get_now()
-            raise formencode.Invalid(gettext('invalid date'), value, self)
+            raise validators.ValueInvalid(gettext('invalid date'), value, self)
 
         if is_value2:
             self._has_date_only2 = self._has_date_only(dt_value, value)
@@ -1473,12 +1481,16 @@ class DateTimeFilter(DateFilter):
                 else:
                     return None
             else:
-                raise formencode.Invalid(gettext('invalid date'), value, self)
+                raise validators.ValueInvalid(gettext('invalid date'), value, self)
 
         if self.op == ops.select_month:
+            v_int = validators.IntValidator()
+            if value is None or value == '':
+                return None
             if is_value2:
-                return feval.Int(not_empty=False, min=1900, max=9999).to_python(value)
-            return feval.Int(not_empty=False).to_python(value)
+                v_range = validators.RangeValidator(min=1900, max=9999)
+                return v_range.process(v_int.process(value))
+            return v_int.process(value)
 
         if self.op in self.days_operators:
             return self._process_days_operator(value, is_value2)
@@ -1570,7 +1582,7 @@ class TimeFilter(FilterBase):
         try:
             return dt.datetime.strptime(value, self.time_format).time()
         except ValueError:
-            raise formencode.Invalid(_('invalid time'), value, self)
+            raise validators.ValueInvalid(_('invalid time'), value, self)
 
     def get_search_expr(self, date_comparator=None):
         # This is a naive implementation that simply converts the time column to string and

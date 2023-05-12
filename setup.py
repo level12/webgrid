@@ -72,7 +72,6 @@ setup(
     install_requires=[
         'BlazeUtils>=0.6.0',
         'dataclasses; python_version < "3.7"',
-        'FormEncode',
         'SQLAlchemy>=1.4.20',
         'jinja2',
         'python-dateutil',

@@ -4,8 +4,8 @@ from collections import namedtuple
 from decimal import Decimal as D
 
 import pytest
-import formencode
 
+from webgrid import validators
 from webgrid.filters import Operator
 from webgrid.filters import OptionsFilterBase, TextFilter, IntFilter, NumberFilter, DateFilter, \
     DateTimeFilter, FilterBase, TimeFilter, YesNoFilter, OptionsEnumFilter, AggregateIntFilter, \
@@ -250,32 +250,32 @@ class TestNumberFilters(CheckFilterBase):
 
     def test_int_invalid(self):
         filter = IntFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter an integer value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter an integer value'):
             filter.set('eq', 'a')
 
     def test_number_invalid(self):
         filter = NumberFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter a number'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a number'):
             filter.set('eq', 'a')
 
     def test_number_lte_null(self):
         filter = NumberFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('lte', None)
 
     def test_number_gte_null(self):
         filter = NumberFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('gte', None)
 
     def test_number_eq_null(self):
         filter = NumberFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('eq', None)
 
     def test_number_neq_null(self):
         filter = NumberFilter(Person.numericcol)
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('!eq', None)
 
     def test_number_empty(self):
@@ -323,7 +323,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_eq_none(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('eq', None)
 
     def test_eq_default(self, field, field_name):
@@ -344,7 +344,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_not_eq_none(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('!eq', None)
 
     def test_lte(self, field, field_name):
@@ -352,7 +352,7 @@ class TestDateFilter(CheckFilterBase):
         filter.set('lte', '12/31/2010')
         self.assert_filter_query(filter, f"WHERE {field_name} <= '2010-12-31'")
         assert filter.description == 'up to 12/31/2010'
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('lte', '')
 
     def test_lte_default(self, field, field_name):
@@ -362,7 +362,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_lte_none(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('lte', None)
 
     def test_in_past(self, field, field_name):
@@ -400,7 +400,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_gte_none(self, field, field_name):
         figter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             figter.set('gte', None)
 
     def test_empty(self, field, field_name):
@@ -467,14 +467,14 @@ class TestDateFilter(CheckFilterBase):
             f"WHERE {field_name} BETWEEN '2010-12-31' AND '{today}'"
         )
 
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('between', None)
         assert filter.error is True
         assert filter.description == 'invalid'
 
     def test_between_blank(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('between', '', '')
         assert filter.error is True
         assert filter.description == 'invalid'
@@ -502,7 +502,7 @@ class TestDateFilter(CheckFilterBase):
             f"WHERE {field_name} NOT BETWEEN '2010-12-31' AND '{today}'"
         )
 
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('!between', None)
         assert filter.error is True
         assert filter.description == 'invalid'
@@ -534,7 +534,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_days_ago_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('da', None)
 
     def test_less_than_days_ago(self, field, field_name):
@@ -553,7 +553,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_less_than_days_ago_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('ltda', None)
 
     def test_more_than_days_ago(self, field, field_name):
@@ -569,7 +569,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_more_than_days_ago_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('mtda', None)
 
     def test_in_less_than_days(self, field, field_name):
@@ -588,7 +588,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_in_less_than_days_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('iltd', None)
 
     def test_in_more_than_days(self, field, field_name):
@@ -604,7 +604,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_in_more_than_days_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('imtd', None)
 
     def test_in_days(self, field, field_name):
@@ -620,7 +620,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_in_days_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('ind', None)
 
     def test_today(self, field, field_name):
@@ -682,7 +682,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_days_operator_with_blank_value(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('ind', '')
 
     def test_this_month(self, field, field_name):
@@ -762,7 +762,7 @@ class TestDateFilter(CheckFilterBase):
 
     def test_selmonth_none(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 2, 4))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('selmonth', None, 2012)
 
     def test_int_filter_process(self, field, field_name):
@@ -772,19 +772,19 @@ class TestDateFilter(CheckFilterBase):
 
     def test_bad_date(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('eq', '1/1/2015 - 8/31/2015')
         assert filter.error is True
         assert filter.description == 'invalid'
 
     def test_days_ago_overflow(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+        with pytest.raises(validators.ValueInvalid, match='date filter given is out of range'):
             filter.set('da', '10142015')
 
     def test_in_days_overflow(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+        with pytest.raises(validators.ValueInvalid, match='date filter given is out of range'):
             filter.set('ind', '10000000')
 
     def test_in_days_empty_value2(self, field, field_name):
@@ -794,17 +794,17 @@ class TestDateFilter(CheckFilterBase):
 
     def test_invalid_date(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid, match='invalid date'):
+        with pytest.raises(validators.ValueInvalid, match='invalid date'):
             filter.set('eq', '7/45/2007')
 
     def test_overflow_date(self, field, field_name):
         filter = DateFilter(field)
-        with pytest.raises(formencode.Invalid, match='invalid date'):
+        with pytest.raises(validators.ValueInvalid, match='invalid date'):
             filter.set('eq', '12345678901234567890')
 
     def test_days_operator_with_invalid_value(self, field, field_name):
         filter = DateFilter(field, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='Please enter an integer value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter an integer value'):
             filter.set('ind', 'a')
 
     def test_default(self, field, field_name):
@@ -939,12 +939,12 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_eq_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('eq', None)
 
     def test_overflow_date(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid, match='invalid date'):
+        with pytest.raises(validators.ValueInvalid, match='invalid date'):
             filter.set('eq', '12345678901234567890')
 
     def test_eq_with_time(self):
@@ -998,9 +998,9 @@ class TestDateTimeFilter(CheckFilterBase):
         filter.set('lte', '12/31/2010', '')
         self.assert_filter_query(filter, "WHERE persons.createdts <= '2010-12-31 23:59:59.999999'")
         assert filter.value1_set_with == '2010-12-31'
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('lte', '')
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('lte', None)
 
     def test_lte_default(self):
@@ -1015,7 +1015,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_lte_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('lte', None)
 
     def test_in_past(self):
@@ -1047,9 +1047,9 @@ class TestDateTimeFilter(CheckFilterBase):
         filter.set('gte', '12/31/2010')
         self.assert_filter_query(filter, "WHERE persons.createdts >= '2010-12-31 00:00:00.000000'")
         assert filter.value1_set_with == '2010-12-31'
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('gte', '')
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('gte', None)
 
     def test_gte_default(self):
@@ -1059,7 +1059,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_gte_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('gte', None)
 
     def test_gte_with_time(self):
@@ -1108,7 +1108,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_between_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('between', None, None)
 
     def test_between_missing_date(self):
@@ -1123,7 +1123,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_between_blank(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('between', '', '')
         assert filter.error is True
         assert filter.description == 'invalid'
@@ -1162,7 +1162,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_not_between_none(self):
         filter = DateTimeFilter(Person.createdts)
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('!between', None, None)
 
     def test_days_ago(self):
@@ -1180,12 +1180,12 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('da', None)
 
     def test_days_ago_overflow(self):
         filter = DateTimeFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+        with pytest.raises(validators.ValueInvalid, match='date filter given is out of range'):
             filter.set('da', '10000000')
 
     def test_less_than_days_ago(self):
@@ -1203,7 +1203,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_less_than_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('ltda', None)
 
     def test_more_than_days_ago(self):
@@ -1218,7 +1218,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_more_than_days_ago_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('mtda', None)
 
     def test_in_less_than_days(self):
@@ -1236,7 +1236,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_in_less_than_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('iltd', None)
 
     def test_in_more_than_days(self):
@@ -1251,7 +1251,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_in_more_than_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('imtd', None)
 
     def test_in_days(self):
@@ -1269,12 +1269,12 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_in_days_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('ind', None)
 
     def test_in_days_overflow(self):
         filter = DateTimeFilter(Person.due_date, _now=dt.date(2012, 1, 1))
-        with pytest.raises(formencode.Invalid, match='date filter given is out of range'):
+        with pytest.raises(validators.ValueInvalid, match='date filter given is out of range'):
             filter.set('ind', '10000000')
 
     def test_today(self):
@@ -1353,7 +1353,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_days_operator_with_empty_value(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.datetime(2012, 1, 1, 12, 35))
-        with pytest.raises(formencode.Invalid, match='Please enter a value'):
+        with pytest.raises(validators.ValueInvalid, match='Please enter a value'):
             filter.set('ind', '')
 
     def test_non_days_operator_with_empty_value(self):
@@ -1457,7 +1457,7 @@ class TestDateTimeFilter(CheckFilterBase):
 
     def test_selmonth_none(self):
         filter = DateTimeFilter(Person.createdts, _now=dt.date(2012, 2, 4))
-        with pytest.raises(formencode.Invalid):
+        with pytest.raises(validators.ValueInvalid):
             filter.set('selmonth', None, None)
 
     def test_search_expr(self):
@@ -1695,7 +1695,7 @@ class TestOptionsFilter(CheckFilterBase):
     def test_modifier_wrong_type(self):
         with pytest.raises(
             TypeError,
-            match='value_modifier must be the string "auto", have a "to_python" attribute, '
+            match='value_modifier must be the string "auto", have a "process" attribute, '
             'or be a callable'
         ):
             StateFilter(Person.state, value_modifier=1).new_instance()

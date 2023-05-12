@@ -570,7 +570,7 @@ class HTML(GroupMixin, Renderer):
             filter=filter,
             field_name=field_name,
             selected=selected,
-            transform=filter.value_modifier.to_python if filter.value_modifier else lambda x: x,
+            transform=filter.value_modifier.process if filter.value_modifier else lambda x: x,
         )
 
     def filtering_col_inputs2(self, col):

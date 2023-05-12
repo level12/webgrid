@@ -12,13 +12,12 @@ from blazeutils.helpers import tolist
 from blazeutils.numbers import decimalfmt
 from blazeutils.strings import case_cw2us, randchars
 from blazeutils.spreadsheets import xlsxwriter, openpyxl
-from formencode import Invalid
-import formencode.validators as fev
 import sqlalchemy as sa
 import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 from werkzeug.urls import url_encode
 
+from . import validators
 from .extensions import gettext as _
 from .renderers import HTML, XLSX
 from .version import VERSION as __version__  # noqa: F401
@@ -1761,7 +1760,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
                         v1,
                         v2,
                     )
-                except Invalid as e:
+                except validators.ValueInvalid as e:
                     invalid_msg = filter.format_invalid(e, col)
                     self.user_warnings.append(invalid_msg)
 
@@ -1773,7 +1772,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         pp_qsk = 'perpage'
         if pp_qsk in args:
-            per_page = self.apply_validator(fev.Int, args[pp_qsk], pp_qsk)
+            per_page = self.apply_validator(validators.IntValidator, args[pp_qsk], pp_qsk)
             if per_page is None:
                 per_page = self.__class__.per_page
             elif per_page < 1:
@@ -1782,7 +1781,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
         op_qsk = 'onpage'
         if op_qsk in args:
-            on_page = self.apply_validator(fev.Int, args[op_qsk], op_qsk)
+            on_page = self.apply_validator(validators.IntValidator, args[op_qsk], op_qsk)
             if on_page is None or on_page < 1:
                 on_page = 1
             if on_page > self.page_count:
@@ -1832,10 +1831,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         return '{0}{1}'.format(self.qs_prefix, key)
 
     def apply_validator(self, validator, value, qs_arg_key):
-        """Apply a FormEncode validator to value, and produce a warning if invalid.
+        """Apply a webgrid validator to value, and produce a warning if invalid.
 
         Args:
-            validator (Validator): FormEncode-style validator.
+            validator (Validator): webgrid validator.
             value (str): Value to validate.
             qs_arg_key (str): Arg name to include in warning if value is invalid.
 
@@ -1843,8 +1842,8 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             Any: Output of `validator.to_python(value)`, or `None` if invalid.
         """
         try:
-            return validator.to_python(value)
-        except Invalid:
+            return validator().process(value)
+        except validators.ValueInvalid:
             invalid_msg = _('"{arg}" grid argument invalid, ignoring', arg=qs_arg_key)
             self.user_warnings.append(invalid_msg)
             return None
