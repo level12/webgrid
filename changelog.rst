@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.5 released 2023-05-12
+-------------------------
+
+- drop formencode dependency in favor of internal validation (9575f12_)
+
+.. _9575f12: https://github.com/level12/webgrid/commit/9575f12
+
+
 0.5.4 released 2023-05-08
 -------------------------
 
