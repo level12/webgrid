@@ -97,7 +97,7 @@ class OneOfValidator(Validator):
             return None
         if value not in self.allowed_values:
             raise ValueInvalid(
-                _('Value must be one of {}.').format(self.allowed_values, value, self))
+                _('Value must be one of {}.').format(self.allowed_values), value, self)
         return value
 
 

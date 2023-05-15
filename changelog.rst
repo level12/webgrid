@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.7 released 2023-05-15
+-------------------------
+
+- fix OneOf validator exception (3b53cb4_)
+
+.. _3b53cb4: https://github.com/level12/webgrid/commit/3b53cb4
+
+
 0.5.6 released 2023-05-12
 -------------------------
 
