@@ -5,6 +5,7 @@ import logging
 import sys
 import six
 import time
+import urllib.parse
 
 from blazeutils.containers import HTMLAttributes
 from blazeutils.datastructures import BlankObject, OrderedDict
@@ -14,8 +15,6 @@ from blazeutils.strings import case_cw2us, randchars
 from blazeutils.spreadsheets import xlsxwriter, openpyxl
 import sqlalchemy as sa
 import sqlalchemy.sql as sasql
-from werkzeug.datastructures import MultiDict
-from werkzeug.urls import url_encode
 
 from . import validators
 from .extensions import gettext as _
@@ -840,7 +839,7 @@ class QueryStringBuilder:
             grid_args.extend(getattr(self, f'args_{_factory_key}')())
 
         # note: sorting is not strictly necessary but ensures order of keys for testing
-        return url_encode(MultiDict(grid_args), sort=True)
+        return urllib.parse.urlencode(sorted(grid_args), safe='()')
 
 
 class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
