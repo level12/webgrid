@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.8 released 2023-11-10
+-------------------------
+
+- support werkzeug 3 (857eb32_)
+
+.. _857eb32: https://github.com/level12/webgrid/commit/857eb32
+
+
 0.5.7 released 2023-05-15
 -------------------------
 
