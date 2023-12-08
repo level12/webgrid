@@ -336,7 +336,7 @@ class GridBase:
         Returns:
             PyQuery object
         """
-        session_grid = grid or self.get_session_grid(**kwargs)
+        session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         if session_grid.manager.request():
             # request context already exists
             html = session_grid.html()

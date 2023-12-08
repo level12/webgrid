@@ -192,6 +192,12 @@ class TestGridBase(testing.GridBase):
         self.expect_table_header((('Created', 'Due Date', 'Start Time'), ))
         self.expect_table_contents((('01/01/2018 05:30 AM', '05/31/2019', '01:30 AM'), ))
 
+    def test_query_string_applied(self):
+        self.expect_table_contents(
+            (tuple()),
+            _query_string='op(due_date)=gte&v1(due_date)=2019-06-01',
+        )
+
 
 class TestGridBasePG(testing.GridBase):
     grid_cls = TemporalGrid
