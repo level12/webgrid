@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.5.9 released 2023-12-08
+-------------------------
+
+- ensure query string is applied for testing methods (3ccfb70_)
+
+.. _3ccfb70: https://github.com/level12/webgrid/commit/3ccfb70
+
+
 0.5.8 released 2023-11-10
 -------------------------
 
