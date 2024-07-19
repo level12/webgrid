@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.5.10 released 2024-07-19
+--------------------------
+
+- ensure session override args replace arg lists (a7c61f6_)
+- prevent session override from persisting in header form requests (cd1f7cd_)
+- modernize tested python versions (3557f44_)
+
+.. _a7c61f6: https://github.com/level12/webgrid/commit/a7c61f6
+.. _cd1f7cd: https://github.com/level12/webgrid/commit/cd1f7cd
+.. _3557f44: https://github.com/level12/webgrid/commit/3557f44
+
+
 0.5.9 released 2023-12-08
 -------------------------
 
