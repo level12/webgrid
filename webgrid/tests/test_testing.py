@@ -46,7 +46,7 @@ class TestAssertListEqual:
 
 
 class TestAssertRenderedXlsxMatches:
-    def setup(self):
+    def setup_method(self):
         self.stream = BytesIO()
         self.workbook = xlsxwriter.Workbook(self.stream, options={'in_memory': True})
         self.sheet = self.workbook.add_worksheet('sheet1')

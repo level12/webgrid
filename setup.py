@@ -14,8 +14,7 @@ develop_requires = [
     'mock',
     'openpyxl',
     'psycopg2-binary',
-    # pinned to version in our package index.
-    'pyodbc==4.0.34',
+    'pyodbc',
     'pytest',
     'pytest-cov',
     'Flask',
