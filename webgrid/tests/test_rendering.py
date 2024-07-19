@@ -12,6 +12,7 @@ import pytest
 import xlsxwriter
 from markupsafe import Markup
 from pyquery import PyQuery
+from werkzeug.datastructures import MultiDict
 
 from webgrid import (
     BoolColumn,
@@ -362,6 +363,25 @@ class TestHtmlRenderer(object):
     @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_url(self):
         g = self.get_grid()
+        assert (
+            g.html.form_action_url()
+            == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
+        )
+
+    @_inrequest('/thepage?foo=bar&onpage=5&session_override=1')
+    def test_form_action_url_session_opts(self):
+        class TestManager(SimpleGrid.manager.__class__):
+            def get_args(self, previous_args):
+                return MultiDict(dict(foo='bar', onpage=5, session_override=1))
+
+        class TGrid(Grid):
+            manager = TestManager()
+
+            Column('ID', 'id')
+
+        g = TGrid()
+        g.set_records(self.key_data)
+        g.apply_qs_args()
         assert (
             g.html.form_action_url()
             == '/thepage?foo=bar&session_key={0}'.format(g.session_key)

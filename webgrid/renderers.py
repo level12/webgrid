@@ -1164,6 +1164,7 @@ class HTML(GroupMixin, Renderer):
             url_args['v2({0})'.format(col.key)] = None
 
         url_args['session_key'] = self.grid.session_key
+        url_args['session_override'] = None
         if session_reset:
             url_args['dgreset'] = 1
 
