@@ -261,7 +261,13 @@ class WebSessionArgsLoader(ArgsLoader):
         is_override = 'session_override' in previous_args
 
         if is_override:
-            session_args.update(previous_args)
+            # Typically we would want to just `.update()`, but args are MultiDict, so
+            # could have multiple values already. Previous args values are to be
+            # substituted, not treated as a list extension.
+            # Using copy, because if session_args and previous_args are the same
+            # object, we would be modifying the MultiDict in-place.
+            for key, value in previous_args.copy().lists():
+                session_args.setlist(key, value)
         else:
             # Some types of args always get passed through from request_args.
             # Override paging if it exists in the query

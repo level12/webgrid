@@ -1218,6 +1218,22 @@ class TestWebSessionArgsLoader:
         assert args['op(createdts)'] == '!eq'
         assert args['v1(createdts)'] == '2017-05-06'
 
+    @_inrequest('/foo?op(account_type)=is&v1(account_type)=admin')
+    def test_keyed_session_with_override_multifilter(self):
+        pg = PeopleGrid()
+        loader = WebSessionArgsLoader(pg.manager)
+        loader.get_args(pg, flask.request.args)
+        flask.request.args = MultiDict([
+            ('session_key', pg.session_key),
+            ('session_override', 1),
+            ('op(account_type)', 'is'),
+            ('v1(account_type)', 'manager'),
+        ])
+        pg2 = PeopleGrid()
+        args = loader.get_args(pg2, flask.request.args)
+        assert args['op(account_type)'] == 'is'
+        assert args.getlist('v1(account_type)') == ['manager']
+
     @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_keyed_session_without_override(self):
         pg = PeopleGrid()
