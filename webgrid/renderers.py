@@ -753,8 +753,10 @@ class HTML(GroupMixin, Renderer):
         op_qsk = self.grid.prefix_qs_arg_key('onpage')
         return self._render_jinja(
             '''
-            <input name="{{name}}" id="{{name}}" type="number" value="{{page}}"
-                min="1" max="{{page_count}}" /> {{text}}
+            <span>
+                <input name="{{name}}" id="{{name}}" type="number" value="{{page}}"
+                    min="1" max="{{page_count}}" /> {{text}}
+            </span>
             ''',
             name=op_qsk,
             page_count=self.grid.page_count,
