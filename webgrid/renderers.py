@@ -9,6 +9,7 @@ from operator import itemgetter
 from collections import defaultdict
 import json
 from typing import Dict, Union
+import typing
 
 import six
 from blazeutils.functional import identity
@@ -38,7 +39,7 @@ if openpyxl:
     from openpyxl.styles import Font, Border, Side, Alignment
     from openpyxl.utils import get_column_letter
 else:
-    Font = Border = Side = Alignment = None
+    Font = Border = Side = Alignment = typing.Any
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
