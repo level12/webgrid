@@ -1,10 +1,9 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import datetime as dt
 
 from blazeutils.decorators import curry
 from blazeutils.helpers import tolist
 from blazeutils.strings import randchars
+import six
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect as sa_inspect
@@ -15,15 +14,23 @@ import sqlalchemy.util as sautil
 import wrapt
 
 from ..model import db
-import six
 
 
-class DefaultColsMixin(object):
+class DefaultColsMixin:
     id = sa.Column(sa.Integer, primary_key=True)
-    createdts = sa.Column(sa.DateTime, nullable=False, default=dt.datetime.now,
-                          server_default=sasql.text('CURRENT_TIMESTAMP'))
-    updatedts = sa.Column(sa.DateTime, nullable=False, default=dt.datetime.now,
-                          server_default=sasql.text('CURRENT_TIMESTAMP'), onupdate=dt.datetime.now)
+    createdts = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        default=dt.datetime.now,
+        server_default=sasql.text('CURRENT_TIMESTAMP'),
+    )
+    updatedts = sa.Column(
+        sa.DateTime,
+        nullable=False,
+        default=dt.datetime.now,
+        server_default=sasql.text('CURRENT_TIMESTAMP'),
+        onupdate=dt.datetime.now,
+    )
 
 
 @curry
@@ -35,7 +42,7 @@ def is_unique_exc(exc):
 
 def _is_unique_msg(dialect, msg):
     """
-        easier unit testing this way
+    easier unit testing this way
     """
     if dialect == 'postgresql':
         if 'duplicate key value violates unique constraint' in msg:
@@ -63,7 +70,7 @@ def _is_check_const(dialect, msg, constraint_name):
         if 'conflicted with the CHECK constraint' in msg and constraint_name in msg:
             return True
     elif dialect == 'sqlite':
-        if 'constraint {} failed'.format(constraint_name) in msg:
+        if f'constraint {constraint_name} failed' in msg:
             return True
     elif dialect == 'postgresql':
         if 'violates check constraint' in msg and constraint_name in msg:
@@ -82,10 +89,10 @@ def is_null_exc(field_name, exc):
 
 def _is_null_msg(dialect, msg, field_name):
     """
-        easier unit testing this way
+    easier unit testing this way
     """
     if dialect == 'mssql':
-        if 'Cannot insert the value NULL into column \'%s\'' % field_name in msg:
+        if "Cannot insert the value NULL into column '%s'" % field_name in msg:
             return True
     elif dialect == 'sqlite':
         if '.%s may not be NULL' % field_name in msg:
@@ -100,12 +107,12 @@ def _is_null_msg(dialect, msg, field_name):
 
 def _find_sa_sess(decorated_obj):
     """
-        The decorators will by default use sqlalchemy.db to find the SQLAlchemy
-        session.  However, if the function being decorated is a method of a
-        a class and that class has a _sa_sess() method, it will be called
-        to retrieve the SQLAlchemy session that should be used.
+    The decorators will by default use sqlalchemy.db to find the SQLAlchemy
+    session.  However, if the function being decorated is a method of a
+    a class and that class has a _sa_sess() method, it will be called
+    to retrieve the SQLAlchemy session that should be used.
 
-        This function determins where the SA session is.
+    This function determins where the SA session is.
     """
     # If the function being decorated is a classmethod, and the class
     # has an attribute _sa_sess,
@@ -116,11 +123,11 @@ def _find_sa_sess(decorated_obj):
 @wrapt.decorator
 def transaction(f, decorated_obj, args, kwargs):
     """
-        decorates a function so that a DB transaction is always committed after
-        the wrapped function returns and also rolls back the transaction if
-        an unhandled exception occurs.
+    decorates a function so that a DB transaction is always committed after
+    the wrapped function returns and also rolls back the transaction if
+    an unhandled exception occurs.
 
-        'ncm' = non class method (version)
+    'ncm' = non class method (version)
     """
     dbsess = _find_sa_sess(decorated_obj)
 
@@ -135,7 +142,7 @@ def transaction(f, decorated_obj, args, kwargs):
 
 def transaction_classmethod(f):
     """
-        like transaction() but makes the function a class method
+    like transaction() but makes the function a class method
     """
     return transaction(classmethod(f))
 
@@ -143,10 +150,10 @@ def transaction_classmethod(f):
 @wrapt.decorator
 def ignore_unique(f, decorated_obj, args, kwargs):
     """
-        Ignores exceptions caused by unique constraints or
-        indexes in the wrapped function.
+    Ignores exceptions caused by unique constraints or
+    indexes in the wrapped function.
 
-        'ncm' = non class method (version)
+    'ncm' = non class method (version)
     """
     dbsess = _find_sa_sess(decorated_obj)
     try:
@@ -160,7 +167,7 @@ def ignore_unique(f, decorated_obj, args, kwargs):
 
 def ignore_unique_classmethod(f):
     """
-        like ignore_unique() but makes the decorated function a class method
+    like ignore_unique() but makes the decorated function a class method
     """
     return ignore_unique(classmethod(f))
 
@@ -168,9 +175,9 @@ def ignore_unique_classmethod(f):
 @wrapt.decorator
 def one_to_none(f, _, args, kwargs):
     """
-        wraps a function that uses SQLAlahcemy's ORM .one() method and returns
-        None instead of raising an exception if there was no record returned.
-        If multiple records exist, that exception is still raised.
+    wraps a function that uses SQLAlahcemy's ORM .one() method and returns
+    None instead of raising an exception if there was no record returned.
+    If multiple records exist, that exception is still raised.
     """
     try:
         return f(*args, **kwargs)
@@ -182,12 +189,12 @@ def one_to_none(f, _, args, kwargs):
 
 def one_to_none_classmethod(f):
     """
-        like one_to_none_ncm() but makes the decorated function a class method
+    like one_to_none_ncm() but makes the decorated function a class method
     """
     return one_to_none(classmethod(f))
 
 
-class MethodsMixin(object):
+class MethodsMixin:
     # the object that the SA session should be pulled from
     mm_db_global = db
     # the name of the attribute representing the SA session
@@ -215,8 +222,8 @@ class MethodsMixin(object):
     @ignore_unique_classmethod
     def add_iu(cls, **kwargs):
         """
-            Add a record and ignore unique constrainted related
-            exceptions if encountered
+        Add a record and ignore unique constrainted related
+        exceptions if encountered
         """
         return cls.add(**kwargs)
 
@@ -233,7 +240,7 @@ class MethodsMixin(object):
     @classmethod
     def update(cls, oid=None, **kwargs):
         """
-            Add or edit depending on presence if 'id' field from oid or kwargs
+        Add or edit depending on presence if 'id' field from oid or kwargs
         """
         oid = oid or kwargs.pop('id', None)
         if oid:
@@ -300,28 +307,25 @@ class MethodsMixin(object):
     @classmethod
     def pairs(cls, fields, order_by=None, _result=None):
         """
-            Returns a list of two element tuples.
-            [
-                (1, 'apple')
-                (2, 'banana')
-            ]
+        Returns a list of two element tuples.
+        [
+            (1, 'apple')
+            (2, 'banana')
+        ]
 
-            fields: string with the name of the fields you want to pair with
-                a ":" seperating them.  I.e.:
+        fields: string with the name of the fields you want to pair with
+            a ":" seperating them.  I.e.:
 
-                Fruit.pairs('id:name')
+            Fruit.pairs('id:name')
 
-            order_by = order_by clause or iterable of order_by clauses
+        order_by = order_by clause or iterable of order_by clauses
         """
         key_field_name, value_field_name = fields.split(':')
         if _result is None:
             _result = cls.list(order_by)
         retval = []
         for obj in _result:
-            retval.append((
-                getattr(obj, key_field_name),
-                getattr(obj, value_field_name)
-            ))
+            retval.append((getattr(obj, key_field_name), getattr(obj, value_field_name)))
         return retval
 
     @classmethod
@@ -368,8 +372,7 @@ class MethodsMixin(object):
 
     def to_dict(self, exclude=[]):
         col_prop_names = self.sa_column_names()
-        data = dict([(name, getattr(self, name))
-                     for name in col_prop_names if name not in exclude])
+        data = dict([(name, getattr(self, name)) for name in col_prop_names if name not in exclude])
         return data
 
     def from_dict(self, data):
@@ -390,22 +393,19 @@ class MethodsMixin(object):
 
                 # If the data doesn't contain any pk, and the relationship
                 # already has a value, update that record.
-                if not [1 for p in pk_props if p.key in data] and \
-                   dbvalue is not None:
+                if not [1 for p in pk_props if p.key in data] and dbvalue is not None:
                     dbvalue.from_dict(value)
                 else:
                     record = rel_class.update_or_create(value)
                     setattr(self, key, record)
-            elif isinstance(value, list) and \
-                    value and isinstance(value[0], dict):
-
+            elif isinstance(value, list) and value and isinstance(value[0], dict):
                 rel_class = mapper.get_property(key).mapper.class_
                 new_attr_value = []
                 for row in value:
                     if not isinstance(row, dict):
                         raise Exception(
                             'Cannot send mixed (dict/non dict) data '
-                            'to list relationships in from_dict data.'
+                            'to list relationships in from_dict data.',
                         )
                     record = rel_class.update_or_create(row)
                     new_attr_value.append(record)
@@ -428,8 +428,9 @@ class MethodsMixin(object):
 
     @classmethod
     def sa_column_names(self):
-        return [p.key for p in self.__mapper__.iterate_properties
-                if isinstance(p, saorm.ColumnProperty)]
+        return [
+            p.key for p in self.__mapper__.iterate_properties if isinstance(p, saorm.ColumnProperty)
+        ]
 
     @classmethod
     def delete_cascaded(cls):
@@ -445,12 +446,13 @@ class LookupMixin(DefaultMixin):
     @sautil.classproperty
     def label(cls):
         return sa.Column(sa.Unicode(255), nullable=False, unique=True)
+
     active_flag = sa.Column(sa.Boolean, nullable=False, default=True)
 
     @classmethod
     def testing_create(cls, label=None, active=True):
         if label is None:
-            label = u'%s %s' % (cls.__name__, randchars(5))
+            label = '%s %s' % (cls.__name__, randchars(5))
         return cls.add(label=label, active_flag=active)
 
     @classmethod
@@ -459,10 +461,7 @@ class LookupMixin(DefaultMixin):
             order_by = cls.label
         if include_ids:
             include_ids = tolist(include_ids)
-            clause = sasql.or_(
-                cls.active_flag == 1,
-                cls.id.in_(include_ids)
-            )
+            clause = sasql.or_(cls.active_flag == 1, cls.id.in_(include_ids))
         else:
             clause = cls.active_flag == 1
         return cls.list_where(clause, order_by=order_by)
@@ -491,7 +490,7 @@ def clear_db_postgresql():
         try:
             db.engine.execute(exstr)
         except Exception as e:
-            print(('WARNING: %s' % e))
+            print('WARNING: %s' % e)
 
 
 def clear_db_sqlite():
@@ -525,8 +524,10 @@ def clear_db_mssql():
     }
     delete_sql = []
     for type, drop_sql in six.iteritems(mapping):
-        sql = 'select name, object_name( parent_object_id ) as parent_name '\
-            'from sys.objects where type in (\'%s\')' % '", "'.join(type)
+        sql = (
+            'select name, object_name( parent_object_id ) as parent_name '
+            "from sys.objects where type in ('%s')" % '", "'.join(type)
+        )
         rows = db.engine.execute(sql)
         for row in rows:
             delete_sql.append(drop_sql % dict(row))

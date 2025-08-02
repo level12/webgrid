@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from blazeweb.content import getcontent
 from blazeweb.globals import ag, rg, user
 from blazeweb.routing import abs_static_url
@@ -8,6 +6,7 @@ from blazeweb.utils import abort
 from blazeweb.wrappers import StreamResponse
 from jinja2.exceptions import TemplateNotFound
 from sqlalchemybwc import db as sabwc_db
+
 from webgrid import BaseGrid
 from webgrid.extensions import FrameworkManager, gettext
 from webgrid.renderers import render_html_attributes
@@ -54,13 +53,13 @@ class WebGrid(FrameworkManager):
         return rg.request
 
     def static_url(self, url_tail):
-        return abs_static_url('component/webgrid/{0}'.format(url_tail))
+        return abs_static_url(f'component/webgrid/{url_tail}')
 
     def file_as_response(self, data_stream, file_name, mime_type):
         rp = StreamResponse(data_stream)
         rp.headers['Content-Type'] = mime_type
         if file_name is not None:
-            rp.headers['Content-Disposition'] = 'attachment; filename={}'.format(file_name)
+            rp.headers['Content-Disposition'] = f'attachment; filename={file_name}'
         abort(rp)
 
     def render_template(self, endpoint, **kwargs):
@@ -69,8 +68,10 @@ class WebGrid(FrameworkManager):
         except TemplateNotFound:
             if ':' in endpoint:
                 raise
-            return getcontent('{0}:{1}'.format(self.component, endpoint), **kwargs)
-wg_blaze_manager = WebGrid()  # noqa: E305
+            return getcontent(f'{self.component}:{endpoint}', **kwargs)
+
+
+wg_blaze_manager = WebGrid()
 
 
 class Grid(BaseGrid):

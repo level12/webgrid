@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import warnings
 
 import flask
@@ -6,18 +5,19 @@ from flask import Flask
 from flask_bootstrap import Bootstrap
 
 from webgrid.flask import WebGrid
-
 from webgrid_ta.extensions import translation_manager
+
 
 try:
     from morphi.helpers.jinja import configure_jinja_environment
 except ImportError:
-    configure_jinja_environment = lambda *args, **kwargs: None  # noqa: E731
+    configure_jinja_environment = lambda *args, **kwargs: None
 
 try:
     from morphi.registry import default_registry
 except ImportError:
     from blazeutils.datastructures import BlankObject
+
     default_registry = BlankObject()
 
 
@@ -39,6 +39,7 @@ def create_app(config='Dev', database_url=None):
     app.secret_key = 'only-testing'
 
     from webgrid_ta.model import db
+
     db.init_app(app)
     webgrid.init_db(db)
     default_registry.locales = app.config.get('DEFAULT_LOCALE', 'en')
@@ -47,6 +48,7 @@ def create_app(config='Dev', database_url=None):
     webgrid.init_app(app)
 
     from webgrid_ta.views import main
+
     app.register_blueprint(main)
 
     @app.before_request

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from webgrid import BaseGrid as BaseGrid
 from webgrid import (
     Column,
@@ -36,7 +34,7 @@ class Grid(BaseGrid):
 
 class FirstNameColumn(LinkColumnBase):
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
 class FullNameColumn(LinkColumnBase):
@@ -44,7 +42,7 @@ class FullNameColumn(LinkColumnBase):
         return _('{record.firstname} {record.lastname}', record=record)
 
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
 class EmailsColumn(Column):
@@ -59,7 +57,7 @@ class StatusFilter(OptionsFilterBase):
         ops.not_is,
         Operator('c', _('closed'), None),
         ops.empty,
-        ops.not_empty
+        ops.not_empty,
     )
     options_from = Status.pairs
 
@@ -76,13 +74,23 @@ class PeopleGrid(Grid):
     DateColumn(_('Due Date'), 'due_date')
     Column(_('State'), Person.state, render_in='xlsx')
     NumericColumn(_('Number'), Person.numericcol, has_subtotal=True)
-    EnumColumn(_('Account Type'), Person.account_type,
-               OptionsEnumFilter(Person.account_type, enum_type=AccountType))
+    EnumColumn(
+        _('Account Type'),
+        Person.account_type,
+        OptionsEnumFilter(Person.account_type, enum_type=AccountType),
+    )
 
     def query_prep(self, query, has_sort, has_filters):
-        query = query.add_columns(
-            Person.id, Person.lastname, Person.due_date, Person.account_type,
-        ).add_entity(Person).outerjoin(Person.status)
+        query = (
+            query.add_columns(
+                Person.id,
+                Person.lastname,
+                Person.due_date,
+                Person.account_type,
+            )
+            .add_entity(Person)
+            .outerjoin(Person.status)
+        )
 
         # default sort
         if not has_sort:
@@ -92,12 +100,15 @@ class PeopleGrid(Grid):
 
 
 class PeopleGridByConfig(PeopleGrid):
-    query_outer_joins = (Person.status, )
-    query_default_sort = (Person.id, )
+    query_outer_joins = (Person.status,)
+    query_default_sort = (Person.id,)
 
     def query_prep(self, query, has_sort, has_filters):
         query = query.add_columns(
-            Person.id, Person.lastname, Person.due_date, Person.account_type,
+            Person.id,
+            Person.lastname,
+            Person.due_date,
+            Person.account_type,
         ).add_entity(Person)
 
         return query
@@ -106,8 +117,11 @@ class PeopleGridByConfig(PeopleGrid):
 class DefaultOpGrid(Grid):
     session_on = True
 
-    FirstNameColumn(_('First Name'), Person.firstname,
-                    TextFilter(Person.firstname, default_op=ops.eq))
+    FirstNameColumn(
+        _('First Name'),
+        Person.firstname,
+        TextFilter(Person.firstname, default_op=ops.eq),
+    )
 
 
 class ArrowGrid(Grid):

@@ -13,6 +13,7 @@ from werkzeug.datastructures import MultiDict
 
 from . import types
 
+
 MORPHI_PACKAGE_NAME = 'webgrid'
 
 # begin morphi boilerplate
@@ -68,12 +69,13 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 
 class ArgsLoader(ABC):
-    """ Base args loader class.
+    """Base args loader class.
 
     When a grid calls for its args, it requests them from the manager. The manager will have one
     or more args loaders to be run in order. Each loader fetches its args from the request,
     then ensuing loaders have the opportunity to modify or perform other operations as needed.
     """
+
     def __init__(self, manager):
         self.manager = manager
 
@@ -85,7 +87,7 @@ class ArgsLoader(ABC):
 class GridPrefixBase(ArgsLoader):
     def sanitize_arg_name(self, arg_name, qs_prefix):
         if qs_prefix and arg_name.startswith(qs_prefix):
-            return arg_name[len(qs_prefix):]
+            return arg_name[len(qs_prefix) :]
         return arg_name
 
     def get_sanitized_args(self, grid, args):
@@ -120,7 +122,7 @@ class GridPrefixBase(ArgsLoader):
 
 
 class RequestArgsLoader(GridPrefixBase, ArgsLoader):
-    """ Simple args loader for web request.
+    """Simple args loader for web request.
 
     Args are usually passed through directly from the request. If the grid has a query string
     prefix, the relevant args will be namespaced - sanitize them here and return the subset
@@ -128,12 +130,13 @@ class RequestArgsLoader(GridPrefixBase, ArgsLoader):
 
     In the reset case, ignore most args, and return only the reset flag and session key (if any).
     """
+
     def get_args_from_request(self):
         return self.manager.request_url_args()
 
 
 class RequestFormLoader(GridPrefixBase, ArgsLoader):
-    """ Simple form loader for web request.
+    """Simple form loader for web request.
 
     Form values are usually passed through directly from the request. If the grid has a prefix, the
     relevant args will be namespaced - sanitize them here and return the subset needed for the given
@@ -141,17 +144,19 @@ class RequestFormLoader(GridPrefixBase, ArgsLoader):
 
     In the reset case, ignore most args, and return only the reset flag and session key (if any).
     """
+
     def get_args_from_request(self):
         return self.manager.request_form_args()
 
 
 class RequestJsonLoader(ArgsLoader):
-    """ JSON loader for web request.
+    """JSON loader for web request.
 
     See :meth:`webgrid.types.GridSettings` for the expected JSON structure. The parsed arguments
     are converted to the querystring arg format and merged with any previous args.
     """
-    def json_to_args(self, data: Dict[str, Any]):
+
+    def json_to_args(self, data: dict[str, Any]):
         meta = types.GridSettings.from_dict(data)
         return MultiDict(meta.to_args())
 
@@ -166,7 +171,7 @@ class RequestJsonLoader(ArgsLoader):
 
 
 class WebSessionArgsLoader(ArgsLoader):
-    """ Session manager for grid args.
+    """Session manager for grid args.
 
     Args are assumed to have been sanitized from the request already. But, args may be combined
     from the request and the session store for a number of cases.
@@ -179,6 +184,7 @@ class WebSessionArgsLoader(ArgsLoader):
     In the reset case, ignore most args, and return only the reset flag and session key (if any).
     And clear the session store for the given grid.
     """
+
     _session_exclude_keys = (
         '__foreign_session_loaded__',
         'apply',
@@ -223,7 +229,8 @@ class WebSessionArgsLoader(ArgsLoader):
         """
         regex = re.compile('(sort[1-9][0-9]*)')
         return [
-            arg.string for arg in filter(
+            arg.string
+            for arg in filter(
                 lambda match: match is not None,
                 [regex.match(a) for a in args],
             )
@@ -240,7 +247,7 @@ class WebSessionArgsLoader(ArgsLoader):
         self.manager.persist_web_session()
 
     def apply_session_overrides(self, session_args, previous_args):
-        """ Update session args as needed from the incoming request.
+        """Update session args as needed from the incoming request.
 
         If session override case, wholesale update from the incoming request. This
         is useful if a single filter needs to be changed via the URL, but we don't
@@ -368,8 +375,9 @@ class WebSessionArgsLoader(ArgsLoader):
             return self.manager.persist_web_session()
 
         args['datagrid'] = grid.default_session_key
-        args['session_timestamp'] = existing_default_store['session_timestamp'] \
-            = arrow.utcnow().isoformat()
+        args['session_timestamp'] = existing_default_store['session_timestamp'] = (
+            arrow.utcnow().isoformat()
+        )
 
         # if we're pulling a grid matching the default session, but with a different key,
         # no need to store the sepearate session
@@ -387,7 +395,7 @@ class WebSessionArgsLoader(ArgsLoader):
         self.manager.persist_web_session()
 
     def get_args(self, grid, previous_args):
-        """ Retrieve args from session and override as appropriate.
+        """Retrieve args from session and override as appropriate.
 
         Submitting the header form flushes all args to the URL, so no need to load them
         from session.
@@ -428,7 +436,8 @@ class WebSessionArgsLoader(ArgsLoader):
         if (not self.args_have_op(request_args) and not is_apply) or is_override:
             # We are in a session-loading case.
             session_args = self.apply_session_overrides(
-                self.get_session_store(grid, request_args), request_args
+                self.get_session_store(grid, request_args),
+                request_args,
             )
 
             # Flag a foreign session if loading from another grid's session.
@@ -459,6 +468,7 @@ class FrameworkManager(ABC):
         disable. Default 12.
 
     """
+
     jinja_loader = lambda self: jinja.PackageLoader('webgrid', 'templates')
     args_loaders = (
         RequestArgsLoader,
@@ -491,7 +501,7 @@ class FrameworkManager(ABC):
         self.jinja_environment = jinja.Environment(
             loader=self.jinja_loader,
             finalize=lambda x: x if x is not None else '',
-            autoescape=True
+            autoescape=True,
         )
 
     def static_path(self):
@@ -513,7 +523,8 @@ class FrameworkManager(ABC):
     def request_args(self):
         warnings.warn(
             'request_args is deprecated and will be removed in a future version.',
-            DeprecationWarning, 2
+            DeprecationWarning,
+            2,
         )
         return self.request_url_args()
 

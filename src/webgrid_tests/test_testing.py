@@ -12,6 +12,7 @@ from webgrid_ta.model.entities import Person, db
 
 def setup_module():
     import flask
+
     assert not flask.request
 
 
@@ -103,57 +104,37 @@ class TestAssertRenderedXlsxMatches:
         self.assert_matches([], [[1, 2, 3]])
 
     def test_multiple_rows(self):
-        self.set_values([
-            [1, 2, 3],
-            [2, 3, 4]
-        ])
+        self.set_values([[1, 2, 3], [2, 3, 4]])
 
-        self.assert_matches([], [
-            [1, 2, 3],
-            [2, 3, 4]
-        ])
+        self.assert_matches([], [[1, 2, 3], [2, 3, 4]])
 
     def test_headers_and_rows(self):
-        self.set_headers([
-            ['Foo', 'Bar'],
-            ['Snoopy', 'Dog'],
-        ])
-        self.set_values([
-            [1, 2],
-            [2, 3],
-            [3, 4]
-        ])
+        self.set_headers(
+            [
+                ['Foo', 'Bar'],
+                ['Snoopy', 'Dog'],
+            ],
+        )
+        self.set_values([[1, 2], [2, 3], [3, 4]])
 
         self.assert_matches(
             [
                 ['Foo', 'Bar'],
                 ['Snoopy', 'Dog'],
             ],
-            [
-                [1, 2],
-                [2, 3],
-                [3, 4]
-            ]
+            [[1, 2], [2, 3], [3, 4]],
         )
 
     def test_value_types(self):
-        self.set_values([
-            [1, 1.23, 'hello', None, True, False]
-        ])
+        self.set_values([[1, 1.23, 'hello', None, True, False]])
 
-        self.assert_matches([], [
-            [1, 1.23, 'hello', None, True, False]
-        ])
+        self.assert_matches([], [[1, 1.23, 'hello', None, True, False]])
 
     def test_none_is_mangled(self):
-        self.set_values([
-            [None, 1, 1.23, 'hello', None]
-        ])
+        self.set_values([[None, 1, 1.23, 'hello', None]])
 
         # the right `None` gets dropped
-        self.assert_matches([], [
-            [None, 1, 1.23, 'hello']
-        ])
+        self.assert_matches([], [[None, 1, 1.23, 'hello']])
 
 
 class TestGridBase(testing.GridBase):
@@ -173,11 +154,19 @@ class TestGridBase(testing.GridBase):
     @property
     def filters(self):
         return (
-            ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
+            (
+                'createdts',
+                'eq',
+                dt.datetime(2018, 1, 1, 5, 30),
+                "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'",
+            ),
             ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
-             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)"),
+            (
+                'start_time',
+                'eq',
+                dt.time(1, 30).strftime('%H:%M'),
+                "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)",
+            ),
         )
 
     def setup_method(self, _):
@@ -189,8 +178,8 @@ class TestGridBase(testing.GridBase):
         )
 
     def test_expected_rows(self):
-        self.expect_table_header((('Created', 'Due Date', 'Start Time'), ))
-        self.expect_table_contents((('01/01/2018 05:30 AM', '05/31/2019', '01:30 AM'), ))
+        self.expect_table_header((('Created', 'Due Date', 'Start Time'),))
+        self.expect_table_contents((('01/01/2018 05:30 AM', '05/31/2019', '01:30 AM'),))
 
     def test_query_string_applied(self):
         self.expect_table_contents(
@@ -216,11 +205,19 @@ class TestGridBasePG(testing.GridBase):
     @property
     def filters(self):
         return (
-            ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
+            (
+                'createdts',
+                'eq',
+                dt.datetime(2018, 1, 1, 5, 30),
+                "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'",
+            ),
             ('due_date', 'eq', dt.date(2018, 1, 1), "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
-             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)"),
+            (
+                'start_time',
+                'eq',
+                dt.time(1, 30).strftime('%H:%M'),
+                "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)",
+            ),
         )
 
 
@@ -241,11 +238,19 @@ class TestGridBaseMSSQLDates(testing.MSSQLGridBase):
     @property
     def filters(self):
         return (
-            ('createdts', 'eq', dt.datetime(2018, 1, 1, 5, 30),
-             "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'"),
+            (
+                'createdts',
+                'eq',
+                dt.datetime(2018, 1, 1, 5, 30),
+                "WHERE persons.createdts BETWEEN '2018-01-01 05:30:00.000000'",
+            ),
             ('due_date', 'eq', '2018-01-01', "WHERE persons.due_date = '2018-01-01'"),
-            ('start_time', 'eq', dt.time(1, 30).strftime('%H:%M'),
-             "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)"),
+            (
+                'start_time',
+                'eq',
+                dt.time(1, 30).strftime('%H:%M'),
+                "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME)",
+            ),
         )
 
 
@@ -257,7 +262,7 @@ class TestGridBaseMSSQLStrings(testing.MSSQLGridBase):
         return (
             ('make', 'eq', 'foo', "WHERE sabwp_radios.make = 'foo'"),
             ('model', 'eq', 'foo', "WHERE sabwp_radios.model = 'foo'"),
-            ('year', 'eq', '1945', "WHERE sabwp_radios.year = 1945"),
+            ('year', 'eq', '1945', 'WHERE sabwp_radios.year = 1945'),
         )
 
     @classmethod

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import enum
 
 import arrow
@@ -9,7 +7,6 @@ import sqlalchemy.orm as saorm
 from sqlalchemy_utils import ArrowType
 
 from ..model import db
-
 from .helpers import DefaultMixin
 
 
@@ -135,9 +132,11 @@ class Stopwatch(db.Model, DefaultMixin):
 
 
 if db.engine.dialect.name == 'postgresql':
+
     class ArrayTable(db.Model, DefaultMixin):
         __tablename__ = 'array_table'
 
         id = sa.Column(sa.Integer, primary_key=True)
         account_type = sa.Column(
-            sa.dialects.postgresql.ARRAY(sa.Enum(AccountType, name='person_account_type')))
+            sa.dialects.postgresql.ARRAY(sa.Enum(AccountType, name='person_account_type')),
+        )

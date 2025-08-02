@@ -33,10 +33,7 @@ class StringValidator(Validator):
 
 class RequiredValidator(Validator):
     def process(self, value):
-        if (
-            value is None
-            or value == ''
-        ):
+        if value is None or value == '':
             raise ValueInvalid(_('Please enter a value.'), value, self)
         return value
 
@@ -81,10 +78,16 @@ class RangeValidator(Validator):
     def process(self, value):
         if self.min is not None and value is not None and value < self.min:
             raise ValueInvalid(
-                _('Value must be greater than or equal to {}.').format(self.min), value, self)
+                _('Value must be greater than or equal to {}.').format(self.min),
+                value,
+                self,
+            )
         if self.max is not None and value is not None and value > self.max:
             raise ValueInvalid(
-                _('Value must be less than or equal to {}.').format(self.max), value, self)
+                _('Value must be less than or equal to {}.').format(self.max),
+                value,
+                self,
+            )
         return value
 
 
@@ -97,7 +100,10 @@ class OneOfValidator(Validator):
             return None
         if value not in self.allowed_values:
             raise ValueInvalid(
-                _('Value must be one of {}.').format(self.allowed_values), value, self)
+                _('Value must be one of {}.').format(self.allowed_values),
+                value,
+                self,
+            )
         return value
 
 

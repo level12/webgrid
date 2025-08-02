@@ -1,21 +1,21 @@
-from __future__ import absolute_import
 import datetime as dt
 from decimal import Decimal as D
 
 from flask_sqlalchemy import SQLAlchemy
 from six.moves import range
 
+
 db = SQLAlchemy()
 
 
 def load_db():
-    from webgrid_ta.model.entities import Status, Person, Email, Stopwatch
+    from webgrid_ta.model.entities import Email, Person, Status, Stopwatch
 
     db.create_all()
 
-    stat_open = Status.add_iu(label=u'open')
-    stat_pending = Status.add_iu(label=u'pending')
-    stat_closed = Status.add_iu(label=u'closed', flag_closed=1)
+    stat_open = Status.add_iu(label='open')
+    stat_pending = Status.add_iu(label='pending')
+    stat_closed = Status.add_iu(label='closed', flag_closed=1)
 
     for x in range(1, 50):
         p = Person()
@@ -39,7 +39,7 @@ def load_db():
 
     for x in range(1, 10):
         s = Stopwatch()
-        s.label = 'Watch {}'.format(x)
+        s.label = f'Watch {x}'
         s.category = 'Sports'
         base_date = dt.datetime(year=2019, month=1, day=1)
         s.start_time_lap1 = base_date + dt.timedelta(hours=x)

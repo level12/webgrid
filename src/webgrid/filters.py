@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import calendar
 import datetime as dt
 from decimal import Decimal as D
@@ -7,17 +6,16 @@ import inspect
 from blazeutils import tolist
 from blazeutils.dates import ensure_date, ensure_datetime
 from dateutil.parser import parse
-from dateutil.relativedelta import relativedelta, SU
-from sqlalchemy.sql import or_, and_
-import sqlalchemy as sa
+from dateutil.relativedelta import SU, relativedelta
 import six
+import sqlalchemy as sa
+from sqlalchemy.sql import and_, or_
 from werkzeug.datastructures import ImmutableDict
 
-from .extensions import (
-    gettext,
-    lazy_gettext as _
-)
 from . import types, validators
+from .extensions import gettext
+from .extensions import lazy_gettext as _
+
 
 try:
     import arrow
@@ -33,7 +31,7 @@ class UnrecognizedOperator(ValueError):
     pass
 
 
-class Operator(object):
+class Operator:
     """Filter operator representing name and potential inputs.
 
     See webgrid.filters.ops for a collection of predefined operators.
@@ -52,6 +50,7 @@ class Operator(object):
 
         hint (str, optional): Input field hint to show in UI. Defaults to None.
     """
+
     def __init__(self, key, display, field_type, hint=None):
         self.key = key
         self.display = display
@@ -65,7 +64,7 @@ class Operator(object):
         return hash(self.key)
 
 
-class ops(object):
+class ops:
     eq = Operator('eq', _('is'), 'input')
     not_eq = Operator('!eq', _('is not'), 'input')
     is_ = Operator('is', _('is'), 'select')
@@ -73,7 +72,7 @@ class ops(object):
     empty = Operator('empty', _('empty'), None)
     not_empty = Operator('!empty', _('not empty'), None)
     contains = Operator('contains', _('contains'), 'input')
-    not_contains = Operator('!contains', _('doesn\'t contain'), 'input')
+    not_contains = Operator('!contains', _("doesn't contain"), 'input')
     less_than_equal = Operator('lte', _('less than or equal'), 'input')
     greater_than_equal = Operator('gte', _('greater than or equal'), 'input')
     between = Operator('between', _('between'), '2inputs')
@@ -95,7 +94,7 @@ class ops(object):
     this_year = Operator('thisyear', _('this year'), None)
 
 
-class FilterBase(object):
+class FilterBase:
     """Base filter class interface for webgrid filters.
 
     Contains filter operators, inputs, render information, and the inner workings to apply
@@ -143,6 +142,7 @@ class FilterBase(object):
 
         error (bool): True if input processing encountered a validation error.
     """
+
     operators = ops.eq, ops.not_eq, ops.empty, ops.not_empty
     # one operator may be specified as the "primary", i.e. the one to select when filter is added
     # note, the renderer is responsible for using this operator
@@ -152,7 +152,7 @@ class FilterBase(object):
     # new_instance()
     init_attrs_for_instance = ()
     # current HTML renderer allows for "input", "input2", and/or "select"
-    input_types = 'input',
+    input_types = ('input',)
     # match operators to the HTML5 type(s)
     html_input_types = {}
     # does this filter take a list of values in it's set() method
@@ -160,8 +160,14 @@ class FilterBase(object):
     # does this filter apply to the HAVING clause
     is_aggregate = False
 
-    def __init__(self, sa_col=None, default_op=None, default_value1=None, default_value2=None,
-                 dialect=None):
+    def __init__(
+        self,
+        sa_col=None,
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+        dialect=None,
+    ):
         # attributes from static instance
         self.sa_col = sa_col
         self._default_op = default_op
@@ -186,14 +192,17 @@ class FilterBase(object):
         # Can't use inspect.stack() here because when called from within a Jinja template,
         # inspect.getframeinfo raises an exception
         while frame:
-            if frame.f_code.co_name != '__init__' or \
-                    not isinstance(frame.f_locals.get('self'), FilterBase):
+            if frame.f_code.co_name != '__init__' or not isinstance(
+                frame.f_locals.get('self'),
+                FilterBase,
+            ):
                 break
             outermost = inspect.getargvalues(frame)
             frame = frame.f_back
 
-        self._vargs = [outermost.locals[a] for a in outermost.args[1:]] + \
-            list(outermost.locals[outermost.varargs] if outermost.varargs else [])
+        self._vargs = [outermost.locals[a] for a in outermost.args[1:]] + list(
+            outermost.locals[outermost.varargs] if outermost.varargs else [],
+        )
 
         self._kwargs = outermost.locals[outermost.keywords] if outermost.keywords else {}
 
@@ -201,8 +210,10 @@ class FilterBase(object):
     def is_active(self):
         """Filter is active if op is set and input requirements are met."""
         operator_by_key = {op.key: op for op in self.operators}
-        return self.op is not None and not self.error and (
-            operator_by_key[self.op].field_type is None or self.value1 is not None
+        return (
+            self.op is not None
+            and not self.error
+            and (operator_by_key[self.op].field_type is None or self.value1 is not None)
         )
 
     @property
@@ -239,7 +250,7 @@ class FilterBase(object):
         if not op:
             self.default_op = self._default_op() if callable(self._default_op) else self._default_op
             self.op = self.default_op
-            self.using_default_op = (self.default_op is not None)
+            self.using_default_op = self.default_op is not None
             if self.op is None:
                 return
 
@@ -287,28 +298,25 @@ class FilterBase(object):
 
     def process(self, value, is_value2):
         """
-            Process the values as given to .set(), validating and manipulating
-            as needed.
+        Process the values as given to .set(), validating and manipulating
+        as needed.
         """
         return value
 
     def format_invalid(self, exc, col):
         """Wrapper for generating a validation error string."""
-        return '{0}: {1}'.format(
-            col.label,
-            str(exc)
-        )
+        return f'{col.label}: {str(exc)}'
 
     def get_search_expr(self):
         """
-            Filters can be used for the general "single search" function on the grid. For this to
-            work in SQL, the grid needs to pull search expressions from all filters and OR them
-            together.
+        Filters can be used for the general "single search" function on the grid. For this to
+        work in SQL, the grid needs to pull search expressions from all filters and OR them
+        together.
 
-            Return value is expected to be a callable taking one argument (the search value).
-            E.g. `lambda value: self.sa_col.like('%{}%'.format(value))`
+        Return value is expected to be a callable taking one argument (the search value).
+        E.g. `lambda value: self.sa_col.like('%{}%'.format(value))`
 
-            Return value of `None` is filtered out, essentially disabling search for the filter.
+        Return value of `None` is filtered out, essentially disabling search for the filter.
         """
         return None
 
@@ -332,8 +340,7 @@ class FilterBase(object):
     def serialize_filter_spec(self):
         return types.FilterSpec(
             operators=[self.serialize_filter_operator(op) for op in self.operators],
-            primary_op=self.serialize_filter_operator(
-                self.primary_op) if self.primary_op else None,
+            primary_op=self.serialize_filter_operator(self.primary_op) if self.primary_op else None,
         )
 
     def new_instance(self, **kwargs):
@@ -349,12 +356,10 @@ class FilterBase(object):
         return new_filter
 
     def __repr__(self):
-        return 'class={}, op={}, value1={}, value2={}'.format(
-            self.__class__.__name__, self.op, self.value1, self.value2
-        )
+        return f'class={self.__class__.__name__}, op={self.op}, value1={self.value1}, value2={self.value2}'
 
 
-class _NoValue(object):
+class _NoValue:
     pass
 
 
@@ -386,10 +391,21 @@ class OptionsFilterBase(FilterBase):
     receives_list = True
     options_from = ()
 
-    def __init__(self, sa_col, value_modifier='auto', default_op=None, default_value1=None,
-                 default_value2=None):
-        FilterBase.__init__(self, sa_col, default_op=default_op, default_value1=default_value1,
-                            default_value2=default_value2)
+    def __init__(
+        self,
+        sa_col,
+        value_modifier='auto',
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+    ):
+        FilterBase.__init__(
+            self,
+            sa_col,
+            default_op=default_op,
+            default_value1=default_value1,
+            default_value2=default_value2,
+        )
         # attributes from static instance
         self.value_modifier = value_modifier
 
@@ -402,9 +418,7 @@ class OptionsFilterBase(FilterBase):
         return types.OptionsFilterSpec(
             operators=base_spec.operators,
             primary_op=base_spec.primary_op,
-            options=[
-                self.serialize_filter_option(key, value)
-                for key, value in self.options_seq],
+            options=[self.serialize_filter_option(key, value) for key, value in self.options_seq],
         )
 
     def new_instance(self, **kwargs):
@@ -441,9 +455,14 @@ class OptionsFilterBase(FilterBase):
         # a set() operation should be converted to
         if self.value_modifier == 'auto' or self.value_modifier is None:
             if self.value_modifier and len(self.option_keys) == 0:
-                raise ValueError(_('value_modifier argument set to "auto", but '
-                                   'the options set is empty and the type can therefore not '
-                                   'be determined for {name}', name=self.__class__.__name__))
+                raise ValueError(
+                    _(
+                        'value_modifier argument set to "auto", but '
+                        'the options set is empty and the type can therefore not '
+                        'be determined for {name}',
+                        name=self.__class__.__name__,
+                    ),
+                )
             first_key = self.option_keys[0]
             if isinstance(first_key, six.string_types) or self.value_modifier is None:
                 self.value_modifier = validators.StringValidator()
@@ -455,8 +474,10 @@ class OptionsFilterBase(FilterBase):
                 self.value_modifier = validators.DecimalValidator()
             else:
                 raise TypeError(
-                    _("can't use value_modifier='auto' when option keys are {key_type}",
-                      key_type=type(first_key))
+                    _(
+                        "can't use value_modifier='auto' when option keys are {key_type}",
+                        key_type=type(first_key),
+                    ),
                 )
         else:
             # if its not the string 'auto' and its not a webgrid validator, assume
@@ -464,8 +485,10 @@ class OptionsFilterBase(FilterBase):
             if not hasattr(self.value_modifier, 'process'):
                 if not hasattr(self.value_modifier, '__call__'):
                     raise TypeError(
-                        _('value_modifier must be the string "auto", have a "process" attribute, '
-                          'or be a callable')
+                        _(
+                            'value_modifier must be the string "auto", have a "process" attribute, '
+                            'or be a callable',
+                        ),
                     )
                 self.value_modifier = validators.CustomValidator(processor=self.value_modifier)
 
@@ -486,7 +509,7 @@ class OptionsFilterBase(FilterBase):
         if not op and not self.default_op:
             return
         self.op = op or self.default_op
-        self.using_default_op = (self.default_op is not None)
+        self.using_default_op = self.default_op is not None
 
         if self.using_default_op and op is None and self.default_value1 is not None:
             values = tolist(self._default_value(self.default_value1))
@@ -531,20 +554,23 @@ class OptionsFilterBase(FilterBase):
     def match_keys_for_value(self, value):
         """Used for single-search to match search value to part of an option's display string."""
         return [
-            key for (key, _) in filter(
+            key
+            for (key, _) in filter(
                 lambda item: value.lower() in str(item[1]).lower(),
-                self.options_seq
+                self.options_seq,
             )
         ]
 
     def get_search_expr(self):
         """Match up a search value to option display, grab the corresponding keys, and search."""
+
         # The important thing to remember here is that a user will be searching for the displayed
         # value, not the key that generated it. We need to do some prep work to search options
         # to get the keys needed for lookup into the data source.
         def search(value):
             matching_keys = self.match_keys_for_value(value)
             return self.sa_col.in_(matching_keys)
+
         return search
 
     def apply(self, query):
@@ -573,10 +599,23 @@ class OptionsIntFilterBase(OptionsFilterBase):
     as the `value_modifier`.
 
     """
-    def __init__(self, sa_col, value_modifier=validators.IntValidator, default_op=None,
-                 default_value1=None, default_value2=None):
-        OptionsFilterBase.__init__(self, sa_col, value_modifier, default_op, default_value1,
-                                   default_value2)
+
+    def __init__(
+        self,
+        sa_col,
+        value_modifier=validators.IntValidator,
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+    ):
+        OptionsFilterBase.__init__(
+            self,
+            sa_col,
+            value_modifier,
+            default_op,
+            default_value1,
+            default_value2,
+        )
 
 
 class OptionsEnumFilter(OptionsFilterBase):
@@ -588,16 +627,17 @@ class OptionsEnumFilter(OptionsFilterBase):
     Notable args:
         enum_type (Enum): Python Enum type to use for options list.
     """
+
     enum_type = None
 
     def __init__(
-            self,
-            sa_col,
-            value_modifier=None,
-            default_op=None,
-            default_value1=None,
-            default_value2=None,
-            enum_type=None,
+        self,
+        sa_col,
+        value_modifier=None,
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+        enum_type=None,
     ):
         self.enum_type = enum_type or self.__class__.enum_type
 
@@ -651,6 +691,7 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
 
     def get_search_expr(self):
         """Match up a search value to option display, grab the corresponding keys, and search."""
+
         # The important thing to remember here is that a user will be searching for the displayed
         # value, not the key that generated it. We need to do some prep work to search options
         # to get the keys needed for lookup into the data source.
@@ -663,6 +704,7 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
             if matching_keys:
                 return self.sa_col.contains(matching_keys)
             return None
+
         return search
 
     def apply(self, query):
@@ -686,6 +728,7 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
 
 class TextFilter(FilterBase):
     """Filter with single freeform text input."""
+
     operators = (ops.eq, ops.not_eq, ops.contains, ops.not_contains, ops.empty, ops.not_empty)
     primary_op = ops.contains
 
@@ -706,14 +749,14 @@ class TextFilter(FilterBase):
             return {
                 ops.eq: lambda col, value: sa.func.upper(col) == sa.func.upper(value),
                 ops.not_eq: lambda col, value: sa.func.upper(col) != sa.func.upper(value),
-                ops.contains: lambda col, value: col.ilike(u'%{}%'.format(value)),
-                ops.not_contains: lambda col, value: ~col.ilike(u'%{}%'.format(value))
+                ops.contains: lambda col, value: col.ilike(f'%{value}%'),
+                ops.not_contains: lambda col, value: ~col.ilike(f'%{value}%'),
             }
         return {
             ops.eq: lambda col, value: col == value,
             ops.not_eq: lambda col, value: col != value,
-            ops.contains: lambda col, value: col.like(u'%{}%'.format(value)),
-            ops.not_contains: lambda col, value: ~col.like(u'%{}%'.format(value))
+            ops.contains: lambda col, value: col.like(f'%{value}%'),
+            ops.not_contains: lambda col, value: ~col.like(f'%{value}%'),
         }
 
     def get_search_expr(self):
@@ -723,15 +766,19 @@ class TextFilter(FilterBase):
         if self.op == self.default_op and not self.value1:
             return query
         if self.op == ops.empty:
-            return query.filter(or_(
-                self.sa_col.is_(None),
-                self.sa_col == u'',
-            ))
+            return query.filter(
+                or_(
+                    self.sa_col.is_(None),
+                    self.sa_col == '',
+                ),
+            )
         if self.op == ops.not_empty:
-            return query.filter(and_(
-                self.sa_col.isnot(None),
-                self.sa_col != u'',
-            ))
+            return query.filter(
+                and_(
+                    self.sa_col.isnot(None),
+                    self.sa_col != '',
+                ),
+            )
 
         if self.op in self.comparisons:
             return query.filter(self.comparisons[self.op](self.sa_col, self.value1))
@@ -744,14 +791,25 @@ class NumberFilterBase(FilterBase):
     Class attributes:
         validator (Validator): webgrid validator to use on input values.
     """
-    operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
-                 ops.not_between, ops.empty, ops.not_empty)
+
+    operators = (
+        ops.eq,
+        ops.not_eq,
+        ops.less_than_equal,
+        ops.greater_than_equal,
+        ops.between,
+        ops.not_between,
+        ops.empty,
+        ops.not_empty,
+    )
 
     def process(self, value, is_value2):
         if self.op == self.default_op and not value:
             return None
-        if self.op in (ops.eq, ops.not_eq, ops.less_than_equal,
-                       ops.greater_than_equal) and not is_value2:
+        if (
+            self.op in (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal)
+            and not is_value2
+        ):
             v_required = validators.RequiredValidator()
             return self.validator().process(v_required.process(value))
         if value is None or value == '':
@@ -763,7 +821,7 @@ class NumberFilterBase(FilterBase):
         # uses a LIKE. We could go nuts with things like stripping thousands separators,
         # parenthesis, monetary symbols, etc. from the search value, but then we get to deal with
         # locale.
-        return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
+        return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like(f'%{value}%')
 
     def apply(self, query):
         filter_method = query.filter if not self.is_aggregate else query.having
@@ -776,19 +834,22 @@ class NumberFilterBase(FilterBase):
 
 class IntFilter(NumberFilterBase):
     """Number filter validating inputs as integers."""
+
     validator = validators.IntValidator
 
 
 class AggregateIntFilter(IntFilter):
     """Number filter validating inputs as integers, for use on aggregate columns."""
+
     is_aggregate = True
 
 
 class NumberFilter(NumberFilterBase):
     """
-        Same as int filter, but will handle real numbers and type
-        everything as a decimal.Decimal object
+    Same as int filter, but will handle real numbers and type
+    everything as a decimal.Decimal object
     """
+
     # our process() doesn't use a validator to return, but parent class does
     validator = validators.FloatValidator
 
@@ -803,67 +864,88 @@ class NumberFilter(NumberFilterBase):
 
 class AggregateNumberFilter(NumberFilter):
     """Number filter validating inputs as Decimal, for use on aggregate columns."""
+
     is_aggregate = True
 
 
-class _DateMixin(object):
+class _DateMixin:
     options_from = [
-        (1, _('01-Jan')), (2, _('02-Feb')), (3, _('03-Mar')), (4, _('04-Apr')),
-        (5, _('05-May')), (6, _('06-Jun')), (7, _('07-Jul')), (8, _('08-Aug')),
-        (9, _('09-Sep')), (10, _('10-Oct')), (11, _('11-Nov')), (12, _('12-Dec')),
+        (1, _('01-Jan')),
+        (2, _('02-Feb')),
+        (3, _('03-Mar')),
+        (4, _('04-Apr')),
+        (5, _('05-May')),
+        (6, _('06-Jun')),
+        (7, _('07-Jul')),
+        (8, _('08-Aug')),
+        (9, _('09-Sep')),
+        (10, _('10-Oct')),
+        (11, _('11-Nov')),
+        (12, _('12-Dec')),
     ]
-    op_to_date_range = ImmutableDict({
-        # these filters can be set as default ops without input values, so don't ignore them
-        ops.this_month: lambda self, today: (
-            today + relativedelta(day=1),
-            today + relativedelta(day=1, months=+1, days=-1),
-        ),
-        ops.last_month: lambda self, today: (
-            today + relativedelta(day=1, months=-1),
-            today + relativedelta(day=1, days=-1),
-        ),
-        ops.select_month: lambda self, today: self._select_month(today),
-        ops.this_year: lambda self, today: (
-            dt.date(today.year, 1, 1),
-            dt.date(today.year, 12, 31),
-        ),
-        ops.this_week: lambda self, today: (
-            today - relativedelta(weekday=SU(-1)),
-            today + relativedelta(weekday=calendar.SATURDAY),
-        ),
-        ops.last_week: lambda self, today: (
-            today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
-            today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
-        ),
-        ops.today: lambda self, today: (today, today),
-        ops.in_past: lambda self, today: (today, today),
-        ops.in_future: lambda self, today: (today, today),
-        # ops with both dates populated
-        ops.between: lambda self, today: self._between_range(),
-        ops.not_between: lambda self, today: self._between_range(),
-        # ops with single date populated
-        ops.less_than_days_ago: lambda self, today: (
-            today - dt.timedelta(days=self.value1),
-            today,
-        ) if self.value1 is not None else (None, None),
-        ops.in_less_than_days: lambda self, today: (
-            today,
-            today + dt.timedelta(days=self.value1),
-        ) if self.value1 is not None else (None, None),
-        ops.days_ago: lambda self, today: (
-            today - dt.timedelta(days=self.value1),
-            today - dt.timedelta(days=self.value1),
-        ) if self.value1 is not None else (None, None),
-        ops.more_than_days_ago: lambda self, today: (
-            None, today - dt.timedelta(days=self.value1)
-        ) if self.value1 is not None else (None, None),
-        ops.in_days: lambda self, today: self._in_days(today),
-        ops.in_more_than_days: lambda self, today: self._in_days(today),
-        ops.eq: lambda self, today: self._equality(),
-        ops.not_eq: lambda self, today: self._equality(),
-        ops.less_than_equal: lambda self, today: self._equality(),
-        ops.greater_than_equal: lambda self, today: self._equality(),
-    })
+    op_to_date_range = ImmutableDict(
+        {
+            # these filters can be set as default ops without input values, so don't ignore them
+            ops.this_month: lambda self, today: (
+                today + relativedelta(day=1),
+                today + relativedelta(day=1, months=+1, days=-1),
+            ),
+            ops.last_month: lambda self, today: (
+                today + relativedelta(day=1, months=-1),
+                today + relativedelta(day=1, days=-1),
+            ),
+            ops.select_month: lambda self, today: self._select_month(today),
+            ops.this_year: lambda self, today: (
+                dt.date(today.year, 1, 1),
+                dt.date(today.year, 12, 31),
+            ),
+            ops.this_week: lambda self, today: (
+                today - relativedelta(weekday=SU(-1)),
+                today + relativedelta(weekday=calendar.SATURDAY),
+            ),
+            ops.last_week: lambda self, today: (
+                today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
+                today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
+            ),
+            ops.today: lambda self, today: (today, today),
+            ops.in_past: lambda self, today: (today, today),
+            ops.in_future: lambda self, today: (today, today),
+            # ops with both dates populated
+            ops.between: lambda self, today: self._between_range(),
+            ops.not_between: lambda self, today: self._between_range(),
+            # ops with single date populated
+            ops.less_than_days_ago: lambda self, today: (
+                today - dt.timedelta(days=self.value1),
+                today,
+            )
+            if self.value1 is not None
+            else (None, None),
+            ops.in_less_than_days: lambda self, today: (
+                today,
+                today + dt.timedelta(days=self.value1),
+            )
+            if self.value1 is not None
+            else (None, None),
+            ops.days_ago: lambda self, today: (
+                today - dt.timedelta(days=self.value1),
+                today - dt.timedelta(days=self.value1),
+            )
+            if self.value1 is not None
+            else (None, None),
+            ops.more_than_days_ago: lambda self, today: (
+                None,
+                today - dt.timedelta(days=self.value1),
+            )
+            if self.value1 is not None
+            else (None, None),
+            ops.in_days: lambda self, today: self._in_days(today),
+            ops.in_more_than_days: lambda self, today: self._in_days(today),
+            ops.eq: lambda self, today: self._equality(),
+            ops.not_eq: lambda self, today: self._equality(),
+            ops.less_than_equal: lambda self, today: self._equality(),
+            ops.greater_than_equal: lambda self, today: self._equality(),
+        },
+    )
 
     @property
     def options_seq(self):
@@ -879,14 +961,11 @@ class _DateMixin(object):
             ops.less_than_equal.key,
             ops.greater_than_equal.key,
             ops.between.key,
-            ops.not_between.key
+            ops.not_between.key,
         ):
             # !!!: localize
             self.value1_set_with = self.value1.strftime('%Y-%m-%d')
-        if isinstance(self.value2, dt.date) and self.op in (
-            ops.between.key,
-            ops.not_between.key
-        ):
+        if isinstance(self.value2, dt.date) and self.op in (ops.between.key, ops.not_between.key):
             # !!!: localize
             self.value2_set_with = self.value2.strftime('%Y-%m-%d')
 
@@ -920,9 +999,10 @@ class _DateMixin(object):
     def _description_data(self):
         today = self._get_today()
 
-        first_day, last_day = self.op_to_date_range.get(
-            self.op, lambda self, today: (None, None)
-        )(self, today)
+        first_day, last_day = self.op_to_date_range.get(self.op, lambda self, today: (None, None))(
+            self,
+            today,
+        )
 
         prefix = {
             ops.more_than_days_ago: _('before '),
@@ -940,17 +1020,15 @@ class _DateMixin(object):
     @property
     def description(self):
         """
-            String description of the filter operation and values
-            - Useful for Excel reports
+        String description of the filter operation and values
+        - Useful for Excel reports
         """
 
         # simple cases
         if self.error:
             return _('invalid')
         elif self.op == ops.select_month:
-            if not (
-                isinstance(self.value1, int) and isinstance(self.value2, int)
-            ):
+            if not (isinstance(self.value1, int) and isinstance(self.value2, int)):
                 return _('All')
             if self.value1 < 1 or self.value1 > 12:
                 return self.value2
@@ -964,34 +1042,35 @@ class _DateMixin(object):
         first_day, last_day, prefix = self._description_data()
 
         if not first_day and (
-            not self.op or (
-                self.default_op == self.op and (
-                    self.value2 is None and self.value1 is None
-                )
-            )
+            not self.op
+            or (self.default_op == self.op and (self.value2 is None and self.value1 is None))
         ):
             return _('all')
 
         if self.op in (
-            ops.today, ops.eq, ops.not_eq, ops.less_than_equal,
-            ops.greater_than_equal, ops.days_ago, ops.in_past, ops.in_future,
+            ops.today,
+            ops.eq,
+            ops.not_eq,
+            ops.less_than_equal,
+            ops.greater_than_equal,
+            ops.days_ago,
+            ops.in_past,
+            ops.in_future,
         ):
             # !!!: localize
-            return _('{descriptor}{date}',
-                     descriptor=prefix,
-                     date=first_day.strftime('%m/%d/%Y'))
+            return _('{descriptor}{date}', descriptor=prefix, date=first_day.strftime('%m/%d/%Y'))
         elif last_day and first_day:
             # !!!: localize dates
-            return _('{descriptor}{first_date} - {second_date}',
-                     descriptor=prefix,
-                     first_date=first_day.strftime('%m/%d/%Y'),
-                     second_date=last_day.strftime('%m/%d/%Y'))
+            return _(
+                '{descriptor}{first_date} - {second_date}',
+                descriptor=prefix,
+                first_date=first_day.strftime('%m/%d/%Y'),
+                second_date=last_day.strftime('%m/%d/%Y'),
+            )
         else:
             # !!!: localize
             target_date = first_day if first_day else last_day
-            return _('{descriptor}{date}',
-                     descriptor=prefix,
-                     date=target_date.strftime('%m/%d/%Y'))
+            return _('{descriptor}{date}', descriptor=prefix, date=target_date.strftime('%m/%d/%Y'))
 
     def valid_date_for_backend(self, value):
         """
@@ -1035,18 +1114,16 @@ class _DateMixin(object):
         date_comparator = date_comparator or (lambda value: self.sa_col == value)
 
         def expr(value):
-            base_expr = sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
+            base_expr = sa.sql.cast(self.sa_col, sa.Unicode).like(f'%{value}%')
             try:
                 date_value = parse(value)
                 if not self.valid_date_for_backend(date_value):
                     return base_expr
-                return or_(
-                    base_expr,
-                    date_comparator(date_value)
-                )
+                return or_(base_expr, date_comparator(date_value))
             except (ValueError, OverflowError):
                 pass
             return base_expr
+
         return expr
 
     def serialize_filter_spec(self):
@@ -1054,56 +1131,62 @@ class _DateMixin(object):
         return types.OptionsFilterSpec(
             operators=base_spec.operators,
             primary_op=base_spec.primary_op,
-            options=[
-                self.serialize_filter_option(key, value)
-                for key, value in self.options_seq],
+            options=[self.serialize_filter_option(key, value) for key, value in self.options_seq],
         )
 
 
 class _DateOpQueryMixin:
-    op_to_query = ImmutableDict({
-        ops.today: lambda self, query, today: query.filter(
-            self.sa_col == today
-        ),
-        ops.in_past: lambda self, query, today: query.filter(self.sa_col < today),
-        ops.in_future: lambda self, query, today: query.filter(self.sa_col > today),
-        ops.this_week: lambda self, query, today: query.filter(self.sa_col.between(
-            today - relativedelta(weekday=SU(-1)),
-            today + relativedelta(weekday=calendar.SATURDAY),
-        )),
-        ops.last_week: lambda self, query, today: query.filter(self.sa_col.between(
-            today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
-            today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
-        )),
-        ops.select_month: lambda self, query, today: (
-            self._month_year_filter(query) if self.value1 and self.value2 else query
-        ),
-        ops.this_month: lambda self, query, today: self._month_year_filter(query),
-        ops.last_month: lambda self, query, today: self._month_year_filter(query),
-        ops.this_year: lambda self, query, today: self._month_year_filter(query),
-        ops.between: lambda self, query, today: query.filter(self._between_clause()),
-        ops.not_between: lambda self, query, today: query.filter(~self._between_clause()),
-        ops.days_ago: lambda self, query, today: query.filter(
-            self.sa_col == today - dt.timedelta(days=self.value1)
-        ),
-        ops.less_than_days_ago: lambda self, query, today: query.filter(and_(
-            self.sa_col > today - dt.timedelta(days=self.value1),
-            self.sa_col <= today,
-        )),
-        ops.more_than_days_ago: lambda self, query, today: query.filter(
-            self.sa_col < today - dt.timedelta(days=self.value1)
-        ),
-        ops.in_days: lambda self, query, today: query.filter(
-            self.sa_col == today + dt.timedelta(days=self.value1)
-        ),
-        ops.in_less_than_days: lambda self, query, today: query.filter(and_(
-            self.sa_col >= today,
-            self.sa_col < today + dt.timedelta(days=self.value1),
-        )),
-        ops.in_more_than_days: lambda self, query, today: query.filter(
-            self.sa_col > today + dt.timedelta(days=self.value1)
-        ),
-    })
+    op_to_query = ImmutableDict(
+        {
+            ops.today: lambda self, query, today: query.filter(self.sa_col == today),
+            ops.in_past: lambda self, query, today: query.filter(self.sa_col < today),
+            ops.in_future: lambda self, query, today: query.filter(self.sa_col > today),
+            ops.this_week: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    today - relativedelta(weekday=SU(-1)),
+                    today + relativedelta(weekday=calendar.SATURDAY),
+                ),
+            ),
+            ops.last_week: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
+                    today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
+                ),
+            ),
+            ops.select_month: lambda self, query, today: (
+                self._month_year_filter(query) if self.value1 and self.value2 else query
+            ),
+            ops.this_month: lambda self, query, today: self._month_year_filter(query),
+            ops.last_month: lambda self, query, today: self._month_year_filter(query),
+            ops.this_year: lambda self, query, today: self._month_year_filter(query),
+            ops.between: lambda self, query, today: query.filter(self._between_clause()),
+            ops.not_between: lambda self, query, today: query.filter(~self._between_clause()),
+            ops.days_ago: lambda self, query, today: query.filter(
+                self.sa_col == today - dt.timedelta(days=self.value1),
+            ),
+            ops.less_than_days_ago: lambda self, query, today: query.filter(
+                and_(
+                    self.sa_col > today - dt.timedelta(days=self.value1),
+                    self.sa_col <= today,
+                ),
+            ),
+            ops.more_than_days_ago: lambda self, query, today: query.filter(
+                self.sa_col < today - dt.timedelta(days=self.value1),
+            ),
+            ops.in_days: lambda self, query, today: query.filter(
+                self.sa_col == today + dt.timedelta(days=self.value1),
+            ),
+            ops.in_less_than_days: lambda self, query, today: query.filter(
+                and_(
+                    self.sa_col >= today,
+                    self.sa_col < today + dt.timedelta(days=self.value1),
+                ),
+            ),
+            ops.in_more_than_days: lambda self, query, today: query.filter(
+                self.sa_col > today + dt.timedelta(days=self.value1),
+            ),
+        },
+    )
 
     def _get_today(self):
         # this filter is date-only, so our "now" is a date without time
@@ -1131,21 +1214,51 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
         of the true `datetime.now()`. Defaults to None.
     """
+
     operators = (
-        ops.eq, ops.not_eq, ops.in_past, ops.in_future, ops.less_than_equal,
-        ops.greater_than_equal, ops.between, ops.not_between,
-        ops.days_ago, ops.less_than_days_ago, ops.more_than_days_ago,
-        ops.today, ops.this_week, ops.last_week, ops.in_days, ops.in_less_than_days,
-        ops.in_more_than_days, ops.empty, ops.not_empty, ops.this_month,
-        ops.last_month, ops.select_month, ops.this_year
+        ops.eq,
+        ops.not_eq,
+        ops.in_past,
+        ops.in_future,
+        ops.less_than_equal,
+        ops.greater_than_equal,
+        ops.between,
+        ops.not_between,
+        ops.days_ago,
+        ops.less_than_days_ago,
+        ops.more_than_days_ago,
+        ops.today,
+        ops.this_week,
+        ops.last_week,
+        ops.in_days,
+        ops.in_less_than_days,
+        ops.in_more_than_days,
+        ops.empty,
+        ops.not_empty,
+        ops.this_month,
+        ops.last_month,
+        ops.select_month,
+        ops.this_year,
     )
     days_operators = (
-        ops.days_ago, ops.less_than_days_ago, ops.more_than_days_ago,
-        ops.in_less_than_days, ops.in_more_than_days, ops.in_days
+        ops.days_ago,
+        ops.less_than_days_ago,
+        ops.more_than_days_ago,
+        ops.in_less_than_days,
+        ops.in_more_than_days,
+        ops.in_days,
     )
     no_value_operators = (
-        ops.empty, ops.not_empty, ops.today, ops.this_week, ops.last_week, ops.this_month,
-        ops.last_month, ops.this_year, ops.in_past, ops.in_future,
+        ops.empty,
+        ops.not_empty,
+        ops.today,
+        ops.this_week,
+        ops.last_week,
+        ops.this_month,
+        ops.last_month,
+        ops.this_year,
+        ops.in_past,
+        ops.in_future,
     )
     input_types = 'input', 'select', 'input2'
     html_input_types = {
@@ -1157,12 +1270,23 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         ops.not_between: 'date',
     }
 
-    def __init__(self, sa_col, _now=None, default_op=None, default_value1=None,
-                 default_value2=None):
+    def __init__(
+        self,
+        sa_col,
+        _now=None,
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+    ):
         self.first_day = None
         self.last_day = None
-        FilterBase.__init__(self, sa_col, default_op=default_op, default_value1=default_value1,
-                            default_value2=default_value2)
+        FilterBase.__init__(
+            self,
+            sa_col,
+            default_op=default_op,
+            default_value1=default_value1,
+            default_value2=default_value2,
+        )
         # attributes from static instance
         self._now = _now
 
@@ -1185,7 +1309,8 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         # store first/last day for customized usage
         today = self._get_today()
         self.first_day, self.last_day = self.op_to_date_range.get(
-            self.op, lambda self, today: (None, None)
+            self.op,
+            lambda self, today: (None, None),
         )(self, today)
 
     def apply(self, query):
@@ -1200,8 +1325,15 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             filtered_query = super().apply(query)
 
         if self.op in (
-            ops.today, ops.this_week, ops.last_week, ops.select_month, ops.this_month,
-            ops.last_month, ops.this_year, ops.in_past, ops.in_future,
+            ops.today,
+            ops.this_week,
+            ops.last_week,
+            ops.select_month,
+            ops.this_month,
+            ops.last_month,
+            ops.this_year,
+            ops.in_past,
+            ops.in_future,
         ):
             return filtered_query
 
@@ -1225,15 +1357,21 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             try:
                 self._get_today() - dt.timedelta(days=filter_value)
             except OverflowError:
-                raise validators.ValueInvalid(gettext('date filter given is out of range'),
-                                              value, self)
+                raise validators.ValueInvalid(
+                    gettext('date filter given is out of range'),
+                    value,
+                    self,
+                )
 
         if self.op in (ops.in_days, ops.in_less_than_days, ops.in_more_than_days):
             try:
                 self._get_today() + dt.timedelta(days=filter_value)
             except OverflowError:
-                raise validators.ValueInvalid(gettext('date filter given is out of range'),
-                                              value, self)
+                raise validators.ValueInvalid(
+                    gettext('date filter given is out of range'),
+                    value,
+                    self,
+                )
 
         return filter_value
 
@@ -1295,6 +1433,7 @@ class DateTimeFilter(DateFilter):
         _now (datetime, optional): Useful for testing, supplies a date the filter will use instead
         of the true `datetime.now()`. Defaults to None.
     """
+
     html_input_types = {
         ops.eq: 'datetime-local',
         ops.not_eq: 'datetime-local',
@@ -1303,105 +1442,145 @@ class DateTimeFilter(DateFilter):
         ops.between: 'datetime-local',
         ops.not_between: 'datetime-local',
     }
-    op_to_query = ImmutableDict({**DateFilter.op_to_query, **{
-        ops.today: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today),
-            ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
-        )),
-        ops.in_past: lambda self, query, today: query.filter(
-            self.sa_col < ensure_datetime(today),
-        ),
-        ops.in_future: lambda self, query, today: query.filter(
-            self.sa_col > ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
-        ),
-        ops.this_week: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today - relativedelta(weekday=SU(-1))),
-            ensure_datetime(
-                today + relativedelta(weekday=calendar.SATURDAY),
-                time_part=dt.time(23, 59, 59, 999999)
+    op_to_query = ImmutableDict(
+        {
+            **DateFilter.op_to_query,
+            ops.today: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today),
+                    ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
+                ),
             ),
-        )),
-        ops.last_week: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today - relativedelta(weekday=SU(-1)) - relativedelta(days=7)),
-            ensure_datetime(
-                today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
-                time_part=dt.time(23, 59, 59, 999999)
+            ops.in_past: lambda self, query, today: query.filter(
+                self.sa_col < ensure_datetime(today),
             ),
-        )),
-        ops.this_month: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today + relativedelta(day=1)),
-            today + relativedelta(day=1, months=+1, microseconds=-1),
-        )),
-        ops.last_month: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today + relativedelta(day=1, months=-1)),
-            today + relativedelta(day=1, microseconds=-1),
-        )),
-        ops.this_year: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today + relativedelta(day=1, month=1)),
-            today + relativedelta(day=31, month=12, days=1, microseconds=-1),
-        )),
-        ops.select_month: lambda self, query, today: (
-            query.filter(self.sa_col.between(
-                ensure_datetime(self.first_day),
-                self.last_day + relativedelta(days=1, microseconds=-1),
-            )) if self.value2 else query
-        ),
-        ops.days_ago: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today - dt.timedelta(days=self.value1)),
-            ensure_datetime(
-                today - dt.timedelta(days=self.value1),
-                time_part=dt.time(23, 59, 59, 999999)
+            ops.in_future: lambda self, query, today: query.filter(
+                self.sa_col > ensure_datetime(today, time_part=dt.time(23, 59, 59, 999999)),
             ),
-        )),
-        ops.less_than_days_ago: lambda self, query, today: query.filter(and_(
-            self.sa_col > ensure_datetime(today - dt.timedelta(days=self.value1),
-                                          time_part=dt.time(23, 59, 59, 999999)),
-            self.sa_col <= self._get_now()
-        )),
-        ops.more_than_days_ago: lambda self, query, today: query.filter(
-            self.sa_col < ensure_datetime(today - dt.timedelta(days=self.value1))
-        ),
-        ops.in_days: lambda self, query, today: query.filter(self.sa_col.between(
-            ensure_datetime(today + dt.timedelta(days=self.value1)),
-            ensure_datetime(
-                today + dt.timedelta(days=self.value1), time_part=dt.time(23, 59, 59, 999999)
+            ops.this_week: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today - relativedelta(weekday=SU(-1))),
+                    ensure_datetime(
+                        today + relativedelta(weekday=calendar.SATURDAY),
+                        time_part=dt.time(23, 59, 59, 999999),
+                    ),
+                ),
             ),
-        )),
-        ops.in_less_than_days: lambda self, query, today: query.filter(and_(
-            self.sa_col >= self._get_now(),
-            self.sa_col < ensure_datetime(today + dt.timedelta(days=self.value1)),
-        )),
-        ops.in_more_than_days: lambda self, query, today: query.filter(
-            self.sa_col > ensure_datetime(
-                today + dt.timedelta(days=self.value1),
-                time_part=dt.time(23, 59, 59, 999999)
+            ops.last_week: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(
+                        today - relativedelta(weekday=SU(-1)) - relativedelta(days=7),
+                    ),
+                    ensure_datetime(
+                        today + relativedelta(weekday=calendar.SATURDAY) - relativedelta(days=7),
+                        time_part=dt.time(23, 59, 59, 999999),
+                    ),
+                ),
+            ),
+            ops.this_month: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today + relativedelta(day=1)),
+                    today + relativedelta(day=1, months=+1, microseconds=-1),
+                ),
+            ),
+            ops.last_month: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today + relativedelta(day=1, months=-1)),
+                    today + relativedelta(day=1, microseconds=-1),
+                ),
+            ),
+            ops.this_year: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today + relativedelta(day=1, month=1)),
+                    today + relativedelta(day=31, month=12, days=1, microseconds=-1),
+                ),
+            ),
+            ops.select_month: lambda self, query, today: (
+                query.filter(
+                    self.sa_col.between(
+                        ensure_datetime(self.first_day),
+                        self.last_day + relativedelta(days=1, microseconds=-1),
+                    ),
+                )
+                if self.value2
+                else query
+            ),
+            ops.days_ago: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today - dt.timedelta(days=self.value1)),
+                    ensure_datetime(
+                        today - dt.timedelta(days=self.value1),
+                        time_part=dt.time(23, 59, 59, 999999),
+                    ),
+                ),
+            ),
+            ops.less_than_days_ago: lambda self, query, today: query.filter(
+                and_(
+                    self.sa_col
+                    > ensure_datetime(
+                        today - dt.timedelta(days=self.value1),
+                        time_part=dt.time(23, 59, 59, 999999),
+                    ),
+                    self.sa_col <= self._get_now(),
+                ),
+            ),
+            ops.more_than_days_ago: lambda self, query, today: query.filter(
+                self.sa_col < ensure_datetime(today - dt.timedelta(days=self.value1)),
+            ),
+            ops.in_days: lambda self, query, today: query.filter(
+                self.sa_col.between(
+                    ensure_datetime(today + dt.timedelta(days=self.value1)),
+                    ensure_datetime(
+                        today + dt.timedelta(days=self.value1),
+                        time_part=dt.time(23, 59, 59, 999999),
+                    ),
+                ),
+            ),
+            ops.in_less_than_days: lambda self, query, today: query.filter(
+                and_(
+                    self.sa_col >= self._get_now(),
+                    self.sa_col < ensure_datetime(today + dt.timedelta(days=self.value1)),
+                ),
+            ),
+            ops.in_more_than_days: lambda self, query, today: query.filter(
+                self.sa_col
+                > ensure_datetime(
+                    today + dt.timedelta(days=self.value1),
+                    time_part=dt.time(23, 59, 59, 999999),
+                ),
+            ),
+            ops.eq: lambda self, query, today: (query.filter(self._eq_clause())),
+            ops.not_eq: lambda self, query, today: (query.filter(~self._eq_clause())),
+            ops.less_than_equal: lambda self, query, today: query.filter(
+                self.sa_col
+                <= ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999)),
             )
-        ),
-        ops.eq: lambda self, query, today: (
-            query.filter(self._eq_clause())
-        ),
-        ops.not_eq: lambda self, query, today: (
-            query.filter(~self._eq_clause())
-        ),
-        ops.less_than_equal: lambda self, query, today: query.filter(
-            self.sa_col <= ensure_datetime(
-                self.value1.date(), time_part=dt.time(23, 59, 59, 999999)
-            )
-        ) if self._has_date_only1 else None,
-        ops.between: lambda self, query, today: query.filter(self._between_clause()),
-        ops.not_between: lambda self, query, today: query.filter(~self._between_clause()),
-    }})
+            if self._has_date_only1
+            else None,
+            ops.between: lambda self, query, today: query.filter(self._between_clause()),
+            ops.not_between: lambda self, query, today: query.filter(~self._between_clause()),
+        },
+    )
 
-    def __init__(self, sa_col, _now=None, default_op=None, default_value1=None,
-                 default_value2=None):
+    def __init__(
+        self,
+        sa_col,
+        _now=None,
+        default_op=None,
+        default_value1=None,
+        default_value2=None,
+    ):
         self._has_date_only1 = self._has_date_only2 = False
-        super(DateTimeFilter, self).__init__(sa_col, _now=_now, default_op=default_op,
-                                             default_value1=default_value1,
-                                             default_value2=default_value2)
+        super(DateTimeFilter, self).__init__(
+            sa_col,
+            _now=_now,
+            default_op=default_op,
+            default_value1=default_value1,
+            default_value2=default_value2,
+        )
 
     def check_arrow_type(self):
         """DateTimeFilter has no problems with ArrowType. Pass this case through."""
-        pass
 
     def format_display_vals(self):
         ops_single_val = (
@@ -1410,10 +1589,7 @@ class DateTimeFilter(DateFilter):
             ops.less_than_equal.key,
             ops.greater_than_equal.key,
         )
-        ops_double_val = (
-            ops.between.key,
-            ops.not_between.key
-        )
+        ops_double_val = (ops.between.key, ops.not_between.key)
         if isinstance(self.value1, dt.datetime) and self.op in ops_single_val + ops_double_val:
             # !!!: localize
             self.value1_set_with = self.value1.strftime('%Y-%m-%dT%H:%M')
@@ -1429,8 +1605,7 @@ class DateTimeFilter(DateFilter):
 
     def _between_clause(self):
         if self._has_date_only2:
-            right_side = ensure_datetime(self.value2.date(),
-                                         time_part=dt.time(23, 59, 59, 999999))
+            right_side = ensure_datetime(self.value2.date(), time_part=dt.time(23, 59, 59, 999999))
         elif self.value2.second == 0 and self.value2.microsecond == 0:
             right_side = self.value2 + dt.timedelta(seconds=59, microseconds=999999)
         else:
@@ -1505,7 +1680,7 @@ class DateTimeFilter(DateFilter):
             dt_value.hour == 0
             and dt_value.minute == 0
             and dt_value.second == 0
-            and '00:00' not in value
+            and '00:00' not in value,
         )
 
     def get_search_expr(self):
@@ -1524,8 +1699,17 @@ class DateTimeFilter(DateFilter):
 
 class TimeFilter(FilterBase):
     """Time filter with one or two freeform inputs."""
-    operators = (ops.eq, ops.not_eq, ops.less_than_equal, ops.greater_than_equal, ops.between,
-                 ops.not_between, ops.empty, ops.not_empty)
+
+    operators = (
+        ops.eq,
+        ops.not_eq,
+        ops.less_than_equal,
+        ops.greater_than_equal,
+        ops.between,
+        ops.not_between,
+        ops.empty,
+        ops.not_empty,
+    )
     input_types = 'input', 'input2'
     html_input_types = {
         ops.eq: 'time',
@@ -1560,7 +1744,7 @@ class TimeFilter(FilterBase):
                     dt.datetime.combine(dt.date.today(), self.value1)
                     + dt.timedelta(seconds=59, microseconds=999999)
                 ).time(),
-                sa.Time
+                sa.Time,
             )
 
         if self.op == ops.eq:
@@ -1590,7 +1774,7 @@ class TimeFilter(FilterBase):
     def get_search_expr(self, date_comparator=None):
         # This is a naive implementation that simply converts the time column to string and
         # uses a LIKE.
-        return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like('%{}%'.format(value))
+        return lambda value: sa.sql.cast(self.sa_col, sa.Unicode).like(f'%{value}%')
 
 
 class YesNoFilter(FilterBase):
@@ -1598,16 +1782,13 @@ class YesNoFilter(FilterBase):
 
     No inputs, just the all/yes/no operators.
     """
-    class ops(object):
+
+    class ops:
         all = Operator('a', _('all'), None)
         yes = Operator('y', _('yes'), None)
         no = Operator('n', _('no'), None)
 
-    operators = (
-        ops.all,
-        ops.yes,
-        ops.no
-    )
+    operators = (ops.all, ops.yes, ops.no)
     primary_op = ops.yes
 
     def get_search_expr(self):
@@ -1617,6 +1798,7 @@ class YesNoFilter(FilterBase):
             elif value.lower() in self.ops.no.display:
                 return self.sa_col == sa.false()
             return None
+
         return expr
 
     def apply(self, query):

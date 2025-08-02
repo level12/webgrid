@@ -1,14 +1,14 @@
-from __future__ import absolute_import
 import json
 
 import flask
 
 from webgrid import extensions, renderers
 
+
 try:
     from morphi.helpers.jinja import configure_jinja_environment
 except ImportError:
-    configure_jinja_environment = lambda *args, **kwargs: None  # noqa: E731
+    configure_jinja_environment = lambda *args, **kwargs: None
 
 
 class WebGrid(extensions.FrameworkManager):
@@ -38,16 +38,28 @@ class WebGrid(extensions.FrameworkManager):
         Default "webgrid". Needs to be unique if multiple managers are initialized as flask
         extensions.
     """
+
     blueprint_name = 'webgrid'
     blueprint_class = flask.Blueprint
 
-    def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None,
-                 blueprint_name=None, blueprint_class=None):
+    def __init__(
+        self,
+        db=None,
+        jinja_loader=None,
+        args_loaders=None,
+        session_max_hours=None,
+        blueprint_name=None,
+        blueprint_class=None,
+    ):
         self.blueprint_name = blueprint_name or self.blueprint_name
         self.blueprint_class = blueprint_class or self.blueprint_class
         self._registered_grids = {}
-        super().__init__(db=db, jinja_loader=jinja_loader, args_loaders=args_loaders,
-                         session_max_hours=session_max_hours)
+        super().__init__(
+            db=db,
+            jinja_loader=jinja_loader,
+            args_loaders=args_loaders,
+            session_max_hours=session_max_hours,
+        )
 
     def init_db(self, db):
         """Set the db connector."""
@@ -72,6 +84,7 @@ class WebGrid(extensions.FrameworkManager):
     def csrf_token(self):
         """Return a CSRF token for POST."""
         from flask_wtf.csrf import generate_csrf
+
         return generate_csrf()
 
     def web_session(self):
@@ -96,7 +109,7 @@ class WebGrid(extensions.FrameworkManager):
 
     def static_url(self, url_tail):
         """Construct static URL from webgrid blueprint."""
-        return flask.url_for('{}.static'.format(self.blueprint_name), filename=url_tail)
+        return flask.url_for(f'{self.blueprint_name}.static', filename=url_tail)
 
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets."""
@@ -104,7 +117,7 @@ class WebGrid(extensions.FrameworkManager):
             self.blueprint_name,
             __name__,
             static_folder='static',
-            static_url_path=app.static_url_path + '/webgrid'
+            static_url_path=app.static_url_path + '/webgrid',
         )
 
     def init_app(self, app):
@@ -115,9 +128,13 @@ class WebGrid(extensions.FrameworkManager):
 
     def file_as_response(self, data_stream, file_name, mime_type):
         """Return response from framework for sending a file."""
-        as_attachment = (file_name is not None)
-        return flask.send_file(data_stream, mimetype=mime_type, as_attachment=as_attachment,
-                               download_name=file_name)
+        as_attachment = file_name is not None
+        return flask.send_file(
+            data_stream,
+            mimetype=mime_type,
+            as_attachment=as_attachment,
+            download_name=file_name,
+        )
 
 
 class WebGridAPI(WebGrid):
@@ -147,18 +164,32 @@ class WebGridAPI(WebGrid):
         Default "/webgrid-api". By default, ``api_route`` uses this to construct
         "/webgrid-api/<grid_ident>".
     """
+
     blueprint_name = 'webgrid-api'
     api_route_prefix = '/webgrid-api'
-    args_loaders = (extensions.RequestJsonLoader, )
+    args_loaders = (extensions.RequestJsonLoader,)
     csrf_protection = False
 
-    def __init__(self, db=None, jinja_loader=None, args_loaders=None, session_max_hours=None,
-                 blueprint_name=None, blueprint_class=None, api_route_prefix=None):
+    def __init__(
+        self,
+        db=None,
+        jinja_loader=None,
+        args_loaders=None,
+        session_max_hours=None,
+        blueprint_name=None,
+        blueprint_class=None,
+        api_route_prefix=None,
+    ):
         self.api_route_prefix = api_route_prefix or self.api_route_prefix
         self._registered_grids = {}
-        super().__init__(db=db, jinja_loader=jinja_loader, args_loaders=args_loaders,
-                         session_max_hours=session_max_hours, blueprint_name=blueprint_name,
-                         blueprint_class=blueprint_class)
+        super().__init__(
+            db=db,
+            jinja_loader=jinja_loader,
+            args_loaders=args_loaders,
+            session_max_hours=session_max_hours,
+            blueprint_name=blueprint_name,
+            blueprint_class=blueprint_class,
+        )
 
     def init_blueprint(self, app):
         """Create a blueprint for webgrid assets and set up a generic API endpoint."""
@@ -168,17 +199,15 @@ class WebGridAPI(WebGrid):
         if not self.csrf_protection and app.extensions.get('csrf'):
             app.extensions['csrf'].exempt(blueprint)
 
-        blueprint.route(self.api_route, methods=('POST', ))(
-            self.api_view_method
-        )
-        blueprint.route(self.api_route + '/count', methods=('POST', ))(
-            self.api_count_view_method
-        )
+        blueprint.route(self.api_route, methods=('POST',))(self.api_view_method)
+        blueprint.route(self.api_route + '/count', methods=('POST',))(self.api_count_view_method)
 
         if app.config.get('TESTING'):
-            @blueprint.route(self.api_route_prefix + '/testing/__csrf__', methods=('GET', ))
+
+            @blueprint.route(self.api_route_prefix + '/testing/__csrf__', methods=('GET',))
             def csrf_get():
                 from flask_wtf.csrf import generate_csrf
+
                 return generate_csrf()
 
         return blueprint
@@ -208,7 +237,6 @@ class WebGridAPI(WebGrid):
 
     def api_init_grid_post(self, grid):
         """Hook to run API-level init on every grid after instantiation"""
-        pass
 
     def api_on_render_limit_exceeded(self, grid):
         """Export failed due to number of records. Returns a JSON response."""

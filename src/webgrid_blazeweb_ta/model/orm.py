@@ -1,9 +1,9 @@
 from blazeutils.strings import randchars
 import sqlalchemy as sa
-
-from sqlalchemybwc import db
-from sqlalchemybwc.lib.declarative import declarative_base, DefaultMixin
 import sqlalchemy.orm as saorm
+from sqlalchemybwc import db
+from sqlalchemybwc.lib.declarative import DefaultMixin, declarative_base
+
 
 Base = declarative_base()
 

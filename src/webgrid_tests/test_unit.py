@@ -1,37 +1,38 @@
-from __future__ import absolute_import
-
 import datetime as dt
-import json
-import re
 from decimal import Decimal
+import json
 from os import path
+import re
+from unittest import mock
+from unittest.mock import MagicMock
 
 import arrow
 import flask
 import pytest
-from unittest import mock
-from unittest.mock import MagicMock
 import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 
-from webgrid import Column, BoolColumn, YesNoColumn
+from webgrid import BoolColumn, Column, YesNoColumn
 from webgrid.extensions import (
     CustomJsonEncoder,
     RequestArgsLoader,
     RequestFormLoader,
     RequestJsonLoader,
     WebSessionArgsLoader,
-    lazy_gettext as _
 )
-from webgrid.filters import FilterBase, TextFilter, IntFilter, AggregateIntFilter
-from webgrid.testing import assert_in_query, assert_not_in_query
-from webgrid_ta.model.entities import Person, Status, Stopwatch, db
-from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
-from .helpers import _inrequest
+from webgrid.extensions import (
+    lazy_gettext as _,
+)
+from webgrid.filters import AggregateIntFilter, FilterBase, IntFilter, TextFilter
 from webgrid.renderers import CSV
+from webgrid.testing import assert_in_query, assert_not_in_query
+from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
+from webgrid_ta.model.entities import Person, Status, Stopwatch, db
+
+from .helpers import _inrequest
 
 
-class TestGrid(object):
+class TestGrid:
     class TG(Grid):
         Column('First Name', Person.firstname)
 
@@ -55,7 +56,7 @@ class TestGrid(object):
 
     def test_static_path(self):
         g = self.TG()
-        assert g.manager.static_path().endswith('webgrid{}static'.format(path.sep))
+        assert g.manager.static_path().endswith(f'webgrid{path.sep}static')
 
     def test_column_key(self):
         g = self.TG()
@@ -89,6 +90,7 @@ class TestGrid(object):
     def test_base_query(self):
         class CTG(Grid):
             Column('First Name', Person.firstname)
+
         g = CTG()
         query = g.build_query()
         assert_not_in_query(query, 'WHERE')
@@ -117,6 +119,7 @@ class TestGrid(object):
             class CTG(Grid):
                 subtotals = subtotals_val
                 Column('Sum Total', Person.numericcol.label('something'), has_subtotal='sum')
+
             return CTG
 
         Person.testing_create(numericcol=5)
@@ -136,6 +139,7 @@ class TestGrid(object):
         class CTG(Grid):
             subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal=True)
+
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
         g = CTG()
@@ -154,6 +158,7 @@ class TestGrid(object):
         class CTG(Grid):
             subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal='sum')
+
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
         g = CTG()
@@ -164,6 +169,7 @@ class TestGrid(object):
         class CTG(Grid):
             subtotals = 'grand'
             Column('Sum Total', Person.numericcol.label('something'), has_subtotal='avg')
+
         Person.testing_create(numericcol=5)
         Person.testing_create(numericcol=10)
         g = CTG()
@@ -176,8 +182,12 @@ class TestGrid(object):
             ratio_expr = Person.numericcol / Person.sortorder
             Column('Numeric', Person.numericcol.label('numeric_col'), has_subtotal=True)
             Column('Ints', Person.floatcol.label('float_col'), has_subtotal=True)
-            Column('Ratio', Person.numericcol.label('something'),
-                   has_subtotal='sum(numeric_col) / sum(float_col)')
+            Column(
+                'Ratio',
+                Person.numericcol.label('something'),
+                has_subtotal='sum(numeric_col) / sum(float_col)',
+            )
+
         Person.testing_create(numericcol=5, floatcol=1)
         Person.testing_create(numericcol=10, floatcol=3)
         g = CTG()
@@ -192,8 +202,12 @@ class TestGrid(object):
             ratio_expr = Person.numericcol / Person.sortorder
             Column('Numeric', Person.numericcol.label('numeric_col'), has_subtotal=True)
             Column('Ints', Person.floatcol.label('float_col'), has_subtotal=True)
-            Column('Ratio', Person.numericcol.label('something'),
-                   has_subtotal=sum_(Person.numericcol) / sum_(Person.floatcol))
+            Column(
+                'Ratio',
+                Person.numericcol.label('something'),
+                has_subtotal=sum_(Person.numericcol) / sum_(Person.floatcol),
+            )
+
         Person.testing_create(numericcol=5, floatcol=1)
         Person.testing_create(numericcol=10, floatcol=3)
         g = CTG()
@@ -223,16 +237,14 @@ class TestGrid(object):
         assert grid.columns[0].label == 'Last Name'
 
         with pytest.raises(Exception, match="Keys not recognized on grid: {'foo'}"):
-            grid.set_column_order(('foo', ))
+            grid.set_column_order(('foo',))
 
     def test_add_column(self):
         class CTG(Grid):
             Column('First Name', Person.firstname, TextFilter)
 
         grid = CTG()
-        grid.add_column(
-            Column('Last Name', Person.lastname, TextFilter)
-        )
+        grid.add_column(Column('Last Name', Person.lastname, TextFilter))
 
         assert len(grid.columns) == 2
         colinst = grid.column('lastname')
@@ -289,7 +301,7 @@ class TestGrid(object):
 
         g = CTG()
         g.set_filter('sortorder', 'between', 5, value2=10)
-        assert_in_query(g, "WHERE persons.sortorder BETWEEN 5 AND 10")
+        assert_in_query(g, 'WHERE persons.sortorder BETWEEN 5 AND 10')
 
     def test_order_by(self):
         class CTG(Grid):
@@ -359,6 +371,7 @@ class TestGrid(object):
         class TG(Grid):
             pager_on = False
             Column('First Name', Person.firstname)
+
         g = TG()
         assert_not_in_query(g, 'LIMIT 50 OFFSET 0')
         assert g.page_count == 1
@@ -422,8 +435,12 @@ class TestGrid(object):
             YesNoColumn('C4', Person.inactive.label('yesno'), render_in='html')
             Column('C5', Person.firstname.label('fn3'), render_in='xlsx')
             Column('C6', Person.firstname.label('fn4'), render_in=('csv'))
-            Column('C7', Person.firstname.label('fn5'),
-                   render_in=('xlsx', 'html', 'csv'), visible=False)
+            Column(
+                'C7',
+                Person.firstname.label('fn5'),
+                render_in=('xlsx', 'html', 'csv'),
+                visible=False,
+            )
 
         tg = TG()
 
@@ -540,14 +557,16 @@ class TestGrid(object):
         g = CTG()
         g.search_value = 'foo'
         if db.engine.dialect.name == 'sqlite':
-            search_where = ("WHERE lower(persons.firstname) LIKE lower('%foo%')"
-                            " OR lower(persons.last_name) LIKE lower('%foo%')")
+            search_where = (
+                "WHERE lower(persons.firstname) LIKE lower('%foo%')"
+                " OR lower(persons.last_name) LIKE lower('%foo%')"
+            )
         elif db.engine.dialect.name == 'postgresql':
-            search_where = ("WHERE persons.firstname ILIKE '%foo%'"
-                            " OR persons.last_name ILIKE '%foo%'")
+            search_where = (
+                "WHERE persons.firstname ILIKE '%foo%' OR persons.last_name ILIKE '%foo%'"
+            )
         elif db.engine.dialect.name == 'mssql':
-            search_where = ("WHERE persons.firstname LIKE '%foo%'"
-                            " OR persons.last_name LIKE '%foo%'")
+            search_where = "WHERE persons.firstname LIKE '%foo%' OR persons.last_name LIKE '%foo%'"
         assert_in_query(g, search_where)
 
     def test_search_query_with_aggregate_column(self):
@@ -570,13 +589,9 @@ class TestGrid(object):
                 " OR lower(persons.last_name) LIKE lower('%foo%')"
             ),
             'postgresql': (
-                "WHERE persons.firstname ILIKE '%foo%'"
-                " OR persons.last_name ILIKE '%foo%'"
+                "WHERE persons.firstname ILIKE '%foo%' OR persons.last_name ILIKE '%foo%'"
             ),
-            'mssql': (
-                "WHERE persons.firstname LIKE '%foo%'"
-                " OR persons.last_name LIKE '%foo%'"
-            )
+            'mssql': ("WHERE persons.firstname LIKE '%foo%' OR persons.last_name LIKE '%foo%'"),
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
         g.records
@@ -585,15 +600,9 @@ class TestGrid(object):
         g.filtered_cols.pop('firstname')
         g.filtered_cols.pop('no_expr')
         search_expr = {
-            'sqlite': (
-                "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
-            ),
-            'postgresql': (
-                "HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"
-            ),
-            'mssql': (
-                "HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE '%foo%'"
-            )
+            'sqlite': ("HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"),
+            'postgresql': ("HAVING CAST(count(persons.id) AS VARCHAR) LIKE '%foo%'"),
+            'mssql': ("HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE '%foo%'"),
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
         g.records
@@ -646,8 +655,7 @@ class TestGrid(object):
         assert query._from_obj[0] == Stopwatch.__table__
 
 
-class TestQueryStringArgs(object):
-
+class TestQueryStringArgs:
     @classmethod
     def setup_class(cls):
         Status.delete_cascaded()
@@ -762,7 +770,7 @@ class TestQueryStringArgs(object):
         pg = PeopleGrid()
         with pg.manager.test_request_context(
             '/foo?op(firstname)=eq&v1(firstname)=fn001&op(status)=is'
-            f'&v1(status)={first_id}&v1(status)={second_id}'
+            f'&v1(status)={first_id}&v1(status)={second_id}',
         ):
             pg.apply_qs_args()
         assert pg.columns[0].filter.op == 'eq'
@@ -781,6 +789,7 @@ class TestQueryStringArgs(object):
     @_inrequest('/foo')
     def test_qs_filtering_default_op(self):
         from webgrid_ta.grids import DefaultOpGrid
+
         pg = DefaultOpGrid()
         pg.apply_qs_args()
         assert pg.columns[0].filter.op == 'eq'
@@ -789,6 +798,7 @@ class TestQueryStringArgs(object):
     @_inrequest('/foo?op(firstname)=!eq&v1(firstname)=bob')
     def test_qs_filtering_default_op_override(self):
         from webgrid_ta.grids import DefaultOpGrid
+
         pg = DefaultOpGrid()
         pg.apply_qs_args()
         assert pg.columns[0].filter.op == '!eq'
@@ -826,10 +836,14 @@ class TestQueryStringArgs(object):
     @_inrequest('/foo?op(firstname)=eq&v1(firstname)=bob&perpage=1&onpage=100')
     def test_grid_args_ignores_url(self):
         pg = PeopleGrid()
-        pg.apply_qs_args(grid_args=MultiDict({
-            'op(firstname)': 'contains',
-            'v1(firstname)': 'bill',
-        }))
+        pg.apply_qs_args(
+            grid_args=MultiDict(
+                {
+                    'op(firstname)': 'contains',
+                    'v1(firstname)': 'bill',
+                },
+            ),
+        )
         assert pg.column('firstname').filter.op == 'contains'
         assert pg.column('firstname').filter.value1 == 'bill'
 
@@ -854,8 +868,10 @@ class TestQueryStringArgs(object):
 
             def query_base(self, has_sort, has_filters):
                 query = db.session.query(
-                    Person.id, Person.firstname,
-                    Person.legacycol1, Person.legacycol2
+                    Person.id,
+                    Person.firstname,
+                    Person.legacycol1,
+                    Person.legacycol2,
                 )
                 return query
 
@@ -881,6 +897,7 @@ class TestQueryStringArgs(object):
     def test_exc_msg_in_warnings(self):
         class TGrid(Grid):
             Column('T', Person.id, IntFilter)
+
         g = TGrid()
         g.apply_qs_args()
         assert g.user_warnings[0] == 'T: Please enter an integer value.'
@@ -928,12 +945,11 @@ class GridPrefixTestBase:
         loader = self.loader_cls(grid.manager)
         result = loader.get_args(grid, previous_args)
         assert result == MultiDict(
-            [('foo', 'bar'), ('foo', 'fog'), ('baz', 'bin'), ('bong', 'bing')]
+            [('foo', 'bar'), ('foo', 'fog'), ('baz', 'bin'), ('bong', 'bing')],
         )
 
     def test_qs_prefix_filter(self):
-        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('boo', 'hoo'),
-                                 ('baz', 'bid')])
+        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('boo', 'hoo'), ('baz', 'bid')])
         source_args_copy = source_args.copy()
         grid = PeopleGrid(qs_prefix='b')
         setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
@@ -951,8 +967,9 @@ class GridPrefixTestBase:
         assert result == MultiDict([('dgreset', 1)])
 
     def test_reset_with_session_key(self):
-        source_args = MultiDict([('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1'),
-                                 ('session_key', '123')])
+        source_args = MultiDict(
+            [('foo', 'bar'), ('baz', 'bin'), ('dgreset', '1'), ('session_key', '123')],
+        )
         grid = PeopleGrid()
         setattr(grid.manager, self.manager_arg_method, MagicMock(return_value=source_args))
         loader = self.loader_cls(grid.manager)
@@ -988,46 +1005,55 @@ class TestRequestJsonLoader:
         grid.manager.request_json = MagicMock(return_value=data)
         loader = RequestJsonLoader(grid.manager)
         result = loader.get_args(grid, MultiDict())
-        assert result == MultiDict([
-            ('search', 'foo'),
-            ('op(test)', 'eq'),
-            ('v1(test)', 'toast'),
-            ('v2(test)', 'taft'),
-            ('op(test2)', 'in'),
-            ('v1(test2)', 'tarp'),
-            ('onpage', 2),
-            ('perpage', 20),
-            ('sort1', 'bar'),
-            ('sort2', '-baz'),
-            ('export_to', None),
-        ])
+        assert result == MultiDict(
+            [
+                ('search', 'foo'),
+                ('op(test)', 'eq'),
+                ('v1(test)', 'toast'),
+                ('v2(test)', 'taft'),
+                ('op(test2)', 'in'),
+                ('v1(test2)', 'tarp'),
+                ('onpage', 2),
+                ('perpage', 20),
+                ('sort1', 'bar'),
+                ('sort2', '-baz'),
+                ('export_to', None),
+            ],
+        )
 
     def test_merge_with_previous(self):
         data = self.ok_values()
         grid = PeopleGrid()
         grid.manager.request_json = MagicMock(return_value=data)
         loader = RequestJsonLoader(grid.manager)
-        result = loader.get_args(grid, MultiDict([
-            ('search', 'oof'),
-            ('onpage', 1),
-            ('sort3', 'bong'),
-        ]))
-        assert result == MultiDict([
-            ('search', 'foo'),
-            ('search', 'oof'),
-            ('op(test)', 'eq'),
-            ('v1(test)', 'toast'),
-            ('v2(test)', 'taft'),
-            ('op(test2)', 'in'),
-            ('v1(test2)', 'tarp'),
-            ('onpage', 2),
-            ('onpage', 1),
-            ('perpage', 20),
-            ('sort1', 'bar'),
-            ('sort2', '-baz'),
-            ('sort3', 'bong'),
-            ('export_to', None),
-        ])
+        result = loader.get_args(
+            grid,
+            MultiDict(
+                [
+                    ('search', 'oof'),
+                    ('onpage', 1),
+                    ('sort3', 'bong'),
+                ],
+            ),
+        )
+        assert result == MultiDict(
+            [
+                ('search', 'foo'),
+                ('search', 'oof'),
+                ('op(test)', 'eq'),
+                ('v1(test)', 'toast'),
+                ('v2(test)', 'taft'),
+                ('op(test2)', 'in'),
+                ('v1(test2)', 'tarp'),
+                ('onpage', 2),
+                ('onpage', 1),
+                ('perpage', 20),
+                ('sort1', 'bar'),
+                ('sort2', '-baz'),
+                ('sort3', 'bong'),
+                ('export_to', None),
+            ],
+        )
 
     def test_load_empty(self):
         grid = PeopleGrid()
@@ -1046,11 +1072,13 @@ class TestWebSessionArgsLoader:
         loader = WebSessionArgsLoader(grid.manager)
         result = loader.get_args(grid, source_args)
         assert source_args == source_args_copy
-        assert result == MultiDict([
-            ('foo', 'bar'),
-            ('baz', 'bin'),
-            ('__foreign_session_loaded__', False),
-        ])
+        assert result == MultiDict(
+            [
+                ('foo', 'bar'),
+                ('baz', 'bin'),
+                ('__foreign_session_loaded__', False),
+            ],
+        )
 
     @_inrequest('/foo')
     def test_empty_session_not_stored(self):
@@ -1084,10 +1112,12 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('dgreset', '1'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('dgreset', '1'),
+            ],
+        )
         pg = PeopleGrid()
         loader.get_args(pg, flask.request.args)
         assert '_PeopleGrid' not in flask.session['dgsessions']
@@ -1105,9 +1135,7 @@ class TestWebSessionArgsLoader:
     @_inrequest('/foo')
     def test_session_load_from_multidict(self):
         # test backwards compatibility for multidict load
-        flask.session['dgsessions'] = {
-            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
-        }
+        flask.session['dgsessions'] = {'_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])}
         grid = PeopleGrid()
         loader = WebSessionArgsLoader(grid.manager)
         args = loader.get_session_store(grid, MultiDict())
@@ -1116,9 +1144,7 @@ class TestWebSessionArgsLoader:
     @_inrequest('/foo')
     def test_session_load_from_dict(self):
         # test backwards compatibility for dict load
-        flask.session['dgsessions'] = {
-            '_PeopleGrid': {'a': 'b', 'c': 'd'}
-        }
+        flask.session['dgsessions'] = {'_PeopleGrid': {'a': 'b', 'c': 'd'}}
         grid = PeopleGrid()
         loader = WebSessionArgsLoader(grid.manager)
         args = loader.get_session_store(grid, MultiDict())
@@ -1153,11 +1179,13 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('perpage', '15'),
-            ('onpage', '100'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('perpage', '15'),
+                ('onpage', '100'),
+            ],
+        )
         pg = PeopleGrid()
         args = loader.get_args(pg, flask.request.args)
         assert args['op(firstname)'] == 'eq'
@@ -1171,10 +1199,12 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('sort1', 'bar'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('sort1', 'bar'),
+            ],
+        )
         pg = PeopleGrid()
         args = loader.get_args(pg, flask.request.args)
         assert args['op(firstname)'] == 'eq'
@@ -1191,10 +1221,12 @@ class TestWebSessionArgsLoader:
         pg2 = PeopleGrid()
         args = loader.get_args(pg2, flask.request.args)
         assert args['op(firstname)'] == '!eq'
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('export_to', 'xls'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('export_to', 'xls'),
+            ],
+        )
         pg = PeopleGrid()
         args = loader.get_args(pg, flask.request.args)
         assert args['op(firstname)'] == 'eq'
@@ -1206,12 +1238,14 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('session_override', 1),
-            ('op(createdts)', '!eq'),
-            ('v1(createdts)', '2017-05-06'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('session_override', 1),
+                ('op(createdts)', '!eq'),
+                ('v1(createdts)', '2017-05-06'),
+            ],
+        )
         pg2 = PeopleGrid()
         args = loader.get_args(pg2, flask.request.args)
         assert args['op(firstname)'] == 'eq'
@@ -1224,12 +1258,14 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('session_override', 1),
-            ('op(account_type)', 'is'),
-            ('v1(account_type)', 'manager'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('session_override', 1),
+                ('op(account_type)', 'is'),
+                ('v1(account_type)', 'manager'),
+            ],
+        )
         pg2 = PeopleGrid()
         args = loader.get_args(pg2, flask.request.args)
         assert args['op(account_type)'] == 'is'
@@ -1240,11 +1276,13 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('op(createdts)', '!eq'),
-            ('v1(createdts)', '2017-05-06'),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('op(createdts)', '!eq'),
+                ('v1(createdts)', '2017-05-06'),
+            ],
+        )
         pg2 = PeopleGrid()
         args = loader.get_args(pg2, flask.request.args)
         assert 'op(firstname)' not in args
@@ -1257,11 +1295,13 @@ class TestWebSessionArgsLoader:
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
         loader.get_args(pg, flask.request.args)
-        flask.request.args = MultiDict([
-            ('session_key', pg.session_key),
-            ('op(createdts)', 'today'),
-            ('apply', None),
-        ])
+        flask.request.args = MultiDict(
+            [
+                ('session_key', pg.session_key),
+                ('op(createdts)', 'today'),
+                ('apply', None),
+            ],
+        )
         pg2 = PeopleGrid()
         args = loader.get_args(pg2, flask.request.args)
         assert 'op(firstname)' not in args
@@ -1272,7 +1312,7 @@ class TestWebSessionArgsLoader:
     def test_expired_session_cleaned_up(self):
         with mock.patch(
             'webgrid.extensions.arrow.utcnow',
-            lambda *args: arrow.get('2021-01-05 15:14:13')
+            lambda *args: arrow.get('2021-01-05 15:14:13'),
         ):
             pg = PeopleGrid()
             loader = WebSessionArgsLoader(pg.manager)
@@ -1283,7 +1323,7 @@ class TestWebSessionArgsLoader:
 
         with mock.patch(
             'webgrid.extensions.arrow.utcnow',
-            lambda *args: arrow.get('2021-01-06 03:14:15')
+            lambda *args: arrow.get('2021-01-06 03:14:15'),
         ):
             pg = PeopleGrid()
             loader = WebSessionArgsLoader(pg.manager)
@@ -1294,9 +1334,7 @@ class TestWebSessionArgsLoader:
 
     @_inrequest('/foo')
     def test_expired_session_no_stamp(self):
-        flask.session['dgsessions'] = {
-            '_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])
-        }
+        flask.session['dgsessions'] = {'_PeopleGrid': MultiDict([('a', 'b'), ('a', 'c')])}
 
         pg = PeopleGrid()
         loader = WebSessionArgsLoader(pg.manager)
@@ -1307,7 +1345,7 @@ class TestWebSessionArgsLoader:
     def test_expired_session_no_max_hours(self):
         with mock.patch(
             'webgrid.extensions.arrow.utcnow',
-            lambda *args: arrow.get('2021-01-05 15:14:13')
+            lambda *args: arrow.get('2021-01-05 15:14:13'),
         ):
             pg = PeopleGrid()
             loader = WebSessionArgsLoader(pg.manager)

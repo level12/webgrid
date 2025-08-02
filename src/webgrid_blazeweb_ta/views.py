@@ -2,8 +2,8 @@ from blazeweb.views import View
 
 from webgrid import NumericColumn
 from webgrid_blazeweb_ta.extensions import lazy_gettext as _
-from webgrid_blazeweb_ta.tests.grids import PeopleGrid as PGBase
 from webgrid_blazeweb_ta.model.orm import Person
+from webgrid_blazeweb_ta.tests.grids import PeopleGrid as PGBase
 
 
 class CurrencyCol(NumericColumn):

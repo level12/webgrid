@@ -15,15 +15,15 @@ class FieldValidationError(ValidationError):
 @dataclass
 class Filter:
     op: str
-    value1: Union[str, List[str]]
-    value2: Optional[str] = None
+    value1: str | list[str]
+    value2: str | None = None
 
 
 @dataclass
 class Paging:
     pager_on: bool = False
-    per_page: Optional[int] = None
-    on_page: Optional[int] = None
+    per_page: int | None = None
+    on_page: int | None = None
 
     def __post_init__(self):
         if self.per_page is not None and not isinstance(self.per_page, int):
@@ -42,8 +42,8 @@ class Sort:
 class FilterOperator:
     key: str
     label: str
-    field_type: Optional[str]
-    hint: Optional[str] = None
+    field_type: str | None
+    hint: str | None = None
 
 
 @dataclass
@@ -54,37 +54,37 @@ class FilterOption:
 
 @dataclass
 class FilterSpec:
-    operators: List[FilterOperator]
-    primary_op: Optional[FilterOperator]
+    operators: list[FilterOperator]
+    primary_op: FilterOperator | None
 
 
 @dataclass
 class OptionsFilterSpec(FilterSpec):
-    options: List[FilterOption]
+    options: list[FilterOption]
 
 
 @dataclass
 class ColumnGroup:
     label: str
-    columns: List[str]
+    columns: list[str]
 
 
 @dataclass
 class GridTotals:
-    page: Optional[Dict[str, Any]] = None
-    grand: Optional[Dict[str, Any]] = None
+    page: dict[str, Any] | None = None
+    grand: dict[str, Any] | None = None
 
 
 @dataclass
 class GridSettings:
-    search_expr: Optional[str] = None
-    filters: Dict[str, Filter] = field(default_factory=dict)
+    search_expr: str | None = None
+    filters: dict[str, Filter] = field(default_factory=dict)
     paging: Paging = field(default_factory=Paging)
-    sort: List[Sort] = field(default_factory=list)
-    export_to: Optional[str] = None
+    sort: list[Sort] = field(default_factory=list)
+    export_to: str | None = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'GridSettings':
+    def from_dict(cls, data: dict[str, Any]) -> 'GridSettings':
         """Create from deserialized json"""
         try:
             filters = {key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()}
@@ -109,7 +109,7 @@ class GridSettings:
             export_to=data.get('export_to'),
         )
 
-    def to_args(self) -> Dict[str, Any]:
+    def to_args(self) -> dict[str, Any]:
         """Convert grid parameters to request args format"""
         args = {
             'search': self.search_expr,
@@ -133,21 +133,21 @@ class GridSettings:
 
 @dataclass
 class GridSpec:
-    columns: List[Dict[str, str]]
-    column_groups: List[ColumnGroup]
-    column_types: List[Dict[str, str]]
-    export_targets: List[str]
+    columns: list[dict[str, str]]
+    column_groups: list[ColumnGroup]
+    column_types: list[dict[str, str]]
+    export_targets: list[str]
     enable_search: bool
     enable_sort: bool
-    sortable_columns: List[str]
-    filters: Dict[str, FilterSpec] = field(default_factory=dict)
+    sortable_columns: list[str]
+    filters: dict[str, FilterSpec] = field(default_factory=dict)
 
 
 @dataclass
 class GridState:
     page_count: int
     record_count: int
-    warnings: List[str]
+    warnings: list[str]
 
 
 @dataclass
@@ -155,6 +155,6 @@ class Grid:
     settings: GridSettings
     spec: GridSpec
     state: GridState
-    records: List[Dict[str, Any]]
+    records: list[dict[str, Any]]
     totals: GridTotals
-    errors: List[str]
+    errors: list[str]

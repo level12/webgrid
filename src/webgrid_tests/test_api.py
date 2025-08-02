@@ -4,8 +4,9 @@ import flask
 import flask_webtest
 import flask_wtf
 import pytest
+
 from webgrid import BaseGrid, Column
-from webgrid.flask import WebGridAPI, WebGrid
+from webgrid.flask import WebGrid, WebGridAPI
 from webgrid.renderers import JSON, Renderer
 
 
@@ -86,7 +87,7 @@ class TestFlaskAPI:
     def test_default_route(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
         resp = test_app.post_json('/webgrid-api/foo', {})
-        assert resp.json['records'] == [{"foo": "bar"}]
+        assert resp.json['records'] == [{'foo': 'bar'}]
 
     def test_default_route_count(self, api_manager, test_app):
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
@@ -101,7 +102,7 @@ class TestFlaskAPI:
         api_manager.init_app(app)
         register_grid(api_manager, 'foo', create_grid_cls(api_manager))
         resp = test_app.post_json('/custom-routing/foo', {})
-        assert resp.json['records'] == [{"foo": "bar"}]
+        assert resp.json['records'] == [{'foo': 'bar'}]
 
     def test_grid_not_registered(self, api_manager, test_app):
         test_app.post_json('/webgrid-api/foo', {}, status=404)
@@ -125,24 +126,29 @@ class TestFlaskAPI:
         with test_app.app.test_request_context():
             csrf_token = flask_wtf.csrf.generate_csrf()
         resp = test_app.post_json(
-            '/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token},
-            status=400)
+            '/webgrid-api/foo',
+            {},
+            headers={'X-CSRFToken': csrf_token},
+            status=400,
+        )
         assert 'The CSRF session token is missing.' in resp
 
     def test_csrf_invalid(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
         test_app.get('/webgrid-api/testing/__csrf__').body
         resp = test_app.post_json(
-            '/webgrid-api/foo', {}, headers={'X-CSRFToken': 'my-bad-token'},
-            status=400)
+            '/webgrid-api/foo',
+            {},
+            headers={'X-CSRFToken': 'my-bad-token'},
+            status=400,
+        )
         assert 'The CSRF token is invalid.' in resp
 
     def test_csrf_protected(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
         csrf_token = test_app.get('/webgrid-api/testing/__csrf__').body
-        resp = test_app.post_json(
-            '/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token})
-        assert resp.json['records'] == [{"foo": "bar"}]
+        resp = test_app.post_json('/webgrid-api/foo', {}, headers={'X-CSRFToken': csrf_token})
+        assert resp.json['records'] == [{'foo': 'bar'}]
 
     def test_csrf_token_route_only_testing(self, app, csrf, test_app):
         manager = WebGridAPI()
@@ -172,7 +178,7 @@ class TestFlaskAPI:
 
         register_grid(api_manager, 'foo', Grid)
         resp = test_app.post_json('/webgrid-api/foo', {})
-        assert resp.json['records'] == [{"foo": "bar"}]
+        assert resp.json['records'] == [{'foo': 'bar'}]
 
     def test_grid_auth(self, api_manager, test_app):
         class Grid(DummyMixin, BaseGrid):
@@ -184,7 +190,7 @@ class TestFlaskAPI:
 
         register_grid(api_manager, 'foo', Grid)
         resp = test_app.post_json('/webgrid-api/foo', {})
-        assert resp.json['records'] == [{"foo": "bar"}]
+        assert resp.json['records'] == [{'foo': 'bar'}]
 
         test_app.post_json('/webgrid-api/foo?bad', {}, status=403)
 

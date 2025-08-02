@@ -1,23 +1,21 @@
-from webgrid import Column, LinkColumnBase, \
-    YesNoColumn, DateTimeColumn, DateColumn, NumericColumn
+from webgrid import Column, DateColumn, DateTimeColumn, LinkColumnBase, NumericColumn, YesNoColumn
 from webgrid.blazeweb import Grid
-from webgrid.filters import TextFilter, OptionsFilterBase, Operator, \
-    DateTimeFilter, ops
+from webgrid.filters import DateTimeFilter, Operator, OptionsFilterBase, TextFilter, ops
+from webgrid.renderers import CSV, XLS, XLSX
 from webgrid_blazeweb_ta.model.orm import Person, Status
-from webgrid.renderers import XLSX, CSV, XLS
 
 
 class FirstNameColumn(LinkColumnBase):
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
 class FullNameColumn(LinkColumnBase):
     def extract_data(self, record):
-        return '{0.firstname} {0.lastname}'.format(record)
+        return f'{record.firstname} {record.lastname}'
 
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
 class EmailsColumn(Column):
@@ -26,8 +24,14 @@ class EmailsColumn(Column):
 
 
 class StatusFilter(OptionsFilterBase):
-    operators = (Operator('o', 'open', None), ops.is_, ops.not_is,
-                 Operator('c', 'closed', None), ops.empty, ops.not_empty)
+    operators = (
+        Operator('o', 'open', None),
+        ops.is_,
+        ops.not_is,
+        Operator('c', 'closed', None),
+        ops.empty,
+        ops.not_empty,
+    )
     options_from = Status.pairs
 
 
@@ -44,9 +48,11 @@ class PeopleGrid(Grid):
     NumericColumn('Number', Person.numericcol, has_subtotal=True)
 
     def query_prep(self, query, has_sort, has_filters):
-        query = query.add_columns(
-            Person.id, Person.lastname, Person.due_date
-        ).add_entity(Person).outerjoin(Person.status)
+        query = (
+            query.add_columns(Person.id, Person.lastname, Person.due_date)
+            .add_entity(Person)
+            .outerjoin(Person.status)
+        )
 
         # default sort
         if not has_sort:

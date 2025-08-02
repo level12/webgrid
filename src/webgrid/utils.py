@@ -1,5 +1,11 @@
-def current_url(manager, root_only=False, host_only=False, strip_querystring=False,
-                strip_host=False, https=None):
+def current_url(
+    manager,
+    root_only=False,
+    host_only=False,
+    strip_querystring=False,
+    strip_host=False,
+    https=None,
+):
     """
     Returns strings based on the current URL.  Assume a request with path:
 

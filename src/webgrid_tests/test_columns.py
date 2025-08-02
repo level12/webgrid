@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import datetime as dt
 from decimal import Decimal as D
 
@@ -7,34 +6,33 @@ from blazeutils.datastructures import BlankObject
 import pytest
 
 from webgrid import (
-    Column,
-    LinkColumnBase,
     BoolColumn,
-    YesNoColumn,
-    DateTimeColumn,
+    Column,
     DateColumn,
+    DateTimeColumn,
+    LinkColumnBase,
     NumericColumn,
+    YesNoColumn,
 )
 from webgrid.filters import DateFilter, IntFilter, TextFilter
-
 from webgrid_ta.grids import Grid
 from webgrid_ta.model.entities import Person
 
 
 class FirstNameColumn(LinkColumnBase):
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
 class FullNameColumn(LinkColumnBase):
     def extract_data(self, record):
-        return '{0.firstname} {0.lastname}'.format(record)
+        return f'{record.firstname} {record.lastname}'
 
     def create_url(self, record):
-        return '/person-edit/{0}'.format(record.id)
+        return f'/person-edit/{record.id}'
 
 
-class TestColumn(object):
+class TestColumn:
     def test_attr_copy(self):
         class TG(Grid):
             Column('ID', Person.id, TextFilter, can_sort=False, visible=False)

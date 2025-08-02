@@ -1,6 +1,8 @@
 from pathlib import Path
+
 from nox import Session, options, parametrize
 from nox_uv import session
+
 
 options.default_venv_backend = 'uv'
 
@@ -61,4 +63,3 @@ def precommit(session: Session):
         'run',
         '--all-files',
     )
-

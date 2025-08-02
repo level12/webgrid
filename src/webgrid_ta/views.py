@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from flask import Blueprint, render_template
 
 from webgrid_ta.extensions import gettext as _
@@ -33,5 +32,6 @@ def index():
 @main.route('/groups')
 def grid_with_groups():
     from webgrid_ta.grids import StopwatchGrid
+
     grid = StopwatchGrid()
     return render_template('groups.html', grid=grid)

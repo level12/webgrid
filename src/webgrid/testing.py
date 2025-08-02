@@ -1,9 +1,11 @@
 """
 A collection of utilities for testing webgrid functionality in client applications
 """
+
 import re
 from unittest import mock
 import urllib
+
 
 try:
     import openpyxl
@@ -13,10 +15,11 @@ from pyquery import PyQuery
 import sqlalchemy
 
 
-def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
+def compiler_instance_factory(compiler, dialect, statement):
     class LiteralCompiler(compiler.__class__):
         def render_literal_value(self, value, type_):
             import datetime
+
             """
             For date and datetime values, convert to a string
             format acceptable to the dialect. That seems to be the
@@ -32,43 +35,58 @@ def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
             elif isinstance(value, datetime.date):
                 return "'" + value.strftime('%Y-%m-%d') + "'"
             elif isinstance(value, datetime.time):
-                return "'{:%H:%M:%S.%f}'".format(value)
+                return f"'{value:%H:%M:%S.%f}'"
             elif isinstance(value, datetime.timedelta):
                 return str(value)
             elif isinstance(value, str):
                 return f"'{value}'"
             elif isinstance(value, list) and isinstance(type_, sqlalchemy.ARRAY):
                 elements = [
-                    self.render_literal_value(list_val, type_.item_type)
-                    for list_val in value
+                    self.render_literal_value(list_val, type_.item_type) for list_val in value
                 ]
-                return f"({', '.join(elements)})"
+                return f'({", ".join(elements)})'
             elif value is None:
                 return 'NULL'
             else:
                 # Turn off double percent escaping, since we don't run these strings and
                 # it creates a large number of differences for test cases
-                with mock.patch.object(
-                    dialect.identifier_preparer,
-                    '_double_percents',
-                    False
-                ):
+                with mock.patch.object(dialect.identifier_preparer, '_double_percents', False):
                     return super(LiteralCompiler, self).render_literal_value(value, type_)
 
         def visit_bindparam(
-                self, bindparam, within_columns_clause=False,
-                literal_binds=False, **kwargs
+            self,
+            bindparam,
+            within_columns_clause=False,
+            literal_binds=False,
+            **kwargs,
         ):
             return super(LiteralCompiler, self).render_literal_bindparam(
-                bindparam, within_columns_clause=within_columns_clause,
-                literal_binds=literal_binds, **kwargs
+                bindparam,
+                within_columns_clause=within_columns_clause,
+                literal_binds=literal_binds,
+                **kwargs,
             )
 
-        def visit_table(self, table, asfrom=False, iscrud=False, ashint=False,
-                        fromhints=None, use_schema=True, **kwargs):
+        def visit_table(
+            self,
+            table,
+            asfrom=False,
+            iscrud=False,
+            ashint=False,
+            fromhints=None,
+            use_schema=True,
+            **kwargs,
+        ):
             """Strip the default schema from table names when it is not needed"""
-            ret_val = super().visit_table(table, asfrom, iscrud, ashint, fromhints, use_schema,
-                                          **kwargs)
+            ret_val = super().visit_table(
+                table,
+                asfrom,
+                iscrud,
+                ashint,
+                fromhints,
+                use_schema,
+                **kwargs,
+            )
             if dialect.name == 'mssql' and ret_val.startswith('dbo.'):
                 return ret_val[4:]
             return ret_val
@@ -85,10 +103,10 @@ def compiler_instance_factory(compiler, dialect, statement):  # noqa: C901
 
 def query_to_str(statement, bind=None):
     """
-        returns a string of a sqlalchemy.orm.Query with parameters bound
+    returns a string of a sqlalchemy.orm.Query with parameters bound
 
-        WARNING: this is dangerous and ONLY for testing, executing the results
-        of this function can result in an SQL Injection attack.
+    WARNING: this is dangerous and ONLY for testing, executing the results
+    of this function can result in an SQL Injection attack.
     """
     if isinstance(statement, sqlalchemy.orm.Query):
         if bind is None:
@@ -98,8 +116,9 @@ def query_to_str(statement, bind=None):
         bind = statement.bind
 
     if bind is None:
-        raise Exception('bind param (engine or connection object) required when using with an'
-                        ' unbound statement')
+        raise Exception(
+            'bind param (engine or connection object) required when using with an unbound statement',
+        )
 
     dialect = bind.dialect
     compiler = statement._compiler(dialect)
@@ -139,11 +158,7 @@ def assert_list_equal(list1, list2):
     # resolve generators
     list1, list2 = map(list, (list1, list2))
 
-    assert len(list1) == len(list2), \
-        'Lists are different lengths: {} != {}'.format(
-            len(list1),
-            len(list2)
-    )
+    assert len(list1) == len(list2), f'Lists are different lengths: {len(list1)} != {len(list2)}'
 
     if list1 == list2:
         # the lists are the same, we're done
@@ -153,11 +168,7 @@ def assert_list_equal(list1, list2):
     # and report it
     for index, (val1, val2) in enumerate(zip(list1, list2)):
         assert val1 == val2, (
-            'First differing element at index {}: {} != {}'.format(
-                index,
-                repr(val1),
-                repr(val2)
-            )
+            f'First differing element at index {index}: {repr(val1)} != {repr(val2)}'
         )
 
 
@@ -178,9 +189,7 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
     rendered_xlsx.filename.seek(0)
 
     if not openpyxl:
-        raise Exception(
-            'openpyxl is required for webgrid testing helpers to read XLSX'
-        )
+        raise Exception('openpyxl is required for webgrid testing helpers to read XLSX')
 
     book = openpyxl.load_workbook(rendered_xlsx.filename)
     assert len(book.sheetnames) >= 1
@@ -192,28 +201,25 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
     nrows = len(xlsx_rows)
     if xlsx_headers:
         nrows += len(xlsx_headers)
-    assert (
-        max([nrows, 1]) == sheet.max_row
-    ), f'Sheet max row mismatch, {max([nrows, 1])} != {sheet.max_row}'
+    assert max([nrows, 1]) == sheet.max_row, (
+        f'Sheet max row mismatch, {max([nrows, 1])} != {sheet.max_row}'
+    )
 
     # ## shape of columns
     ncols = max(
         max(len(values) for values in xlsx_headers) if xlsx_headers else 0,
-        max(len(values) for values in xlsx_rows) if xlsx_rows else 0
+        max(len(values) for values in xlsx_rows) if xlsx_rows else 0,
     )
-    assert (
-        max([ncols, 1]) == sheet.max_column
-    ), f'Sheet max column mismatch, {max([ncols, 1])} != {sheet.max_column}'
+    assert max([ncols, 1]) == sheet.max_column, (
+        f'Sheet max column mismatch, {max([ncols, 1])} != {sheet.max_column}'
+    )
 
     row_iter = sheet.iter_rows()
 
     expected_rows = (xlsx_headers or []) + (xlsx_rows or [])
 
     for row, expected_row in zip(row_iter, expected_rows):
-        assert_list_equal(
-            (cell.value for cell in row),
-            expected_row
-        )
+        assert_list_equal((cell.value for cell in row), expected_row)
 
 
 class GridBase:
@@ -230,6 +236,7 @@ class GridBase:
         sort_tests: Iterable of (name, expected) tuples to check for sort logic. `name` is
         the column key. `expected` is a SQL string to find when the sort is enabled.
     """
+
     grid_cls = None
     filters = ()
     sort_tests = ()
@@ -286,11 +293,9 @@ class GridBase:
         query_str = self.query_to_str(grid.build_query())
 
         if hasattr(look_for, 'search'):
-            assert look_for.search(query_str), \
-                '"{0}" not found in: {1}'.format(look_for.pattern, query_str)
+            assert look_for.search(query_str), f'"{look_for.pattern}" not found in: {query_str}'
         else:
-            assert re.search(look_for, query_str), \
-                '"{0}" not found in: {1}'.format(look_for, query_str)
+            assert re.search(look_for, query_str), f'"{look_for}" not found in: {query_str}'
 
     def get_grid(self, grid_args, *args, **kwargs):
         """Construct grid from args and kwargs, and apply grid_args.
@@ -344,7 +349,7 @@ class GridBase:
             url = f'/?{_query_string}' if _query_string else '/'
             with session_grid.manager.test_request_context(url=url):
                 html = session_grid.html()
-        return PyQuery('<html>{0}</html>'.format(html))
+        return PyQuery(f'<html>{html}</html>')
 
     def check_filter(self, name, op, value, expected):
         """Assertions to perform on a filter test.
@@ -355,12 +360,12 @@ class GridBase:
             value (Any): Filter value to assign.
             expected (str or regex): SQL string or compiled regex to find.
         """
-        qs_args = [('op({0})'.format(name), op)]
+        qs_args = [(f'op({name})', op)]
         if isinstance(value, (list, tuple)):
             for v in value:
-                qs_args.append(('v1({0})'.format(name), v))
+                qs_args.append((f'v1({name})', v))
         else:
-            qs_args.append(('v1({0})'.format(name), value))
+            qs_args.append((f'v1({name})', value))
 
         def sub_func(ex):
             query_string = urllib.parse.urlencode(qs_args)
@@ -406,7 +411,8 @@ class GridBase:
         def sub_func():
             query_string = urllib.parse.urlencode(d)
             self.assert_in_query(
-                'ORDER BY %s%s' % (ex, '' if asc else ' DESC'), _query_string=query_string
+                'ORDER BY %s%s' % (ex, '' if asc else ' DESC'),
+                _query_string=query_string,
             )
             # ensures the query executes and the grid renders without error
             self.get_pyq(_query_string=query_string)
@@ -428,7 +434,7 @@ class GridBase:
             assert len(cells) == len(row)
             for col_idx, val in enumerate(row):
                 read = cells.eq(col_idx).text()
-                assert read == val, 'row {} col {} {} != {}'.format(row_idx, col_idx, read, val)
+                assert read == val, f'row {row_idx} col {col_idx} {read} != {val}'
 
     def expect_table_header(self, expect, grid=None, _query_string=None, **kwargs):
         """Run assertions to compare rendered headings with expected data.
@@ -474,44 +480,52 @@ class GridBase:
 
 
 class MSSQLGridBase(GridBase):
-    """ MSSQL dialect produces some string oddities compared to other dialects, such as
-        having the N'foo' syntax for unicode strings instead of 'foo'. This can clutter
-        tests a bit. Using MSSQLGridBase will patch that into the asserts, so that
-        look_for will match whether it has the N-prefix or not.
+    """MSSQL dialect produces some string oddities compared to other dialects, such as
+    having the N'foo' syntax for unicode strings instead of 'foo'. This can clutter
+    tests a bit. Using MSSQLGridBase will patch that into the asserts, so that
+    look_for will match whether it has the N-prefix or not.
     """
+
     def query_to_str_replace_type(self, compiled_query):
         """Same as query_to_str, but accounts for pyodbc type-specific rendering."""
         query_str = self.query_to_str(compiled_query)
         # pyodbc rendering includes an additional character for some strings,
         # like N'foo' instead of 'foo'. This is not relevant to what we're testing.
-        return re.sub(
-            r"(\(|WHEN|LIKE|ELSE|THEN|[,=\+])( ?)N'(.*?)'", r"\1\2'\3'", query_str
-        )
+        return re.sub(r"(\(|WHEN|LIKE|ELSE|THEN|[,=\+])( ?)N'(.*?)'", r"\1\2'\3'", query_str)
 
     def assert_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
         session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
-        assert look_for in query_str or look_for in query_str_repl, \
-            '"{0}" not found in: {1}'.format(look_for, query_str)
+        assert look_for in query_str or look_for in query_str_repl, (
+            f'"{look_for}" not found in: {query_str}'
+        )
 
     def assert_not_in_query(self, look_for, grid=None, context=None, _query_string=None, **kwargs):
         session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
-        assert look_for not in query_str or look_for not in query_str_repl, \
-            '"{0}" found in: {1}'.format(look_for, query_str)
+        assert look_for not in query_str or look_for not in query_str_repl, (
+            f'"{look_for}" found in: {query_str}'
+        )
 
     def assert_regex_in_query(
-        self, look_for, grid=None, context=None, _query_string=None, **kwargs
+        self,
+        look_for,
+        grid=None,
+        context=None,
+        _query_string=None,
+        **kwargs,
     ):
         session_grid = grid or self.get_session_grid(_query_string=_query_string, **kwargs)
         query_str = self.query_to_str(session_grid.build_query())
         query_str_repl = self.query_to_str_replace_type(session_grid.build_query())
 
         if hasattr(look_for, 'search'):
-            assert look_for.search(query_str) or look_for.search(query_str_repl), \
-                '"{0}" not found in: {1}'.format(look_for.pattern, query_str)
+            assert look_for.search(query_str) or look_for.search(query_str_repl), (
+                f'"{look_for.pattern}" not found in: {query_str}'
+            )
         else:
-            assert re.search(look_for, query_str) or re.search(look_for, query_str_repl), \
-                '"{0}" not found in: {1}'.format(look_for, query_str)
+            assert re.search(look_for, query_str) or re.search(look_for, query_str_repl), (
+                f'"{look_for}" not found in: {query_str}'
+            )

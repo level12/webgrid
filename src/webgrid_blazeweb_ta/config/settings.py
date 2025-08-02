@@ -3,6 +3,7 @@ import warnings
 
 from blazeweb.config import DefaultSettings
 
+
 basedir = path.dirname(path.dirname(__file__))
 app_package = path.basename(basedir)
 

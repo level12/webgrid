@@ -1,42 +1,35 @@
-from __future__ import absolute_import
-
-import re
 from abc import ABC, abstractmethod
+from collections import defaultdict
+import csv
 from dataclasses import asdict
 import inspect
 import io
-from operator import itemgetter
-from collections import defaultdict
 import json
-from typing import Dict, Union
+from operator import itemgetter
+import re
 import typing
-
-import six
-from blazeutils.functional import identity
-from markupsafe import Markup
+from typing import Dict, Union
 
 from blazeutils.containers import HTMLAttributes, LazyDict
+from blazeutils.functional import identity
 from blazeutils.helpers import tolist
 from blazeutils.jsonh import jsonmod
-from blazeutils.spreadsheets import WriterX, xlsxwriter, openpyxl
-from blazeutils.strings import reindent, randnumerics
+from blazeutils.spreadsheets import WriterX, openpyxl, xlsxwriter
+from blazeutils.strings import randnumerics, reindent
 import jinja2 as jinja
-
+from markupsafe import Markup
+import six
 from werkzeug.datastructures import MultiDict
 from werkzeug.routing import Map, Rule
 
-from .extensions import (
-    CustomJsonEncoder,
-    gettext as _,
-    ngettext,
-    translation_manager
-)
-from .utils import current_url
 from . import extensions, types
-import csv
+from .extensions import CustomJsonEncoder, ngettext, translation_manager
+from .extensions import gettext as _
+from .utils import current_url
+
 
 if openpyxl:
-    from openpyxl.styles import Font, Border, Side, Alignment
+    from openpyxl.styles import Alignment, Border, Font, Side
     from openpyxl.utils import get_column_letter
 else:
     Font = Border = Side = Alignment = typing.Any
@@ -44,12 +37,12 @@ else:
 try:
     from morphi.helpers.jinja import configure_jinja_environment
 except ImportError:
-    configure_jinja_environment = lambda *args, **kwargs: None  # noqa: E731
+    configure_jinja_environment = lambda *args, **kwargs: None
 
 try:
     from speaklater import is_lazy_string
 except ImportError:
-    is_lazy_string = lambda value: False  # noqa: E731
+    is_lazy_string = lambda value: False
 
 
 def fix_xls_value(value):
@@ -80,13 +73,13 @@ class Renderer(ABC):
     Args:
         grid (BaseGrid): Parent grid of this renderer instance.
     """
+
     _columns = None
 
     @property
     @abstractmethod
     def name(self):
         """Identifier used to find columns that will render on this target."""
-        pass
 
     @property
     def columns(self):
@@ -118,7 +111,6 @@ class Renderer(ABC):
     @abstractmethod
     def render(self):
         """Main renderer method returning the output."""
-        pass
 
 
 class GroupMixin:
@@ -172,9 +164,9 @@ def _safe_id(idstring):
     TODO: Set IDs explicitly and don't rely on this being applied to name attributes
     """
     # Transform all whitespace to underscore
-    idstring = re.sub(r'\s', "_", '%s' % idstring)
+    idstring = re.sub(r'\s', '_', '%s' % idstring)
     # Remove everything that is not a hyphen or a member of \w
-    idstring = re.sub(r'(?!-)\W', "", idstring).lower()
+    idstring = re.sub(r'(?!-)\W', '', idstring).lower()
     return idstring
 
 
@@ -188,7 +180,7 @@ def render_html_attributes(attrs):
             return Markup.escape(key)
         elif value is False or value is None:
             return Markup('')
-        return Markup('{}="{}"'.format(Markup.escape(key), Markup.escape(value)))
+        return Markup(f'{Markup.escape(key)}="{Markup.escape(value)}"')
 
     attrs = sorted(attrs.items(), key=itemgetter(0))
     rendered_attrs = filter(identity, (render_attr(k, v) for k, v in attrs))
@@ -197,6 +189,7 @@ def render_html_attributes(attrs):
 
 class JSON(Renderer):
     """Renderer for JSON output"""
+
     mime_type = 'application/json'
 
     @property
@@ -220,10 +213,7 @@ class JSON(Renderer):
 
     def serialized_column_groups(self):
         group_to_keys = defaultdict(list)
-        for column in filter(
-            lambda col: col.group is not None,
-            self.columns
-        ):
+        for column in filter(lambda col: col.group is not None, self.columns):
             group_to_keys[column.group].append(column.key)
         return [
             self.serialize_column_group(group.label, columns)
@@ -339,7 +329,7 @@ class HTML(GroupMixin, Renderer):
             self.jinja_env = jinja.Environment(
                 loader=jinja.PackageLoader('webgrid', 'templates'),
                 finalize=lambda x: x if x is not None else '',
-                autoescape=True
+                autoescape=True,
             )
         self.jinja_env.filters['wg_safe'] = jinja.filters.do_mark_safe
         self.jinja_env.filters['wg_attributes'] = render_html_attributes
@@ -371,11 +361,7 @@ class HTML(GroupMixin, Renderer):
 
     def header_form_attrs(self, **kwargs):
         """HTML attributes to render on the grid header form element."""
-        return {
-            'method': self.form_action_method(),
-            'action': self.form_action_url(),
-            **kwargs
-        }
+        return {'method': self.form_action_method(), 'action': self.form_action_url(), **kwargs}
 
     def form_action_method(self):
         """Detect whether the header form should have a GET or POST action.
@@ -405,7 +391,7 @@ class HTML(GroupMixin, Renderer):
         """Hidden input to preserve the session key on form submission."""
         return self._render_jinja(
             '<input type="hidden" name="session_key" value="{{value}}" />',
-            value=self.grid.session_key
+            value=self.grid.session_key,
         )
 
     def filtering_fields(self):
@@ -427,7 +413,7 @@ class HTML(GroupMixin, Renderer):
         """Single filter row with op and inputs."""
         extra = getattr(col.filter, 'html_extra', {})
         return self._render_jinja(
-            '''
+            """
             <tr class="{{col.key}}_filter" {{- extra|wg_attributes }}>
                 <th class="filter-label">{{renderer.filtering_col_label(col)}}</th>
                 <td class="operator">{{renderer.filtering_col_op_select(col)}}</td>
@@ -440,7 +426,7 @@ class HTML(GroupMixin, Renderer):
                     </div>
                 </td>
             </tr>
-            ''',
+            """,
             renderer=self,
             col=col,
             extra=extra,
@@ -459,27 +445,27 @@ class HTML(GroupMixin, Renderer):
             current_selected = filter.op
 
         primary_op = filter.primary_op or filter.operators[0]
-        is_primary = lambda op: 'primary' if op == primary_op else None  # noqa: E731
+        is_primary = lambda op: 'primary' if op == primary_op else None
 
-        field_name = 'op({0})'.format(col.key)
+        field_name = f'op({col.key})'
         field_name = self.grid.prefix_qs_arg_key(field_name)
 
         return self.render_select(
             [(op.key, op.display, is_primary(op)) for op in filter.operators],
             current_selected,
-            name=field_name
+            name=field_name,
         )
 
     def filtering_col_inputs1(self, col):
         """Render the first input, which can be freeform or select."""
         filter = col.filter
-        field_name = 'v1({0})'.format(col.key)
+        field_name = f'v1({col.key})'
         field_name = self.grid.prefix_qs_arg_key(field_name)
 
         inputs = Markup()
 
         if 'input' in filter.input_types:
-            ident = '{0}_input1'.format(col.key)
+            ident = f'{col.key}_input1'
             inputs += self._render_jinja(
                 '<input{{attrs|wg_attributes}} />',
                 attrs=dict(
@@ -487,7 +473,7 @@ class HTML(GroupMixin, Renderer):
                     value=filter.value1_set_with,
                     id=ident,
                     type='text',
-                )
+                ),
             )
         if 'select' in filter.input_types:
             current_selected = tolist(filter.value1) or []
@@ -496,13 +482,13 @@ class HTML(GroupMixin, Renderer):
                 current_selection=current_selected,
                 placeholder=None,
                 multiple=filter.receives_list,
-                name=field_name
+                name=field_name,
             )
             if filter.receives_list:
                 inputs += self.filtering_multiselect(
                     field_name,
                     current_selected,
-                    self.filtering_filter_options_multi(filter, field_name)
+                    self.filtering_filter_options_multi(filter, field_name),
                 )
         return inputs
 
@@ -514,7 +500,7 @@ class HTML(GroupMixin, Renderer):
         main render/transform here.
         """
         return self._render_jinja(
-            '''
+            """
             <div class="ms-parent">
                 <button type="button" class="ms-choice">
                     <span class="placeholder"></span>
@@ -543,7 +529,7 @@ class HTML(GroupMixin, Renderer):
                     </ul>
                 </div>
             </div>
-            ''',
+            """,
             field_name=field_name,
             current_selected=current_selected,
             options=options,
@@ -557,7 +543,7 @@ class HTML(GroupMixin, Renderer):
         if inspect.isclass(validator):
             validator = validator()
         return self._render_jinja(
-            '''
+            """
             {% for value, label in filter.options_seq %}
                 <li>
                     <label>
@@ -571,7 +557,7 @@ class HTML(GroupMixin, Renderer):
                     </label>
                 </li>
             {% endfor %}
-            ''',
+            """,
             filter=filter,
             field_name=field_name,
             selected=selected,
@@ -581,29 +567,24 @@ class HTML(GroupMixin, Renderer):
     def filtering_col_inputs2(self, col):
         """Render the second filter input, currently only a freeform."""
         filter = col.filter
-        field_name = 'v2({0})'.format(col.key)
+        field_name = f'v2({col.key})'
         field_name = self.grid.prefix_qs_arg_key(field_name)
 
         if 'input2' not in filter.input_types:
             return Markup('')
 
         # field will get modified by JS
-        ident = '{0}_input2'.format(col.key)
+        ident = f'{col.key}_input2'
         return self._render_jinja(
             '<input{{attrs|wg_attributes}} />',
-            attrs=dict(
-                name=field_name,
-                value=filter.value2_set_with,
-                id=ident,
-                type='text'
-            )
+            attrs=dict(name=field_name, value=filter.value2_set_with, id=ident, type='text'),
         )
 
     def filtering_add_filter_select(self):
         """Render the select box for adding a new filter. Used by the filter template."""
         return self.render_select(
             [(col.key, col.label) for col in self.grid.filtered_cols.values()],
-            name='datagrid-add-filter'
+            name='datagrid-add-filter',
         )
 
     def filtering_json_data(self):
@@ -631,17 +612,21 @@ class HTML(GroupMixin, Renderer):
             confirmation_required = False
         else:
             confirmation_required = count > self.grid.unconfirmed_export_limit
-        return jsonmod.dumps({
-            'confirm_export': confirmation_required,
-            'record_count': count
-        })
+        return jsonmod.dumps({'confirm_export': confirmation_required, 'record_count': count})
 
     def header_sorting(self):
         """Render the sort area. Used by the header template."""
         return self.load_content('header_sorting.html')
 
-    def render_select(self, options, current_selection=None, placeholder=('', Markup('&nbsp;')),
-                      name=None, id=None, **kwargs):
+    def render_select(
+        self,
+        options,
+        current_selection=None,
+        placeholder=('', Markup('&nbsp;')),
+        name=None,
+        id=None,
+        **kwargs,
+    ):
         """Generalized select box renderer.
 
         Args:
@@ -673,7 +658,7 @@ class HTML(GroupMixin, Renderer):
         kwargs['id'] = id
 
         return self._render_jinja(
-            '''
+            """
             <select{{attrs|wg_attributes}}>
                 {% for value, label, data in options %}
                     <option value="{{value}}"
@@ -684,8 +669,8 @@ class HTML(GroupMixin, Renderer):
                     </option>
                 {% endfor %}
             </select>
-            ''',
-            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None, ))) for opt in options),
+            """,
+            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None,))) for opt in options),
             current_selection=current_selection,
             placeholder=placeholder,
             attrs=kwargs,
@@ -700,10 +685,12 @@ class HTML(GroupMixin, Renderer):
         options = []
         for col in self.grid.columns:
             if col.can_sort:
-                options.extend([
-                    (col.key, col.label),
-                    ('-{}'.format(col.key), _('{label} DESC', label=col.label))
-                ])
+                options.extend(
+                    [
+                        (col.key, col.label),
+                        (f'-{col.key}', _('{label} DESC', label=col.label)),
+                    ],
+                )
         return options
 
     def sorting_select(self, number):
@@ -715,7 +702,7 @@ class HTML(GroupMixin, Renderer):
         Returns:
             str: Jinja-rendered string.
         """
-        key = 'sort{0}'.format(number)
+        key = f'sort{number}'
         sort_qsk = self.grid.prefix_qs_arg_key(key)
 
         if len(self.grid.order_by) < number:
@@ -752,16 +739,16 @@ class HTML(GroupMixin, Renderer):
         """Render the page selection input."""
         op_qsk = self.grid.prefix_qs_arg_key('onpage')
         return self._render_jinja(
-            '''
+            """
             <span>
                 <input name="{{name}}" id="{{name}}" type="number" value="{{page}}"
                     min="1" max="{{page_count}}" /> {{text}}
             </span>
-            ''',
+            """,
             name=op_qsk,
             page_count=self.grid.page_count,
             page=self.grid.on_page,
-            text=_('of {page_count}', page_count=self.grid.page_count)
+            text=_('of {page_count}', page_count=self.grid.page_count),
         )
 
     def paging_input(self):
@@ -770,7 +757,7 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '<input type="number" min="1" name="{{name}}" value="{{value}}" />',
             name=pp_qsk,
-            value=self.grid.per_page
+            value=self.grid.per_page,
         )
 
     def paging_url_first(self):
@@ -849,7 +836,7 @@ class HTML(GroupMixin, Renderer):
         return no records."""
         return self._render_jinja(
             '<p class="no-records">{{msg}}</p>',
-            msg=_('No records to display')
+            msg=_('No records to display'),
         )
 
     def table_attrs(self, **kwargs):
@@ -873,8 +860,7 @@ class HTML(GroupMixin, Renderer):
     def table_group_headings(self):
         """Combine all rendered column group headings and return as Markup."""
         group_headings = [
-            self.group_th(group, colspan)
-            for group, colspan in self.get_group_heading_colspans()
+            self.group_th(group, colspan) for group, colspan in self.get_group_heading_colspans()
         ]
         th_str = '\n'.join(group_headings)
         th_str = reindent(th_str, 12)
@@ -884,10 +870,7 @@ class HTML(GroupMixin, Renderer):
         """Render a placeholder TH tag for spacing between column groups."""
         kwargs.setdefault('class', 'buffer')
         kwargs['colspan'] = colspan
-        return self._render_jinja(
-            '<th{{ attrs|wg_attributes }}></th>',
-            attrs=kwargs
-        )
+        return self._render_jinja('<th{{ attrs|wg_attributes }}></th>', attrs=kwargs)
 
     def group_th(self, group, colspan, **kwargs):
         """Render a column group heading with the needed span.
@@ -901,7 +884,7 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '<th {{- attrs|wg_attributes }}>{{label}}</th>',
             label=group.label,
-            attrs=kwargs
+            attrs=kwargs,
         )
 
     def table_th(self, col):
@@ -922,7 +905,7 @@ class HTML(GroupMixin, Renderer):
                 if current_sort != col.key or flag_desc:
                     url_args['sort1'] = col.key
                 else:
-                    url_args['sort1'] = '-{0}'.format(col.key)
+                    url_args['sort1'] = f'-{col.key}'
             else:
                 url_args['sort1'] = col.key
             label = self._render_jinja(
@@ -934,7 +917,7 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '<th{{attrs|wg_attributes}}>{{label}}</th>',
             attrs=col.head.hah,
-            label=label
+            label=label,
         )
 
     def table_rows(self):
@@ -947,13 +930,9 @@ class HTML(GroupMixin, Renderer):
             rows.append(self.table_tr(rownum, record))
         # process subtotals (if any)
         if rows and self.grid.page_totals:
-            rows.append(
-                self.table_pagetotals(rownum + 1, self.grid.page_totals)
-            )
+            rows.append(self.table_pagetotals(rownum + 1, self.grid.page_totals))
         if rows and self.grid.grand_totals:
-            rows.append(
-                self.table_grandtotals(rownum + 2, self.grid.grand_totals)
-            )
+            rows.append(self.table_grandtotals(rownum + 2, self.grid.grand_totals))
         rows_str = '\n        '.join(rows)
         return Markup(rows_str)
 
@@ -987,9 +966,9 @@ class HTML(GroupMixin, Renderer):
     def table_tr_output(self, cells, row_hah):
         """Combine rendered cells and output a TR tag."""
         # do some formatting so that the source code is properly indented
-        tds_str = u'\n'.join(cells)
+        tds_str = '\n'.join(cells)
         tds_str = reindent(tds_str, 12)
-        tds_str = u'\n{0}\n        '.format(tds_str)
+        tds_str = f'\n{tds_str}\n        '
 
         return self._render_jinja(
             '<tr{{attrs|wg_attributes}}>{{tds}}</tr>',
@@ -1025,20 +1004,21 @@ class HTML(GroupMixin, Renderer):
                     cells.append(Markup('<td>&nbsp;</td>'))
                 continue
             if firstcol:
-                bufferval = ngettext('{label} ({num} record):',
-                                     '{label} ({num} records):',
-                                     numrecords,
-                                     label=label)
-                buffer_hah = {
-                    'colspan': colspan,
-                    'class': 'totals-label'
-                }
+                bufferval = ngettext(
+                    '{label} ({num} record):',
+                    '{label} ({num} records):',
+                    numrecords,
+                    label=label,
+                )
+                buffer_hah = {'colspan': colspan, 'class': 'totals-label'}
                 if colspan:
-                    cells.append(self._render_jinja(
-                        '<td{{attrs|wg_attributes}}>{{val}}</td>',
-                        attrs=buffer_hah,
-                        val=bufferval
-                    ))
+                    cells.append(
+                        self._render_jinja(
+                            '<td{{attrs|wg_attributes}}>{{val}}</td>',
+                            attrs=buffer_hah,
+                            val=bufferval,
+                        ),
+                    )
                 firstcol = False
                 colspan = 0
             cells.append(self.table_td(col, record))
@@ -1083,7 +1063,7 @@ class HTML(GroupMixin, Renderer):
         return self._render_jinja(
             '<td{{attrs|wg_attributes}}>{{value}}</td>',
             attrs=col_hah,
-            value=styled_value
+            value=styled_value,
         )
 
     def footer(self):
@@ -1115,9 +1095,12 @@ class HTML(GroupMixin, Renderer):
         """Generate a URL from current request args and the given kwargs."""
         curl = current_url(self.grid.manager, strip_querystring=True, strip_host=True)
 
-        map_adapter = Map([
-            Rule(curl, endpoint='magic'),
-        ], sort_parameters=True).bind(curl)
+        map_adapter = Map(
+            [
+                Rule(curl, endpoint='magic'),
+            ],
+            sort_parameters=True,
+        ).bind(curl)
 
         req_args = MultiDict(self.grid.manager.request_url_args())
 
@@ -1162,9 +1145,9 @@ class HTML(GroupMixin, Renderer):
         url_args['datagrid-add-filter'] = None
 
         for col in six.itervalues(self.grid.filtered_cols):
-            url_args['op({0})'.format(col.key)] = None
-            url_args['v1({0})'.format(col.key)] = None
-            url_args['v2({0})'.format(col.key)] = None
+            url_args[f'op({col.key})'] = None
+            url_args[f'v1({col.key})'] = None
+            url_args[f'v2({col.key})'] = None
 
         url_args['session_key'] = self.grid.session_key
         url_args['session_override'] = None
@@ -1187,7 +1170,7 @@ class HTML(GroupMixin, Renderer):
         """Render the single-search input, along with filter select."""
         filter_label, filter_select = self._get_filter_select_info()
         return self._render_jinja(
-            '''
+            """
             <tr class="search">
                 <th>{{label}}</th>
                 <td colspan="2">
@@ -1198,7 +1181,7 @@ class HTML(GroupMixin, Renderer):
                     </div>
                 </td>
             </tr>
-            ''',
+            """,
             label=_('Search'),
             search_value=self.grid.search_value,
             filter_label=filter_label,
@@ -1209,7 +1192,7 @@ class HTML(GroupMixin, Renderer):
         """Render just the Add Filter area on a row."""
         filter_label, filter_select = self._get_filter_select_info()
         return self._render_jinja(
-            '''
+            """
             <tr class="add-filter">
                 <th>
                     {{ filter_label }}
@@ -1218,7 +1201,7 @@ class HTML(GroupMixin, Renderer):
                     {{ filter_select }}
                 </td>
             </tr>
-            ''',
+            """,
             filter_label=filter_label,
             filter_select=filter_select,
         )
@@ -1228,7 +1211,7 @@ class XLSXWriterWorkbookManager:
     def __init__(self, *args, **kwargs):
         self.base_style_attrs = {
             'bold': True,
-            'top': 6  # Double thick border
+            'top': 6,  # Double thick border
         }
         self._workbook = self.create_workbook()
         self._xlsx_format_cache = {}
@@ -1268,15 +1251,11 @@ class XLSXWriterWorkbookManager:
             xlh.rownum,
             xlh.colnum + colspan - 1,
             value,
-            style
+            style,
         )
 
     def merged_heading_cell(self, xlh, value, style, col_index, colspan):
-        xlh.ws.merge_range(
-            0, col_index, 0, col_index + (colspan - 1),
-            value,
-            style
-        )
+        xlh.ws.merge_range(0, col_index, 0, col_index + (colspan - 1), value, style)
 
     def style_for_column(self, col):
         if col.key not in self.styles_cache:
@@ -1321,19 +1300,19 @@ class OpenpyxlWorkbookManager:
         self._named_styles = set()
         self.totals_style_spec = {
             'font': Font(bold=True),
-            'border': Border(top=Side(border_style='double'))
+            'border': Border(top=Side(border_style='double')),
         }
 
         self.heading_style = self.get_heading_style()
         self.totals_style = self.get_totals_style()
 
-    def add_named_style(self, style: Dict[str, Union[Font, Border, Alignment]], name: str) -> str:
-        '''
+    def add_named_style(self, style: dict[str, Font | Border | Alignment], name: str) -> str:
+        """
         Registers a named style based on the column key, and caches to avoid name conflicts later.
         https://openpyxl.readthedocs.io/en/stable/styles.html#creating-a-named-style
 
         Returns: string representing the name of the named style
-        '''
+        """
 
         if name in self._named_styles:
             return name
@@ -1353,10 +1332,10 @@ class OpenpyxlWorkbookManager:
 
     @property
     def filename(self):
-        '''
+        """
         A misnomer but is consistent with xlsxwriter. This actually returns the file handle,
         in this case a BytesIO
-        '''
+        """
         if not self._file:
             buf = io.BytesIO()
             self._workbook.save(buf)
@@ -1368,37 +1347,31 @@ class OpenpyxlWorkbookManager:
 
     @property
     def fileclosed(self):
-        '''
+        """
         Property does not exist in openpyxl like it does in xlsxwriter,
         and trying to close an already closed book does not seem to cause issues.
-        '''
+        """
         return False
 
     def merged_totals_cell(self, xlh, value, style, colspan):
-        '''
+        """
         openpyxl-specific creation of a merged cell for the totals row
-        '''
-        merged_cells = xlh.ws.cell(
-            row=xlh.rownum,
-            column=xlh.colnum
-        )
+        """
+        merged_cells = xlh.ws.cell(row=xlh.rownum, column=xlh.colnum)
         merged_cells.value = value
         merged_cells.style = style
         xlh.ws.merge_cells(
             start_row=xlh.rownum,
             start_column=xlh.colnum,
             end_row=xlh.rownum,
-            end_column=xlh.colnum + colspan - 1
+            end_column=xlh.colnum + colspan - 1,
         )
 
     def merged_heading_cell(self, xlh, value, style, col_index, colspan):
-        '''
+        """
         openpyxl-specific creation of a merged cell for group headers
-        '''
-        merged_cells = xlh.ws.cell(
-            row=1,
-            column=col_index + 1
-        )
+        """
+        merged_cells = xlh.ws.cell(row=1, column=col_index + 1)
 
         # The editable cell within a merged cell (top left cell) is a Cell,
         # while the other cells in that merge will yield a MergedCell, which
@@ -1411,7 +1384,7 @@ class OpenpyxlWorkbookManager:
             start_row=1,
             start_column=col_index + 1,
             end_row=1,
-            end_column=col_index + colspan
+            end_column=col_index + colspan,
         )
 
     def style_for_column(self, col):
@@ -1424,7 +1397,8 @@ class OpenpyxlWorkbookManager:
 
             # Only use certain keys, as they become style attributes
             style_dict = {
-                key: style_dict[key] for key in ['font', 'alignment', 'border', 'number_format']
+                key: style_dict[key]
+                for key in ['font', 'alignment', 'border', 'number_format']
                 if key in style_dict
             }
             return self.add_named_style(style_dict, col.key)
@@ -1457,6 +1431,7 @@ class OpenpyxlWorkbookManager:
 
 class XLSX(GroupMixin, Renderer):
     """Renderer for Excel XLSX output."""
+
     mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
     def __init__(self, grid):
@@ -1544,7 +1519,6 @@ class XLSX(GroupMixin, Renderer):
             xlh (WriterX): Helper for writing worksheet cells.
             wb (Workbook): xlsxwriter Workbook object for direct usage.
         """
-        pass
 
     def sheet_body(self, xlh, wb):
         """Render the headings/records area of the worksheet.
@@ -1563,7 +1537,6 @@ class XLSX(GroupMixin, Renderer):
             xlh (WriterX): Helper for writing worksheet cells.
             wb (Workbook): xlsxwriter Workbook object for direct usage.
         """
-        pass
 
     def body_headings(self, xlh, wb):
         """Render group and column label rows.
@@ -1672,7 +1645,7 @@ class XLSX(GroupMixin, Renderer):
         only one workbook open with a given name. Excel will not allow a second file
         with the same name to open, even if the files are in different paths.
         """
-        return '{0}_{1}.xlsx'.format(self.grid.ident, randnumerics(6))
+        return f'{self.grid.ident}_{randnumerics(6)}.xlsx'
 
     def as_response(self, wb=None, sheet_name=None):
         """Return an attachment file via the grid's manager."""
@@ -1685,6 +1658,7 @@ class XLSX(GroupMixin, Renderer):
 
 class CSV(Renderer):
     """Renderer for CSV output."""
+
     mime_type = 'text/csv'
 
     @property
@@ -1704,7 +1678,7 @@ class CSV(Renderer):
         only one workbook open with a given name. Excel will not allow a second file
         with the same name to open, even if the files are in different paths.
         """
-        return '{0}_{1}.csv'.format(self.grid.ident, randnumerics(6))
+        return f'{self.grid.ident}_{randnumerics(6)}.csv'
 
     def build_csv(self):
         """Render grid output as CSV and return the contents in an IO stream."""

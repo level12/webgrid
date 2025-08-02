@@ -1,18 +1,16 @@
-from __future__ import absolute_import
-
 import csv
 import datetime as dt
 from enum import Enum
-import json
 import io
+import json
 
 import arrow
-import openpyxl
-import pytest
-import xlsxwriter
 from markupsafe import Markup
+import openpyxl
 from pyquery import PyQuery
+import pytest
 from werkzeug.datastructures import MultiDict
+import xlsxwriter
 
 from webgrid import (
     BoolColumn,
@@ -27,23 +25,25 @@ from webgrid import (
     extensions,
     row_styler,
 )
-from webgrid.filters import TextFilter, OptionsEnumFilter, DateFilter
+from webgrid.filters import DateFilter, OptionsEnumFilter, TextFilter
 from webgrid.renderers import (
     CSV,
     HTML,
     JSON,
     XLSX,
-    RenderLimitExceeded,
-    render_html_attributes,
     OpenpyxlWorkbookManager,
+    RenderLimitExceeded,
     XLSXWriterWorkbookManager,
+    render_html_attributes,
 )
 from webgrid_ta.grids import (
     ArrowCSVGrid,
     ArrowGrid,
     Grid,
-    PeopleGrid as PG,
     StopwatchGrid,
+)
+from webgrid_ta.grids import (
+    PeopleGrid as PG,
 )
 from webgrid_ta.model.entities import (
     AccountType,
@@ -54,7 +54,7 @@ from webgrid_ta.model.entities import (
     db,
 )
 
-from .helpers import eq_html, _inrequest, render_in_grid
+from .helpers import _inrequest, eq_html, render_in_grid
 
 
 def _query_exclude_person(query):
@@ -191,14 +191,14 @@ class CarGrid(Grid):
 def find_tag(html, tag, id_=None, class_=None, **attrs):
     selector = tag
     if id_:
-        selector += '#{}'.format(id_)
+        selector += f'#{id_}'
     if class_:
-        selector += '.{}'.format(class_)
+        selector += f'.{class_}'
     for k, v in attrs.items():
         if v is None:
-            selector += '[{}]'.format(k)
+            selector += f'[{k}]'
         else:
-            selector += '[{}="{}"]'.format(k, v)
+            selector += f'[{k}="{v}"]'
 
     return PyQuery(html)(selector)
 
@@ -208,13 +208,13 @@ def assert_tag(html, tag, text=None, **kwargs):
     assert results
 
     if text is not None:
-        assert (
-            any(i.text(squash_space=False) == text for i in results.items())
-        ), '{} not found in {}'.format(text, results)
+        assert any(i.text(squash_space=False) == text for i in results.items()), (
+            f'{text} not found in {results}'
+        )
     return results
 
 
-class TestHtmlRenderer(object):
+class TestHtmlRenderer:
     key_data = (
         {'id': 1, 'name': 'one', 'status': 'new', 'emails': ''},
         {'id': 2, 'name': 'two', 'status': 'new', 'emails': ''},
@@ -226,25 +226,41 @@ class TestHtmlRenderer(object):
     @_inrequest('/')
     def test_car_html(self):
         key_data = (
-            {'id': 1, 'make': 'ford', 'model': 'F150&', 'color': 'pink',
-             'dealer': 'bob', 'dealer_id': '7', 'active': True,
-             'active_1': True, 'active_2': True},
-            {'id': 2, 'make': 'chevy', 'model': '1500', 'color': 'blue',
-             'dealer': 'fred', 'dealer_id': '9', 'active': False,
-             'active_1': False, 'active_2': False},
+            {
+                'id': 1,
+                'make': 'ford',
+                'model': 'F150&',
+                'color': 'pink',
+                'dealer': 'bob',
+                'dealer_id': '7',
+                'active': True,
+                'active_1': True,
+                'active_2': True,
+            },
+            {
+                'id': 2,
+                'make': 'chevy',
+                'model': '1500',
+                'color': 'blue',
+                'dealer': 'fred',
+                'dealer_id': '9',
+                'active': False,
+                'active_1': False,
+                'active_2': False,
+            },
         )
 
         mg = CarGrid()
         mg.set_records(key_data)
         eq_html(mg.html.table(), 'basic_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason='IDs will not line up')
     @_inrequest('/')
     def test_people_html(self):
         pg = render_in_grid(PeopleGrid, 'html')()
         eq_html(pg.html.table(), 'people_table.html')
 
-    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason="IDs will not line up")
+    @pytest.mark.skipif(db.engine.dialect.name != 'sqlite', reason='IDs will not line up')
     @_inrequest('/')
     def test_stopwatch_html(self):
         # Test Stopwatch grid with column groups.
@@ -263,9 +279,11 @@ class TestHtmlRenderer(object):
             Column('Value', 'value', can_sort=False)
 
         tg = TGrid()
-        tg.set_records([
-            {'id': 1, 'value': 'foo'},
-        ])
+        tg.set_records(
+            [
+                {'id': 1, 'value': 'foo'},
+            ],
+        )
         tg.html()
 
     def test_render_html_attributes(self):
@@ -273,14 +291,16 @@ class TestHtmlRenderer(object):
         assert isinstance(result, Markup)
         assert result == ''
 
-        result = render_html_attributes({
-            'text': 'abc',
-            'empty': '',
-            'bool1': True,
-            'bool2': False,
-            'none': None,
-            'esc&': '<>"'
-        })
+        result = render_html_attributes(
+            {
+                'text': 'abc',
+                'empty': '',
+                'bool1': True,
+                'bool2': False,
+                'none': None,
+                'esc&': '<>"',
+            },
+        )
         assert isinstance(result, Markup)
         assert result == ' bool1 empty="" esc&amp;="&lt;&gt;&#34;" text="abc"'
 
@@ -351,22 +371,18 @@ class TestHtmlRenderer(object):
         g = self.get_grid()
         assert g.html.paging_url_last() == '/thepage?onpage=5&perpage=1'
 
-    @_inrequest('/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
-                '=bob&v2(name)=fred&search=bar')
+    @_inrequest(
+        '/thepage?foo=bar&onpage=5&perpage=10&sort1=1&sort2=2&sort3=3&op(name)=eq&v1(name)'
+        '=bob&v2(name)=fred&search=bar',
+    )
     def test_reset_url(self):
         g = self.get_grid()
-        assert (
-            g.html.reset_url()
-            == '/thepage?dgreset=1&foo=bar&session_key={0}'.format(g.session_key)
-        )
+        assert g.html.reset_url() == f'/thepage?dgreset=1&foo=bar&session_key={g.session_key}'
 
     @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_url(self):
         g = self.get_grid()
-        assert (
-            g.html.form_action_url()
-            == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
-        )
+        assert g.html.form_action_url() == f'/thepage?foo=bar&session_key={g.session_key}'
 
     @_inrequest('/thepage?foo=bar&onpage=5&session_override=1')
     def test_form_action_url_session_opts(self):
@@ -382,10 +398,7 @@ class TestHtmlRenderer(object):
         g = TGrid()
         g.set_records(self.key_data)
         g.apply_qs_args()
-        assert (
-            g.html.form_action_url()
-            == '/thepage?foo=bar&session_key={0}'.format(g.session_key)
-        )
+        assert g.html.form_action_url() == f'/thepage?foo=bar&session_key={g.session_key}'
 
     @_inrequest('/thepage?foo=bar&onpage=5')
     def test_form_action_method_get(self):
@@ -417,25 +430,35 @@ class TestHtmlRenderer(object):
         assert pyq('form.header').attr('method') == 'post'
         assert pyq('form.header > input[name="csrf_token"]')
 
-    @pytest.mark.parametrize('page_param,input_value', [
-        (1, '1'),
-        (2, '2'),
-        (3, '3'),
-        (4, '4'),
-        (5, '5'),
-        (0, '1'),
-        (6, '5'),
-        ('abc', '1'),
-    ])
+    @pytest.mark.parametrize(
+        'page_param,input_value',
+        [
+            (1, '1'),
+            (2, '2'),
+            (3, '3'),
+            (4, '4'),
+            (5, '5'),
+            (0, '1'),
+            (6, '5'),
+            ('abc', '1'),
+        ],
+    )
     def test_paging_select(self, page_param, input_value):
-
-        @_inrequest('/thepage?onpage={}'.format(page_param))
+        @_inrequest(f'/thepage?onpage={page_param}')
         def check_paging():
             g = self.get_grid()
             select_html = g.html.paging_select()
             assert PyQuery(select_html).text().strip() == 'of 5'
-            assert_tag(select_html, 'input', id_='onpage', name='onpage', type='number',
-                       value=input_value, min='1', max='5')
+            assert_tag(
+                select_html,
+                'input',
+                id_='onpage',
+                name='onpage',
+                type='number',
+                value=input_value,
+                min='1',
+                max='5',
+            )
 
         check_paging()
 
@@ -446,36 +469,84 @@ class TestHtmlRenderer(object):
         assert_tag(input_html, 'input', name='perpage', type='number', value='1')
 
         img_html = g.html.paging_img_first()
-        assert_tag(img_html, 'img', alt='<<', width='16', height='13',
-                   src='/static/webgrid/b_firstpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='<<',
+            width='16',
+            height='13',
+            src='/static/webgrid/b_firstpage.png',
+        )
 
         img_html = g.html.paging_img_first_dead()
-        assert_tag(img_html, 'img', alt='<<', width='16', height='13',
-                   src='/static/webgrid/bd_firstpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='<<',
+            width='16',
+            height='13',
+            src='/static/webgrid/bd_firstpage.png',
+        )
 
         img_html = g.html.paging_img_prev()
-        assert_tag(img_html, 'img', alt='<', width='8', height='13',
-                   src='/static/webgrid/b_prevpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='<',
+            width='8',
+            height='13',
+            src='/static/webgrid/b_prevpage.png',
+        )
 
         img_html = g.html.paging_img_prev_dead()
-        assert_tag(img_html, 'img', alt='<', width='8', height='13',
-                   src='/static/webgrid/bd_prevpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='<',
+            width='8',
+            height='13',
+            src='/static/webgrid/bd_prevpage.png',
+        )
 
         img_html = g.html.paging_img_next()
-        assert_tag(img_html, 'img', alt='>', width='8', height='13',
-                   src='/static/webgrid/b_nextpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='>',
+            width='8',
+            height='13',
+            src='/static/webgrid/b_nextpage.png',
+        )
 
         img_html = g.html.paging_img_next_dead()
-        assert_tag(img_html, 'img', alt='>', width='8', height='13',
-                   src='/static/webgrid/bd_nextpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='>',
+            width='8',
+            height='13',
+            src='/static/webgrid/bd_nextpage.png',
+        )
 
         img_html = g.html.paging_img_last()
-        assert_tag(img_html, 'img', alt='>>', width='16', height='13',
-                   src='/static/webgrid/b_lastpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='>>',
+            width='16',
+            height='13',
+            src='/static/webgrid/b_lastpage.png',
+        )
 
         img_html = g.html.paging_img_last_dead()
-        assert_tag(img_html, 'img', alt='>>', width='16', height='13',
-                   src='/static/webgrid/bd_lastpage.png')
+        assert_tag(
+            img_html,
+            'img',
+            alt='>>',
+            width='16',
+            height='13',
+            src='/static/webgrid/bd_lastpage.png',
+        )
 
         # since we are on page 2, all links should be live
         footer_html = g.html.footer()
@@ -533,44 +604,56 @@ class TestHtmlRenderer(object):
         heading_row = g.html.table_column_headings()
         assert_tag(heading_row, 'a', text='Name', class_='sort-desc', href='/thepage?sort1=name')
 
-    @_inrequest('/thepage?op(firstname)=eq&v1(firstname)=foo&op(createdts)=between&v1(createdts)='
-                '2%2F15%2F12&&v2(createdts)=2012-02-16')
+    @_inrequest(
+        '/thepage?op(firstname)=eq&v1(firstname)=foo&op(createdts)=between&v1(createdts)='
+        '2%2F15%2F12&&v2(createdts)=2012-02-16',
+    )
     def test_filtering_input_html(self):
         g = PeopleGrid()
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['firstname'])
-        assert '<input id="firstname_input1" name="v1(firstname)" type="text" />' in filter_html, \
+        assert '<input id="firstname_input1" name="v1(firstname)" type="text" />' in filter_html, (
             filter_html
+        )
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['createdts'])
-        assert '<input id="createdts_input1" name="v1(createdts)" type="text" />' in filter_html, \
+        assert '<input id="createdts_input1" name="v1(createdts)" type="text" />' in filter_html, (
             filter_html
+        )
 
         filter_html = g.html.filtering_col_inputs2(g.key_column_map['createdts'])
-        assert '<input id="createdts_input2" name="v2(createdts)" type="text" />' in filter_html, \
+        assert '<input id="createdts_input2" name="v2(createdts)" type="text" />' in filter_html, (
             filter_html
+        )
 
         g.apply_qs_args()
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['firstname'])
-        assert '<input id="firstname_input1" name="v1(firstname)" type="text" value="foo" />' in \
-            filter_html, filter_html
+        assert (
+            '<input id="firstname_input1" name="v1(firstname)" type="text" value="foo" />'
+            in filter_html
+        ), filter_html
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['createdts'])
-        assert '<input id="createdts_input1" name="v1(createdts)" type="text" value=' + \
-            '"2012-02-15T00:00" />' in filter_html, filter_html
+        assert (
+            '<input id="createdts_input1" name="v1(createdts)" type="text" value='
+            '"2012-02-15T00:00" />' in filter_html
+        ), filter_html
 
         filter_html = g.html.filtering_col_inputs2(g.key_column_map['createdts'])
-        assert '<input id="createdts_input2" name="v2(createdts)" type="text" value=' + \
-            '"2012-02-16T23:59" />' in filter_html, filter_html
+        assert (
+            '<input id="createdts_input2" name="v2(createdts)" type="text" value='
+            '"2012-02-16T23:59" />' in filter_html
+        ), filter_html
 
     @_inrequest('/thepage?op(firstname)=foobar&v1(firstname)=baz')
     def test_filtering_invalid_operator(self):
         g = PeopleGrid()
 
         filter_html = g.html.filtering_col_inputs1(g.key_column_map['firstname'])
-        assert '<input id="firstname_input1" name="v1(firstname)" type="text" />' in filter_html, \
+        assert '<input id="firstname_input1" name="v1(firstname)" type="text" />' in filter_html, (
             filter_html
+        )
 
     @_inrequest('/thepage')
     def test_extra_filter_attrs(self):
@@ -708,7 +791,7 @@ class PGPageTotals(PeopleGrid):
     subtotals = 'page'
 
 
-class TestPageTotals(object):
+class TestPageTotals:
     @_inrequest('/')
     def test_people_html(self):
         g = PGPageTotals()
@@ -722,7 +805,7 @@ class PGGrandTotals(PeopleGrid):
     subtotals = 'grand'
 
 
-class TestGrandTotals(object):
+class TestGrandTotals:
     @_inrequest('/')
     def test_people_html(self):
         g = PGGrandTotals()
@@ -731,7 +814,7 @@ class TestGrandTotals(object):
         assert '<td class="totals-label" colspan="7">Page Totals (3 records):</td>' not in g.html()
 
 
-class TestFooterRendersCorrectly(object):
+class TestFooterRendersCorrectly:
     @_inrequest('/')
     def test_people_html_footer(self):
         g = PeopleGrid()
@@ -749,7 +832,7 @@ class PGAllTotals(PeopleGrid):
     subtotals = 'all'
 
 
-class TestAllTotals(object):
+class TestAllTotals:
     @_inrequest('/')
     def test_people_html(self):
         g = PGAllTotals()
@@ -782,10 +865,9 @@ class TestJSONRenderer:
         return json.loads(JSON(grid).render())
 
     def test_json_format_records(self):
-        status_options = [{
-            'key': status.id,
-            'value': status.label
-        } for status in reversed(Status.list())]
+        status_options = [
+            {'key': status.id, 'value': status.label} for status in reversed(Status.list())
+        ]
         expected = {
             'errors': [],
             'settings': {
@@ -808,9 +890,7 @@ class TestJSONRenderer:
                     'state': 'State',
                     'status': 'Status',
                 },
-                'column_groups': [
-                    {'columns': ['firstname', 'inactive'], 'label': 'foo'}
-                ],
+                'column_groups': [{'columns': ['firstname', 'inactive'], 'label': 'foo'}],
                 'column_types': {
                     'account_type': None,
                     'createdts': 'datetime',
@@ -826,8 +906,14 @@ class TestJSONRenderer:
                 'enable_sort': True,
                 'export_targets': ['xlsx'],
                 'sortable_columns': [
-                    'firstname', 'inactive', 'status', 'createdts', 'due_date',
-                    'state', 'numericcol', 'account_type',
+                    'firstname',
+                    'inactive',
+                    'status',
+                    'createdts',
+                    'due_date',
+                    'state',
+                    'numericcol',
+                    'account_type',
                 ],
                 'filters': {
                     'account_type': {
@@ -835,63 +921,155 @@ class TestJSONRenderer:
                             {'field_type': 'select', 'hint': None, 'key': 'is', 'label': 'is'},
                             {'field_type': 'select', 'hint': None, 'key': '!is', 'label': 'is not'},
                             {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
-                            {'field_type': None, 'hint': None, 'key': '!empty',
-                             'label': 'not empty'}
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': '!empty',
+                                'label': 'not empty',
+                            },
                         ],
                         'options': [
                             {'key': 'admin', 'value': 'Admin'},
                             {'key': 'manager', 'value': 'Manager'},
-                            {'key': 'employee', 'value': 'Employee'}
+                            {'key': 'employee', 'value': 'Employee'},
                         ],
-                        'primary_op': {'field_type': 'select', 'hint': None, 'key': 'is',
-                                       'label': 'is'}
+                        'primary_op': {
+                            'field_type': 'select',
+                            'hint': None,
+                            'key': 'is',
+                            'label': 'is',
+                        },
                     },
                     'createdts': {
                         'operators': [
-                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'eq',
-                             'label': 'is'},
-                            {'field_type': 'input.datetime-local', 'hint': None, 'key': '!eq',
-                             'label': 'is not'},
-                            {'field_type': None, 'hint': None, 'key': 'past',
-                             'label': 'in the past'},
-                            {'field_type': None, 'hint': None, 'key': 'future',
-                             'label': 'in the future'},
-                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'lte',
-                             'label': 'less than or equal'},
-                            {'field_type': 'input.datetime-local', 'hint': None, 'key': 'gte',
-                             'label': 'greater than or equal'},
-                            {'field_type': '2inputs.datetime-local', 'hint': None,
-                             'key': 'between', 'label': 'between'},
-                            {'field_type': '2inputs.datetime-local', 'hint': None,
-                             'key': '!between', 'label': 'not between'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'da',
-                             'label': 'days ago'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'ltda',
-                             'label': 'less than days ago'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'mtda',
-                             'label': 'more than days ago'},
+                            {
+                                'field_type': 'input.datetime-local',
+                                'hint': None,
+                                'key': 'eq',
+                                'label': 'is',
+                            },
+                            {
+                                'field_type': 'input.datetime-local',
+                                'hint': None,
+                                'key': '!eq',
+                                'label': 'is not',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'past',
+                                'label': 'in the past',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'future',
+                                'label': 'in the future',
+                            },
+                            {
+                                'field_type': 'input.datetime-local',
+                                'hint': None,
+                                'key': 'lte',
+                                'label': 'less than or equal',
+                            },
+                            {
+                                'field_type': 'input.datetime-local',
+                                'hint': None,
+                                'key': 'gte',
+                                'label': 'greater than or equal',
+                            },
+                            {
+                                'field_type': '2inputs.datetime-local',
+                                'hint': None,
+                                'key': 'between',
+                                'label': 'between',
+                            },
+                            {
+                                'field_type': '2inputs.datetime-local',
+                                'hint': None,
+                                'key': '!between',
+                                'label': 'not between',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'da',
+                                'label': 'days ago',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'ltda',
+                                'label': 'less than days ago',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'mtda',
+                                'label': 'more than days ago',
+                            },
                             {'field_type': None, 'hint': None, 'key': 'today', 'label': 'today'},
-                            {'field_type': None, 'hint': None, 'key': 'thisweek',
-                             'label': 'this week'},
-                            {'field_type': None, 'hint': None, 'key': 'lastweek',
-                             'label': 'last week'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'ind',
-                             'label': 'in days'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'iltd',
-                             'label': 'in less than days'},
-                            {'field_type': 'input', 'hint': 'days', 'key': 'imtd',
-                             'label': 'in more than days'},
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'thisweek',
+                                'label': 'this week',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'lastweek',
+                                'label': 'last week',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'ind',
+                                'label': 'in days',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'iltd',
+                                'label': 'in less than days',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': 'days',
+                                'key': 'imtd',
+                                'label': 'in more than days',
+                            },
                             {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
-                            {'field_type': None, 'hint': None, 'key': '!empty',
-                             'label': 'not empty'},
-                            {'field_type': None, 'hint': None, 'key': 'thismonth',
-                             'label': 'this month'},
-                            {'field_type': None, 'hint': None, 'key': 'lastmonth',
-                             'label': 'last month'},
-                            {'field_type': 'select+input', 'hint': None, 'key': 'selmonth',
-                             'label': 'select month'},
-                            {'field_type': None, 'hint': None, 'key': 'thisyear',
-                             'label': 'this year'}
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': '!empty',
+                                'label': 'not empty',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'thismonth',
+                                'label': 'this month',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'lastmonth',
+                                'label': 'last month',
+                            },
+                            {
+                                'field_type': 'select+input',
+                                'hint': None,
+                                'key': 'selmonth',
+                                'label': 'select month',
+                            },
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': 'thisyear',
+                                'label': 'this year',
+                            },
                         ],
                         'primary_op': None,
                         'options': [
@@ -907,23 +1085,38 @@ class TestJSONRenderer:
                             {'key': 10, 'value': '10-Oct'},
                             {'key': 11, 'value': '11-Nov'},
                             {'key': 12, 'value': '12-Dec'},
-                        ]
+                        ],
                     },
                     'firstname': {
                         'operators': [
                             {'field_type': 'input', 'hint': None, 'key': 'eq', 'label': 'is'},
-                            {'field_type': 'input', 'hint': None, 'key': '!eq',
-                             'label': 'is not'},
-                            {'field_type': 'input', 'hint': None, 'key': 'contains',
-                             'label': 'contains'},
-                            {'field_type': 'input', 'hint': None, 'key': '!contains',
-                             'label': "doesn't contain"},
+                            {'field_type': 'input', 'hint': None, 'key': '!eq', 'label': 'is not'},
+                            {
+                                'field_type': 'input',
+                                'hint': None,
+                                'key': 'contains',
+                                'label': 'contains',
+                            },
+                            {
+                                'field_type': 'input',
+                                'hint': None,
+                                'key': '!contains',
+                                'label': "doesn't contain",
+                            },
                             {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
-                            {'field_type': None, 'hint': None, 'key': '!empty',
-                             'label': 'not empty'}
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': '!empty',
+                                'label': 'not empty',
+                            },
                         ],
-                        'primary_op': {'field_type': 'input', 'hint': None, 'key': 'contains',
-                                       'label': 'contains'}
+                        'primary_op': {
+                            'field_type': 'input',
+                            'hint': None,
+                            'key': 'contains',
+                            'label': 'contains',
+                        },
                     },
                     'status': {
                         'operators': [
@@ -932,12 +1125,20 @@ class TestJSONRenderer:
                             {'field_type': 'select', 'hint': None, 'key': '!is', 'label': 'is not'},
                             {'field_type': None, 'hint': None, 'key': 'c', 'label': 'closed'},
                             {'field_type': None, 'hint': None, 'key': 'empty', 'label': 'empty'},
-                            {'field_type': None, 'hint': None, 'key': '!empty',
-                             'label': 'not empty'}
+                            {
+                                'field_type': None,
+                                'hint': None,
+                                'key': '!empty',
+                                'label': 'not empty',
+                            },
                         ],
                         'options': status_options,
-                        'primary_op': {'field_type': 'select', 'hint': None, 'key': 'is',
-                                       'label': 'is'}
+                        'primary_op': {
+                            'field_type': 'select',
+                            'hint': None,
+                            'key': 'is',
+                            'label': 'is',
+                        },
                     },
                 },
             },
@@ -1044,16 +1245,12 @@ class TestJSONRenderer:
 
     def test_json_format_arrow(self):
         ArrowRecord.query.delete()
-        ArrowRecord.testing_create(
-            created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
-        )
+        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         reloaded = self.get_json(ArrowGrid())
-        assert reloaded['records'] == [
-            {'created_utc': '2016-08-10T01:02:03+00:00'}
-        ]
+        assert reloaded['records'] == [{'created_utc': '2016-08-10T01:02:03+00:00'}]
 
 
-class TestXLSXRenderer(object):
+class TestXLSXRenderer:
     def test_using_xlsxwriter_library(self):
         g = render_in_grid(PeopleGrid, 'xlsx')(per_page=1)
         wb = g.xlsx(manager_cls=XLSXWriterWorkbookManager)
@@ -1093,13 +1290,15 @@ class TestXLSXRenderer(object):
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set([
-            'A1:B1',
-            'C1:D1',
-            # E is a single cell
-            'F1:G1',
-            'H1:I1',
-        ])
+        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set(
+            [
+                'A1:B1',
+                'C1:D1',
+                # E is a single cell
+                'F1:G1',
+                'H1:I1',
+            ],
+        )
         assert sheet.max_column == 9
 
     def test_group_headings_xlsxwriter(self):
@@ -1115,13 +1314,15 @@ class TestXLSXRenderer(object):
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set([
-            'A1:B1',
-            'C1:D1',
-            # E is a single cell
-            'F1:G1',
-            'H1:I1',
-        ])
+        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set(
+            [
+                'A1:B1',
+                'C1:D1',
+                # E is a single cell
+                'F1:G1',
+                'H1:I1',
+            ],
+        )
         assert sheet.max_column == 9
 
     def test_subtotals_with_no_records(self):
@@ -1134,6 +1335,7 @@ class TestXLSXRenderer(object):
     def test_long_grid_name_xlsxwriter(self):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
+
         g = PeopleGridWithAReallyReallyLongName()
         wb = g.xlsx(manager_cls=XLSXWriterWorkbookManager)
         wb.close()
@@ -1145,6 +1347,7 @@ class TestXLSXRenderer(object):
     def test_long_grid_name_openpyxl(self):
         class PeopleGridWithAReallyReallyLongName(PeopleGrid):
             pass
+
         g = PeopleGridWithAReallyReallyLongName()
         wb = g.xlsx(manager_cls=OpenpyxlWorkbookManager)
         wb.filename.seek(0)
@@ -1266,8 +1469,7 @@ class TestXLSXRenderer(object):
         assert format1 is format2
 
 
-class TestCSVRenderer(object):
-
+class TestCSVRenderer:
     def test_some_basics(self):
         g = render_in_grid(PeopleCSVGrid, 'csv')(per_page=1)
         csv_data = g.csv.build_csv()
@@ -1284,9 +1486,7 @@ class TestCSVRenderer(object):
 
     def test_it_renders_date_time_with_tz(self):
         ArrowRecord.query.delete()
-        ArrowRecord.testing_create(
-            created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
-        )
+        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowCSVGrid()
         g.allowed_export_targets = {'csv': CSV}
         csv_data = g.csv.build_csv()
@@ -1306,9 +1506,7 @@ class TestCSVRenderer(object):
             DateTimeColumn('Created', ArrowRecord.created_utc, csv_format='%m/%d/%Y %I:%M %p')
 
         ArrowRecord.query.delete()
-        ArrowRecord.testing_create(
-            created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3)
-        )
+        ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = CSVGrid()
         csv_data = g.csv.build_csv()
         csv_data.seek(0)
@@ -1321,18 +1519,18 @@ class TestCSVRenderer(object):
         assert data[1][0] == '08/10/2016 01:02 AM'
 
 
-class TestHideSection(object):
+class TestHideSection:
     @_inrequest('/')
     def test_controlls_hidden(self):
         class NoControlBoxGrid(PG):
             hide_controls_box = True
+
         g = NoControlBoxGrid()
         assert '<tr class="status"' not in g.html()
         assert '<div class="footer">' not in g.html()
 
 
-class TestArrowDate(object):
-
+class TestArrowDate:
     def setup_method(self):
         ArrowRecord.query.delete()
 
@@ -1359,9 +1557,6 @@ class TestArrowDate(object):
         ArrowRecord.testing_create(created_utc=arrow.Arrow(2016, 8, 10, 1, 2, 3))
         g = ArrowGrid()
         g.column('created_utc').filter = DateFilter(g.column('created_utc').expr)
-        g.apply_qs_args(grid_args={
-            'op(created_utc)': 'eq',
-            'v1(created_utc)': '2018-01-01'
-        })
+        g.apply_qs_args(grid_args={'op(created_utc)': 'eq', 'v1(created_utc)': '2018-01-01'})
         assert g.column('created_utc').filter.is_active
         g.record_count

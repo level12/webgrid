@@ -5,9 +5,10 @@ import click
 import flask
 
 from webgrid_ta.app import create_app
-import webgrid_ta.model as model
 from webgrid_ta.extensions import lazy_gettext as _
+import webgrid_ta.model as model
 from webgrid_ta.model.helpers import clear_db
+
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,7 @@ def main():
 
 
 @main.command('create-db')
-@click.option('--clear', default=False, is_flag=True,
-              help=_('DROP all DB objects first'))
+@click.option('--clear', default=False, is_flag=True, help=_('DROP all DB objects first'))
 def database_init(clear):
     if clear:
         clear_db()
@@ -38,7 +38,7 @@ def list_routes():
     output = []
     for rule in flask.current_app.url_map.iter_rules():
         methods = ','.join(rule.methods)
-        line = urllib.parse.unquote("{:50s} {:20s} {}".format(rule.endpoint, methods, rule))
+        line = urllib.parse.unquote(f'{rule.endpoint:50s} {methods:20s} {rule}')
         output.append(line)
 
     for line in sorted(output):
@@ -51,6 +51,7 @@ main.add_command(flask.cli.run_command)
 @main.command('verify-translations')
 def verify_translations():
     from pathlib import Path
+
     from morphi.messages.validation import check_translations
 
     root_path = Path(__file__).resolve().parent.parent

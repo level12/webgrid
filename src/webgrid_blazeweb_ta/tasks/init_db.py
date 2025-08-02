@@ -1,16 +1,17 @@
-from decimal import Decimal as D
 import datetime as dt
-from blazeweb.tasks import attributes
+from decimal import Decimal as D
 
-from webgrid_blazeweb_ta.model.orm import Status, Person, Email
+from blazeweb.tasks import attributes
 from sqlalchemybwc import db
+
+from webgrid_blazeweb_ta.model.orm import Email, Person, Status
 
 
 @attributes('~dev')
 def action_40_base_data():
-    stat_open = Status.add_iu(label=u'open')
-    stat_pending = Status.add_iu(label=u'pending')
-    stat_closed = Status.add_iu(label=u'closed', flag_closed=1)
+    stat_open = Status.add_iu(label='open')
+    stat_pending = Status.add_iu(label='pending')
+    stat_closed = Status.add_iu(label='closed', flag_closed=1)
 
     for x in range(1, 50):
         p = Person()
