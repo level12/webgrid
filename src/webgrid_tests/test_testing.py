@@ -55,9 +55,11 @@ class TestAssertRenderedXlsxMatches:
         self.headers_written = None
 
     def test_openpyxl_requirement(self):
-        with mock.patch('webgrid.testing.openpyxl', None):
-            with pytest.raises(Exception, match=r'openpyxl is required.*'):
-                self.assert_matches([], [])
+        with (
+            mock.patch('webgrid.testing.openpyxl', None),
+            pytest.raises(Exception, match=r'openpyxl is required.*'),
+        ):
+            self.assert_matches([], [])
 
     def set_headers(self, headers):
         assert self.headers_written is None
@@ -183,7 +185,7 @@ class TestGridBase(testing.GridBase):
 
     def test_query_string_applied(self):
         self.expect_table_contents(
-            (tuple()),
+            (),
             _query_string='op(due_date)=gte&v1(due_date)=2019-06-01',
         )
 
@@ -216,7 +218,7 @@ class TestGridBasePG(testing.GridBase):
                 'start_time',
                 'eq',
                 dt.time(1, 30).strftime('%H:%M'),
-                "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)",
+                "WHERE persons.start_time BETWEEN CAST('01:30:00.000000' AS TIME WITHOUT TIME ZONE)",  # noqa: E501
             ),
         )
 

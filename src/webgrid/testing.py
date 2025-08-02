@@ -51,7 +51,7 @@ def compiler_instance_factory(compiler, dialect, statement):
                 # Turn off double percent escaping, since we don't run these strings and
                 # it creates a large number of differences for test cases
                 with mock.patch.object(dialect.identifier_preparer, '_double_percents', False):
-                    return super(LiteralCompiler, self).render_literal_value(value, type_)
+                    return super().render_literal_value(value, type_)
 
         def visit_bindparam(
             self,
@@ -60,7 +60,7 @@ def compiler_instance_factory(compiler, dialect, statement):
             literal_binds=False,
             **kwargs,
         ):
-            return super(LiteralCompiler, self).render_literal_bindparam(
+            return super().render_literal_bindparam(
                 bindparam,
                 within_columns_clause=within_columns_clause,
                 literal_binds=literal_binds,
@@ -117,7 +117,7 @@ def query_to_str(statement, bind=None):
 
     if bind is None:
         raise Exception(
-            'bind param (engine or connection object) required when using with an unbound statement',
+            'bind param (engine or connection object) required when using with an unbound statement',  # noqa: E501
         )
 
     dialect = bind.dialect
@@ -127,19 +127,13 @@ def query_to_str(statement, bind=None):
 
 
 def assert_in_query(obj, test_for):
-    if hasattr(obj, 'build_query'):
-        query = obj.build_query()
-    else:
-        query = obj
+    query = obj.build_query() if hasattr(obj, 'build_query') else obj
     query_str = query_to_str(query)
     assert test_for in query_str, query_str
 
 
 def assert_not_in_query(obj, test_for):
-    if hasattr(obj, 'build_query'):
-        query = obj.build_query()
-    else:
-        query = obj
+    query = obj.build_query() if hasattr(obj, 'build_query') else obj
     query_str = query_to_str(query)
     assert test_for not in query_str, query_str
 
@@ -166,10 +160,8 @@ def assert_list_equal(list1, list2):
 
     # the lists are different in at least one element; find it
     # and report it
-    for index, (val1, val2) in enumerate(zip(list1, list2)):
-        assert val1 == val2, (
-            f'First differing element at index {index}: {repr(val1)} != {repr(val2)}'
-        )
+    for index, (val1, val2) in enumerate(zip(list1, list2, strict=True)):
+        assert val1 == val2, f'First differing element at index {index}: {val1!r} != {val2!r}'
 
 
 def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
@@ -218,7 +210,7 @@ def assert_rendered_xlsx_matches(rendered_xlsx, xlsx_headers, xlsx_rows):
 
     expected_rows = (xlsx_headers or []) + (xlsx_rows or [])
 
-    for row, expected_row in zip(row_iter, expected_rows):
+    for row, expected_row in zip(row_iter, expected_rows, strict=True):
         assert_list_equal((cell.value for cell in row), expected_row)
 
 
@@ -389,10 +381,7 @@ class GridBase:
 
     def test_filters(self):
         """Use filters attribute/property/method to run assertions."""
-        if callable(self.filters):
-            cases = self.filters()
-        else:
-            cases = self.filters
+        cases = self.filters() if callable(self.filters) else self.filters
         for name, op, value, expected in cases:
             self.check_filter(name, op, value, expected)
 
@@ -411,7 +400,7 @@ class GridBase:
         def sub_func():
             query_string = urllib.parse.urlencode(d)
             self.assert_in_query(
-                'ORDER BY %s%s' % (ex, '' if asc else ' DESC'),
+                'ORDER BY {}{}'.format(ex, '' if asc else ' DESC'),
                 _query_string=query_string,
             )
             # ensures the query executes and the grid renders without error
@@ -476,7 +465,7 @@ class GridBase:
         """Assert that a single-search query executes without error."""
         grid = grid or self.get_session_grid(_query_string=_query_string)
         if grid.enable_search:
-            grid.records
+            grid.records  # noqa: B018
 
 
 class MSSQLGridBase(GridBase):

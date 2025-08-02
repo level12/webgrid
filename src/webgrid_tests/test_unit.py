@@ -3,6 +3,7 @@ from decimal import Decimal
 import json
 from os import path
 import re
+from typing import ClassVar
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -44,7 +45,7 @@ class TestGrid:
         Column(_('No Expression'))
         Column('')
 
-        query_joins = [(Stopwatch, Stopwatch.id > 0)]
+        query_joins: ClassVar = [(Stopwatch, Stopwatch.id > 0)]
 
     def setup_method(self, _):
         Status.delete_cascaded()
@@ -264,9 +265,9 @@ class TestGrid:
             assert_in_query(g, "WHERE upper(persons.firstname) = upper('foo')")
 
         with mock.patch('logging.Logger.debug') as m_debug:
-            g.records
+            g.records  # noqa: B018
             g.set_filter('lastname', 'eq', 'bar')
-            g.records
+            g.records  # noqa: B018
             expected = [
                 r'^<Grid "CTG">$',
                 r'^firstname: class=TextFilter, op=eq, value1=foo, value2=None$',
@@ -311,7 +312,7 @@ class TestGrid:
         g.set_sort('-firstname')
         assert_in_query(g, 'ORDER BY persons.firstname')
         with mock.patch('logging.Logger.debug') as m_debug:
-            g.records
+            g.records  # noqa: B018
             expected = [
                 r'^<Grid "CTG">$',
                 r'^No filters$',
@@ -333,7 +334,7 @@ class TestGrid:
         assert_in_query(g, 'ORDER BY persons.firstname, persons.last_name')
         assert_not_in_query(g, 'ORDER BY persons.firstname, persons.last_name,')
         with mock.patch('logging.Logger.debug') as m_debug:
-            g.records
+            g.records  # noqa: B018
             expected = [
                 r'^<Grid "CTG">$',
                 r'^No filters$',
@@ -420,10 +421,10 @@ class TestGrid:
     @mock.patch('logging.Logger.debug')
     def test_record_count_cleared_during_filter(self, m_debug):
         g = self.KeyGrid()
-        g.record_count
+        g.record_count  # noqa: B018
         assert m_debug.call_count == 3
         g.set_filter('id', 'eq', '5')
-        g.record_count
+        g.record_count  # noqa: B018
         assert m_debug.call_count == 6
 
     def test_column_iterators_for_rendering(self):
@@ -478,7 +479,7 @@ class TestGrid:
             Column('First Name', Person.firstname)
 
             def set_renderers(self):
-                super(TG, self).set_renderers()
+                super().set_renderers()
                 self.xlsx = export_xlsx
 
         grid = TG()
@@ -495,10 +496,10 @@ class TestGrid:
 
         class TG(Grid):
             Column('First Name', Person.firstname)
-            allowed_export_targets = {'csv': CSV}
+            allowed_export_targets: ClassVar = {'csv': CSV}
 
             def set_renderers(self):
-                super(TG, self).set_renderers()
+                super().set_renderers()
                 self.csv = export_csv
 
         grid = TG()
@@ -538,7 +539,7 @@ class TestGrid:
             Column('First Name', Person.firstname, BadFilter)
 
         with pytest.raises(Exception, match='bad filter search expression: foo is not callable'):
-            CTG().search_expression_generators
+            CTG().search_expression_generators  # noqa: B018
 
     def test_search_blank(self):
         class CTG(Grid):
@@ -594,7 +595,7 @@ class TestGrid:
             'mssql': ("WHERE persons.firstname LIKE '%foo%' OR persons.last_name LIKE '%foo%'"),
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
-        g.records
+        g.records  # noqa: B018
 
         g.clear_record_cache()
         g.filtered_cols.pop('firstname')
@@ -605,7 +606,7 @@ class TestGrid:
             'mssql': ("HAVING CAST(count(persons.id) AS NVARCHAR(max)) LIKE '%foo%'"),
         }[db.engine.dialect.name]
         assert_in_query(g, search_expr)
-        g.records
+        g.records  # noqa: B018
 
     def test_column_keys_unique(self):
         grid = self.KeyGrid()
@@ -879,7 +880,7 @@ class TestQueryStringArgs:
         g.apply_qs_args()
 
         # this will fail if we are not using SA expressions correctly to sort
-        g.records
+        g.records  # noqa: B018
 
     @_inrequest('/thepage?export_to=xlsx')
     def test_export_to_xlsx(self):

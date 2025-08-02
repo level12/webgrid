@@ -54,7 +54,7 @@ def _is_unique_msg(dialect, msg):
         if 'is not unique' in msg or 'are not unique' in msg:
             return True
     else:
-        raise ValueError('is_unique_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError(f'is_unique_exc() does not yet support dialect: {dialect}')
     return False
 
 
@@ -76,7 +76,7 @@ def _is_check_const(dialect, msg, constraint_name):
         if 'violates check constraint' in msg and constraint_name in msg:
             return True
     else:
-        raise ValueError('is_constraint_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError(f'is_constraint_exc() does not yet support dialect: {dialect}')
     return False
 
 
@@ -92,16 +92,16 @@ def _is_null_msg(dialect, msg, field_name):
     easier unit testing this way
     """
     if dialect == 'mssql':
-        if "Cannot insert the value NULL into column '%s'" % field_name in msg:
+        if f"Cannot insert the value NULL into column '{field_name}'" in msg:
             return True
     elif dialect == 'sqlite':
-        if '.%s may not be NULL' % field_name in msg:
+        if f'.{field_name} may not be NULL' in msg:
             return True
     elif dialect == 'postgresql':
-        if 'null value in column "%s" violates not-null constraint' % field_name in msg:
+        if f'null value in column "{field_name}" violates not-null constraint' in msg:
             return True
     else:
-        raise ValueError('is_null_exc() does not yet support dialect: %s' % dialect)
+        raise ValueError(f'is_null_exc() does not yet support dialect: {dialect}')
     return False
 
 
@@ -182,7 +182,7 @@ def one_to_none(f, _, args, kwargs):
     try:
         return f(*args, **kwargs)
     except NoResultFound as e:
-        if 'No row was found for one()' != str(e):
+        if str(e) != 'No row was found for one()':
             raise
         return None
 
@@ -206,10 +206,7 @@ class MethodsMixin:
 
     @classmethod
     def query(cls, *args):
-        if args:
-            entities = [getattr(cls, aname) for aname in args]
-        else:
-            entities = [cls]
+        entities = [getattr(cls, aname) for aname in args] if args else [cls]
         return cls._sa_sess().query(*entities)
 
     @transaction_classmethod
@@ -231,8 +228,8 @@ class MethodsMixin:
     def edit(cls, oid=None, **kwargs):
         try:
             oid = oid or kwargs.pop('id')
-        except KeyError:
-            raise ValueError('the id must be given to edit the record')
+        except KeyError as e:
+            raise ValueError('the id must be given to edit the record') from e
         o = cls.get(oid)
         o.from_dict(kwargs)
         return o
@@ -370,9 +367,9 @@ class MethodsMixin:
         where_clause = cls.combine_clauses(clause, extra_clauses)
         return cls._sa_sess().query(cls).filter(where_clause).count()
 
-    def to_dict(self, exclude=[]):
+    def to_dict(self, exclude=()):
         col_prop_names = self.sa_column_names()
-        data = dict([(name, getattr(self, name)) for name in col_prop_names if name not in exclude])
+        data = {name: getattr(self, name) for name in col_prop_names if name not in exclude}
         return data
 
     def from_dict(self, data):
@@ -452,7 +449,7 @@ class LookupMixin(DefaultMixin):
     @classmethod
     def testing_create(cls, label=None, active=True):
         if label is None:
-            label = '%s %s' % (cls.__name__, randchars(5))
+            label = f'{cls.__name__} {randchars(5)}'
         return cls.add(label=label, active_flag=active)
 
     @classmethod
@@ -476,21 +473,21 @@ class LookupMixin(DefaultMixin):
         return cls.get_by(label=label)
 
     def __repr__(self):
-        return '<%s %s:%s>' % (self.__class__.__name__, self.id, self.label)
+        return f'<{self.__class__.__name__} {self.id}:{self.label}>'
 
 
 def clear_db_postgresql():
     sql = []
     sql.append('DROP SCHEMA public cascade;')
-    sql.append('CREATE SCHEMA public AUTHORIZATION %s;' % db.engine.url.username)
-    sql.append('GRANT ALL ON SCHEMA public TO %s;' % db.engine.url.username)
+    sql.append(f'CREATE SCHEMA public AUTHORIZATION {db.engine.url.username};')
+    sql.append(f'GRANT ALL ON SCHEMA public TO {db.engine.url.username};')
     sql.append('GRANT ALL ON SCHEMA public TO public;')
     sql.append("COMMENT ON SCHEMA public IS 'standard public schema';")
     for exstr in sql:
         try:
             db.engine.execute(exstr)
         except Exception as e:
-            print('WARNING: %s' % e)
+            print(f'WARNING: {e}')
 
 
 def clear_db_sqlite():
@@ -501,7 +498,7 @@ def clear_db_sqlite():
     # we will get "database locked" errors from sqlite
     records = rows.fetchall()
     for row in records:
-        db.engine.execute('drop view %s' % row['name'])
+        db.engine.execute('drop view {}'.format(row['name']))
 
     # drop the tables
     db.metadata.reflect(bind=db.engine)
@@ -523,10 +520,10 @@ def clear_db_mssql():
         'U': 'drop table [%(name)s]',
     }
     delete_sql = []
-    for type, drop_sql in six.iteritems(mapping):
+    for kind, drop_sql in six.iteritems(mapping):
         sql = (
             'select name, object_name( parent_object_id ) as parent_name '
-            "from sys.objects where type in ('%s')" % '", "'.join(type)
+            "from sys.objects where type in ('{}')".format('", "'.join(kind))
         )
         rows = db.engine.execute(sql)
         for row in rows:

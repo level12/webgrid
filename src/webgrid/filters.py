@@ -2,6 +2,7 @@ import calendar
 import datetime as dt
 from decimal import Decimal as D
 import inspect
+from typing import ClassVar
 
 from blazeutils import tolist
 from blazeutils.dates import ensure_date, ensure_datetime
@@ -154,7 +155,7 @@ class FilterBase:
     # current HTML renderer allows for "input", "input2", and/or "select"
     input_types = ('input',)
     # match operators to the HTML5 type(s)
-    html_input_types = {}
+    html_input_types: ClassVar = {}
     # does this filter take a list of values in it's set() method
     receives_list = False
     # does this filter apply to the HAVING clause
@@ -305,7 +306,7 @@ class FilterBase:
 
     def format_invalid(self, exc, col):
         """Wrapper for generating a validation error string."""
-        return f'{col.label}: {str(exc)}'
+        return f'{col.label}: {exc}'
 
     def get_search_expr(self):
         """
@@ -356,7 +357,8 @@ class FilterBase:
         return new_filter
 
     def __repr__(self):
-        return f'class={self.__class__.__name__}, op={self.op}, value1={self.value1}, value2={self.value2}'
+        cls_name = self.__class__.__name__
+        return f'class={cls_name}, op={self.op}, value1={self.value1}, value2={self.value2}'
 
 
 class _NoValue:
@@ -483,7 +485,7 @@ class OptionsFilterBase(FilterBase):
             # if its not the string 'auto' and its not a webgrid validator, assume
             # its a callable and wrap with a webgrid validator
             if not hasattr(self.value_modifier, 'process'):
-                if not hasattr(self.value_modifier, '__call__'):
+                if not callable(self.value_modifier):
                     raise TypeError(
                         _(
                             'value_modifier must be the string "auto", have a "process" attribute, '
@@ -647,7 +649,7 @@ class OptionsEnumFilter(OptionsFilterBase):
         if value_modifier is None:
             value_modifier = self.default_modifier
 
-        super(OptionsEnumFilter, self).__init__(
+        super().__init__(
             sa_col,
             value_modifier=value_modifier,
             default_op=default_op,
@@ -662,15 +664,15 @@ class OptionsEnumFilter(OptionsFilterBase):
 
         try:
             return self.enum_type[value]
-        except KeyError:
-            raise ValueError('Not a valid selection')
+        except KeyError as e:
+            raise ValueError('Not a valid selection') from e
 
     def options_from(self):
         """Override as an instance method here, returns the options tuples from the Enum."""
         return [(x.name, x.value) for x in self.enum_type]
 
     def new_instance(self, **kwargs):
-        new_inst = super(OptionsEnumFilter, self).new_instance(**kwargs)
+        new_inst = super().new_instance(**kwargs)
         new_inst.enum_type = self.enum_type
         return new_inst
 
@@ -869,7 +871,7 @@ class AggregateNumberFilter(NumberFilter):
 
 
 class _DateMixin:
-    options_from = [
+    options_from = (
         (1, _('01-Jan')),
         (2, _('02-Feb')),
         (3, _('03-Mar')),
@@ -882,7 +884,7 @@ class _DateMixin:
         (10, _('10-Oct')),
         (11, _('11-Nov')),
         (12, _('12-Dec')),
-    ]
+    )
     op_to_date_range = ImmutableDict(
         {
             # these filters can be set as default ops without input values, so don't ignore them
@@ -951,7 +953,7 @@ class _DateMixin:
     def options_seq(self):
         _options_seq = self.options_from
         if self.default_op:
-            _options_seq = [(-1, _('-- All --'))] + _options_seq
+            _options_seq = [(-1, _('-- All --')), *_options_seq]
         return _options_seq
 
     def format_display_vals(self):
@@ -1086,12 +1088,12 @@ class _DateMixin:
         def min_dt(*args):
             m = dt.datetime.min
             parts = [m.year, m.month, m.day, m.hour, m.minute, m.second, m.microsecond]
-            return dt.datetime(*(max(a, m) for a, m in zip(args, parts)))
+            return dt.datetime(*(max(a, m) for a, m in zip(args, parts, strict=False)))
 
         def max_dt(*args):
             m = dt.datetime.max
             parts = [m.year, m.month, m.day, m.hour, m.minute, m.second, m.microsecond]
-            return dt.datetime(*(min(a, m) for a, m in zip(args, parts)))
+            return dt.datetime(*(min(a, m) for a, m in zip(args, parts, strict=False)))
 
         if not isinstance(value, dt.datetime):
             value = dt.datetime.combine(value, dt.time.min)
@@ -1261,7 +1263,7 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         ops.in_future,
     )
     input_types = 'input', 'select', 'input2'
-    html_input_types = {
+    html_input_types: ClassVar = {
         ops.eq: 'date',
         ops.not_eq: 'date',
         ops.less_than_equal: 'date',
@@ -1303,7 +1305,7 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
             self.sa_col = sa.sql.cast(self.sa_col, sa.Date)
 
     def set(self, op, value1, value2=None):
-        super(DateFilter, self).set(op, value1, value2)
+        super().set(op, value1, value2)
         self.format_display_vals()
 
         # store first/last day for customized usage
@@ -1356,22 +1358,22 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
         if self.op in (ops.days_ago, ops.less_than_days_ago, ops.more_than_days_ago):
             try:
                 self._get_today() - dt.timedelta(days=filter_value)
-            except OverflowError:
+            except OverflowError as e:
                 raise validators.ValueInvalid(
                     gettext('date filter given is out of range'),
                     value,
                     self,
-                )
+                ) from e
 
         if self.op in (ops.in_days, ops.in_less_than_days, ops.in_more_than_days):
             try:
                 self._get_today() + dt.timedelta(days=filter_value)
-            except OverflowError:
+            except OverflowError as e:
                 raise validators.ValueInvalid(
                     gettext('date filter given is out of range'),
                     value,
                     self,
-                )
+                ) from e
 
         return filter_value
 
@@ -1384,12 +1386,12 @@ class DateFilter(_DateOpQueryMixin, _DateMixin, FilterBase):
                 return v_range.process(d.year)
 
             return d
-        except (ValueError, OverflowError):
+        except (ValueError, OverflowError) as e:
             # allow open ranges when blanks are submitted as a second value
             if is_value2 and not value:
                 return self._get_today()
 
-            raise validators.ValueInvalid(gettext('invalid date'), value, self)
+            raise validators.ValueInvalid(gettext('invalid date'), value, self) from e
 
     def process(self, value, is_value2):
         # None is ok for default_ops
@@ -1434,7 +1436,7 @@ class DateTimeFilter(DateFilter):
         of the true `datetime.now()`. Defaults to None.
     """
 
-    html_input_types = {
+    html_input_types: ClassVar = {
         ops.eq: 'datetime-local',
         ops.not_eq: 'datetime-local',
         ops.less_than_equal: 'datetime-local',
@@ -1571,7 +1573,7 @@ class DateTimeFilter(DateFilter):
         default_value2=None,
     ):
         self._has_date_only1 = self._has_date_only2 = False
-        super(DateTimeFilter, self).__init__(
+        super().__init__(
             sa_col,
             _now=_now,
             default_op=default_op,
@@ -1629,11 +1631,11 @@ class DateTimeFilter(DateFilter):
     def _process_datetime(self, value, is_value2):
         try:
             dt_value = parse(value)
-        except (ValueError, OverflowError):
+        except (ValueError, OverflowError) as e:
             # allow open ranges when blanks are submitted as a second value
             if is_value2 and not value:
                 return self._get_now()
-            raise validators.ValueInvalid(gettext('invalid date'), value, self)
+            raise validators.ValueInvalid(gettext('invalid date'), value, self) from e
 
         if is_value2:
             self._has_date_only2 = self._has_date_only(dt_value, value)
@@ -1711,7 +1713,7 @@ class TimeFilter(FilterBase):
         ops.not_empty,
     )
     input_types = 'input', 'input2'
-    html_input_types = {
+    html_input_types: ClassVar = {
         ops.eq: 'time',
         ops.not_eq: 'time',
         ops.less_than_equal: 'time',
@@ -1756,7 +1758,7 @@ class TimeFilter(FilterBase):
         elif self.op == ops.greater_than_equal:
             query = query.filter(self.sa_col >= val)
         else:
-            query = super(TimeFilter, self).apply(query)
+            query = super().apply(query)
         return query
 
     def process(self, value, is_value2):
@@ -1768,8 +1770,8 @@ class TimeFilter(FilterBase):
 
         try:
             return dt.datetime.strptime(value, self.time_format).time()
-        except ValueError:
-            raise validators.ValueInvalid(_('invalid time'), value, self)
+        except ValueError as e:
+            raise validators.ValueInvalid(_('invalid time'), value, self) from e
 
     def get_search_expr(self, date_comparator=None):
         # This is a naive implementation that simply converts the time column to string and

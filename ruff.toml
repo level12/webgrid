@@ -52,6 +52,7 @@ select = [
 ignore = [
     'A003',    # Class attribute is shadowing a Python builtin
     'E731',    # Do not assign a `lambda` expression, use a `def`
+    'UP038',   # Deprecated by Ruff, so ignore
 
     # Rules that conflict with the formatter.  See:
     #
@@ -77,7 +78,7 @@ ignore = [
 
 
 [lint.flake8-builtins]
-ignorelist = ['id', 'help', 'compile']
+ignorelist = ['id', 'help', 'compile', 'filter', 'copyright']
 
 
 [lint.flake8-quotes]

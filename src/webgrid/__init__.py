@@ -3,6 +3,7 @@ import inspect
 import logging
 import sys
 import time
+from typing import ClassVar
 import urllib.parse
 
 from blazeutils.containers import HTMLAttributes
@@ -79,7 +80,7 @@ class _DeclarativeMeta(type):
         class_dict['__cls_cols__'] = class_columns
 
         # we have to assign the attribute name
-        for k, v in six.iteritems(class_dict):
+        for v in class_dict.values():
             # catalog the row stylers
             if getattr(v, '__grid_rowstyler__', None):
                 class_dict['_rowstylers'].append(v)
@@ -94,7 +95,7 @@ class _DeclarativeMeta(type):
             if for_column:
                 class_dict['_colfilters'].append((v, for_column))
 
-        return super(_DeclarativeMeta, cls).__new__(cls, name, bases, class_dict)
+        return super().__new__(cls, name, bases, class_dict)
 
 
 class Column:
@@ -175,7 +176,7 @@ class Column:
         self._visible = val
 
     def __new__(cls, *args, **kwargs):
-        col_inst = super(Column, cls).__new__(cls)
+        col_inst = super().__new__(cls)
         if '_dont_assign' not in kwargs:
             col_inst._assign_to_grid()
         return col_inst
@@ -356,7 +357,7 @@ class Column:
         try:
             return getattr(record, self._query_key)
         except AttributeError as e:
-            if ("object has no attribute '%s'" % self._query_key) not in str(e):
+            if (f"object has no attribute '{self._query_key}'") not in str(e):
                 raise
         except TypeError as e:
             if 'attribute name must be string' not in str(e):
@@ -366,7 +367,7 @@ class Column:
         try:
             return getattr(record, self.key)
         except AttributeError as e:
-            if ("object has no attribute '%s'" % self.key) not in str(e):
+            if (f"object has no attribute '{self.key}'") not in str(e):
                 raise
 
         raise ExtractionError(_('key "{key}" not found in record', key=self.key))
@@ -430,7 +431,7 @@ class LinkColumnBase(Column):
 
     """
 
-    link_attrs = {}
+    link_attrs: ClassVar = {}
 
     def __init__(
         self,
@@ -508,8 +509,8 @@ class BoolColumn(Column):
         key=None,
         can_sort=True,
         reverse=False,
-        true_label=_('True'),
-        false_label=_('False'),
+        true_label=None,
+        false_label=None,
         xls_width=None,
         xls_num_format=None,
         render_in=_None,
@@ -532,8 +533,8 @@ class BoolColumn(Column):
             **kwargs,
         )
         self.reverse = reverse
-        self.true_label = true_label
-        self.false_label = false_label
+        self.true_label = _('True') if true_label is None else true_label
+        self.false_label = _('False') if false_label is None else false_label
 
     def format_data(self, data):
         if self.reverse:
@@ -633,12 +634,11 @@ class DateColumnBase(Column):
         if csv_format:
             self.csv_format = csv_format
 
-    def _format_datetime(self, data, format):
+    def _format_datetime(self, data, fmt):
         # if we have an arrow date, allow html_format to use that functionality
-        if arrow and isinstance(data, arrow.Arrow):
-            if data.strftime(format) == format:
-                return data.format(format)
-        return data.strftime(format)
+        if arrow and isinstance(data, arrow.Arrow) and data.strftime(fmt) == fmt:
+            return data.format(fmt)
+        return data.strftime(fmt)
 
     def render_html(self, record, hah):
         data = self.extract_and_format_data(record)
@@ -957,9 +957,9 @@ class QueryStringBuilder:
 
     def args_sort(self):
         # sort args are stored as tuple of (key, flag_desc)
-        return map(
-            lambda item: (f'sort{item[0]}', ('-' if item[1][1] else '') + item[1][0]),
-            enumerate(self.grid.order_by, 1),
+        return (
+            (f'sort{item[0]}', ('-' if item[1][1] else '') + item[1][0])
+            for item in enumerate(self.grid.order_by, 1)
         )
 
     def args_filter(self):
@@ -972,10 +972,7 @@ class QueryStringBuilder:
             grid_args.append((f'op({col.key})', _filter.op))
             if _filter.value1:
                 grid_args.extend(
-                    map(
-                        lambda item: (f'v1({col.key})', item),
-                        tolist(_filter.value1),
-                    ),
+                    ((f'v1({col.key})', item) for item in tolist(_filter.value1)),
                 )
             if _filter.value2:
                 grid_args.append((f'v2({col.key})', _filter.value2))
@@ -1205,7 +1202,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # this will force the query to execute.  We used to wait to evaluate this but it ended
         # up causing AttributeErrors to be hidden when the grid was used in Jinja.
         # Calling build is now preferred over calling .apply_qs_args() and then .html()
-        self.record_count
+        self.record_count  # noqa: B018
 
     def check_auth(self):
         """For API usage, provides a hook for grids to specify authorization that should be
@@ -1310,7 +1307,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         def check_expression_generator(expr_gen):
             if expr_gen is not None and not callable(expr_gen):
                 raise Exception(
-                    f'bad filter search expression: {str(expr_gen)} is not callable',
+                    f'bad filter search expression: {expr_gen} is not callable',
                 )
             return expr_gen is not None
 
@@ -1500,7 +1497,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         # This will apply to any columns with an expr. Other subtotaled columns can be
         # tacked onto the end - these will not be indexed and must be referred to by name
         for colobj in [col for col in self.columns if col.expr is not None] + [
-            coltuple[1] for _, coltuple in self.subtotal_cols.items() if coltuple[1].expr is None
+            coltuple[1] for coltuple in self.subtotal_cols.values() if coltuple[1].expr is None
         ]:
             colname = colobj._query_key or colobj.key
 
@@ -1656,10 +1653,10 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         if self.query_select_from is not None:
             query = query.select_from(*tolist(self.query_select_from))
 
-        for join_terms in tolist(self.query_joins) or tuple():
+        for join_terms in tolist(self.query_joins) or ():
             query = query.join(*tolist(join_terms))
 
-        for join_terms in tolist(self.query_outer_joins) or tuple():
+        for join_terms in tolist(self.query_outer_joins) or ():
             query = query.outerjoin(*tolist(join_terms))
 
         if self.query_filter:
@@ -1706,7 +1703,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
         for col in six.itervalues(self.filtered_cols):
             if col.filter.is_active:
-                filter_display.append(f'{col.key}: {str(col.filter)}')
+                filter_display.append(f'{col.key}: {col.filter}')
                 query = col.filter.apply(query)
         if filter_display:
             log.debug(';'.join(filter_display))

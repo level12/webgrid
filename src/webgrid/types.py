@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 
 class ValidationError(Exception):
@@ -89,17 +89,17 @@ class GridSettings:
         try:
             filters = {key: Filter(**filter_) for key, filter_ in data.get('filters', {}).items()}
         except TypeError as e:
-            raise ValidationError(f'Filter: {e}')
+            raise ValidationError(f'Filter: {e}') from e
 
         try:
             paging = Paging(**data.get('paging', {}))
         except TypeError as e:
-            raise ValidationError(f'Paging: {e}')
+            raise ValidationError(f'Paging: {e}') from e
 
         try:
             sort = [Sort(**sort) for sort in data.get('sort', [])]
         except TypeError as e:
-            raise ValidationError(f'Sort: {e}')
+            raise ValidationError(f'Sort: {e}') from e
 
         return cls(
             search_expr=data.get('search_expr'),

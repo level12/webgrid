@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from webgrid import BaseGrid as BaseGrid
 from webgrid import (
     Column,
@@ -139,7 +141,7 @@ class ArrowGrid(Grid):
 
 class ArrowCSVGrid(Grid):
     session_on = True
-    allowed_export_targets = {'csv': CSV}
+    allowed_export_targets: ClassVar = {'csv': CSV}
     DateTimeColumn(_('Created'), ArrowRecord.created_utc, DateTimeFilter)
 
     def query_prep(self, query, has_sort, has_filters):

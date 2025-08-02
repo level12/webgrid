@@ -1,4 +1,4 @@
-from os import path as opath
+from pathlib import Path
 
 from blazeutils.testing import assert_equal_txt
 import flask
@@ -11,7 +11,7 @@ from webgrid import Column
 from webgrid_ta.model import db
 
 
-cdir = opath.dirname(__file__)
+cdir = Path(__file__).parent
 
 db_sess_scope = SessionScope(db)
 
@@ -27,7 +27,7 @@ class ModelBase:
 
 
 def eq_html(html, filename):
-    with open(opath.join(cdir, 'data', filename), 'rb') as fh:
+    with cdir.joinpath('data', filename).open('rb') as fh:
         file_html = fh.read().decode('ascii')
     assert_equal_txt(html, file_html)
 

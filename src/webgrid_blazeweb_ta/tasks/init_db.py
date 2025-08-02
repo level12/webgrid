@@ -15,15 +15,15 @@ def action_40_base_data():
 
     for x in range(1, 50):
         p = Person()
-        p.firstname = 'fn%03d' % x
-        p.lastname = 'ln%03d' % x
+        p.firstname = f'fn{x:03d}'
+        p.lastname = f'ln{x:03d}'
         p.sortorder = x
         p.numericcol = D('29.26') * x / D('.9')
         if x < 90:
             p.createdts = dt.datetime.now()
         db.sess.add(p)
-        p.emails.append(Email(email='email%03d@example.com' % x))
-        p.emails.append(Email(email='email%03d@gmail.com' % x))
+        p.emails.append(Email(email=f'email{x:03d}@example.com'))
+        p.emails.append(Email(email=f'email{x:03d}@gmail.com'))
         if x % 4 == 1:
             p.status = stat_open
         elif x % 4 == 2:

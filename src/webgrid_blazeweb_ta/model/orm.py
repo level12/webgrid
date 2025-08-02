@@ -30,7 +30,7 @@ class Person(Base, DefaultMixin):
     status = saorm.relationship('Status')
 
     def __repr__(self):
-        return '<Person: "%s, created: %s">' % (self.id, self.createdts)
+        return f'<Person: "{self.id}, created: {self.createdts}">'
 
     @classmethod
     def testing_create(cls, firstname=None):

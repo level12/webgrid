@@ -29,7 +29,7 @@ class Car(db.Model, DefaultMixin):
     radio = saorm.relationship(Radio, lazy=False)
 
     def __repr__(self):
-        return '<Car %s, %s, %s>' % (self.make, self.model, self.year)
+        return f'<Car {self.make}, {self.model}, {self.year}>'
 
 
 class AccountType(enum.Enum):
@@ -63,7 +63,7 @@ class Person(db.Model, DefaultMixin):
     status = saorm.relationship('Status')
 
     def __repr__(self):
-        return '<Person: "%s, created: %s">' % (self.id, self.createdts)
+        return f'<Person: "{self.id}, created: {self.createdts}">'
 
     @classmethod
     def testing_create(cls, firstname=None, **kwargs):

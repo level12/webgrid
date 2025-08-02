@@ -279,7 +279,7 @@ class TestColumn:
         g = TG()
 
         assert g.columns[0].render_in == ('html', 'xlsx', 'csv', 'json')
-        assert g.columns[1].render_in == tuple()
+        assert g.columns[1].render_in == ()
         assert g.columns[2].render_in == ('xlsx',)
         assert g.columns[3].render_in == ('xlsx', 'html')
         assert g.columns[4].render_in == ('xlsx',)

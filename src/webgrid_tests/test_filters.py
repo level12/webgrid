@@ -45,10 +45,12 @@ class TestOperator:
     def test_string_equality(self):
         eq = Operator('eq', 'is', 'input')
         assert eq == 'eq'
-        assert 'eq' == eq
+        # Not a yoda condition, checking the __eq__ in both directions
+        assert 'eq' == eq  # noqa: SIM300
 
         assert eq != '!eq'
-        assert '!eq' != eq
+        # Not a yoda condition, checking the __eq__ in both directions
+        assert '!eq' != eq  # noqa: SIM300
 
     def test_string_in(self):
         a = Operator('a', 'a', 'a')
@@ -1877,7 +1879,7 @@ class TestIntrospect(CheckFilterBase):
     def test_new_instance(self):
         class TestFilter(FilterBase):
             def __init__(self, a, b, *vargs, **kwargs):
-                super(TestFilter, self).__init__(a)
+                super().__init__(a)
                 self.a = a
                 self.b = b
                 self.vargs = vargs

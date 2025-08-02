@@ -1,3 +1,4 @@
+from typing import ClassVar
 from unittest import mock
 
 import flask
@@ -63,7 +64,7 @@ class DummyMixin:
 def create_grid_cls(grid_manager):
     class Grid(DummyMixin, BaseGrid):
         manager = grid_manager
-        allowed_export_targets = {'json': JSON}
+        allowed_export_targets: ClassVar = {'json': JSON}
 
     return Grid
 
@@ -135,7 +136,7 @@ class TestFlaskAPI:
 
     def test_csrf_invalid(self, api_manager_with_csrf, test_app):
         register_grid(api_manager_with_csrf, 'foo', create_grid_cls(api_manager_with_csrf))
-        test_app.get('/webgrid-api/testing/__csrf__').body
+        test_app.get('/webgrid-api/testing/__csrf__')
         resp = test_app.post_json(
             '/webgrid-api/foo',
             {},
@@ -166,7 +167,7 @@ class TestFlaskAPI:
 
         class Grid(DummyMixin, BaseGrid):
             manager = api_manager
-            allowed_export_targets = {'json': MyRenderer}
+            allowed_export_targets: ClassVar = {'json': MyRenderer}
 
         register_grid(api_manager, 'foo', Grid)
         resp = test_app.post_json('/webgrid-api/foo', {})

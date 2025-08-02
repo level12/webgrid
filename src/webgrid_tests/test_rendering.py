@@ -3,6 +3,7 @@ import datetime as dt
 from enum import Enum
 import io
 import json
+from typing import ClassVar
 
 import arrow
 from markupsafe import Markup
@@ -81,7 +82,7 @@ class PeopleGrid(PG):
 
 
 class PeopleCSVGrid(PG):
-    allowed_export_targets = {'csv': CSV}
+    allowed_export_targets: ClassVar = {'csv': CSV}
 
     def query_prep(self, query, has_sort, has_filters):
         query = PG.query_prep(self, query, True, True)
@@ -106,17 +107,17 @@ def setup_module():
 
     for x in range(1, 5):
         p = Person()
-        p.firstname = 'fn%03d' % x
-        p.lastname = 'ln%03d' % x
+        p.firstname = f'fn{x:03d}'
+        p.lastname = f'ln{x:03d}'
         p.sortorder = x
         p.numericcol = '2.13'
-        p.state = 'st%03d' % x
+        p.state = f'st{x:03d}'
         if x != 2:
             p.createdts = dt.datetime(2012, 0o2, 22, 10, x, 16)
             p.due_date = dt.date(2012, 0o2, x)
         db.session.add(p)
-        p.emails.append(Email(email='email%03d@example.com' % x))
-        p.emails.append(Email(email='email%03d@gmail.com' % x))
+        p.emails.append(Email(email=f'email{x:03d}@example.com'))
+        p.emails.append(Email(email=f'email{x:03d}@gmail.com'))
         if x % 4 == 1:
             p.status = sip
             p.account_type = AccountType.admin
@@ -147,15 +148,15 @@ class ColorColumn(Column):
 
 
 class EditColumn(LinkColumnBase):
-    link_attrs = {'target': '_blank'}
+    link_attrs: ClassVar = {'target': '_blank'}
 
     def create_url(self, record):
-        return '/vehicle-edit/{0}'.format(record['id'])
+        return '/vehicle-edit/{}'.format(record['id'])
 
 
 class DealerColumn(LinkColumnBase):
     def create_url(self, record):
-        return '/dealer-edit/{0}'.format(record['dealer_id'])
+        return '/dealer-edit/{}'.format(record['dealer_id'])
 
     def extract_data(self, record):
         return record['dealer'] + record['dealer_id']
@@ -174,7 +175,7 @@ class CarGrid(Grid):
 
     @row_styler
     def style_row(self, rownum, attrs, record):
-        attrs.id = 'tr_{0}'.format(record['id'])
+        attrs.id = 'tr_{}'.format(record['id'])
 
     @col_styler('model')
     def highlight_1500(self, attrs, record):
@@ -321,29 +322,29 @@ class TestHtmlRenderer:
     @_inrequest('/thepage?perpage=5&onpage=1')
     def test_current_url(self):
         g = self.get_grid()
-        assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
-        assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
+        assert g.html.current_url() == '/thepage?onpage=1&perpage=5'
+        assert g.html.current_url(perpage=10) == '/thepage?onpage=1&perpage=10'
 
     @_inrequest('/thepage')
     def test_current_url_qs_prefix(self):
         g = self.get_grid(qs_prefix='dg_')
-        assert '/thepage?dg_perpage=10' == g.html.current_url(perpage=10)
+        assert g.html.current_url(perpage=10) == '/thepage?dg_perpage=10'
 
     @_inrequest('/thepage?perpage=5&onpage=1&dgreset=1')
     def test_current_url_reset_removed(self):
         g = self.get_grid()
-        assert '/thepage?onpage=1&perpage=5' == g.html.current_url()
-        assert '/thepage?onpage=1&perpage=10' == g.html.current_url(perpage=10)
+        assert g.html.current_url() == '/thepage?onpage=1&perpage=5'
+        assert g.html.current_url(perpage=10) == '/thepage?onpage=1&perpage=10'
 
     @_inrequest('/thepage?foo_dgreset=1')
     def test_current_url_reset_removed_prefix(self):
         g = self.get_grid(qs_prefix='foo_')
-        assert '/thepage?foo_perpage=5' == g.html.current_url(perpage=5)
+        assert g.html.current_url(perpage=5) == '/thepage?foo_perpage=5'
 
     @_inrequest('/thepage?perpage=5&onpage=1')
     def test_current_url_reset_added(self):
         g = self.get_grid()
-        assert '/thepage?dgreset=1&onpage=1&perpage=5' == g.html.current_url(dgreset=1)
+        assert g.html.current_url(dgreset=1) == '/thepage?dgreset=1&onpage=1&perpage=5'
 
     @_inrequest('/thepage?perpage=5&onpage=1')
     def test_export_url(self):
@@ -388,7 +389,7 @@ class TestHtmlRenderer:
     def test_form_action_url_session_opts(self):
         class TestManager(SimpleGrid.manager.__class__):
             def get_args(self, previous_args):
-                return MultiDict(dict(foo='bar', onpage=5, session_override=1))
+                return MultiDict({'foo': 'bar', 'onpage': 5, 'session_override': 1})
 
         class TGrid(Grid):
             manager = TestManager()
@@ -712,7 +713,6 @@ class TestHtmlRenderer:
     def test_no_records(self):
         g = PeopleGrid()
         g.set_records([])
-        g.html
         assert '<p class="no-records">No records to display</p>' in g.html()
 
     @_inrequest('/thepage')
@@ -736,7 +736,7 @@ class TestHtmlRenderer:
 
         class TestGrid(PeopleGrid):
             def set_renderers(self):
-                super(TestGrid, self).set_renderers()
+                super().set_renderers()
                 self.html = Renderer(self)
 
         with pytest.raises(RenderLimitExceeded):
@@ -809,7 +809,6 @@ class TestGrandTotals:
     @_inrequest('/')
     def test_people_html(self):
         g = PGGrandTotals()
-        g.html
         assert '<td class="totals-label" colspan="7">Grand Totals (3 records):</td>' in g.html()
         assert '<td class="totals-label" colspan="7">Page Totals (3 records):</td>' not in g.html()
 
@@ -818,13 +817,11 @@ class TestFooterRendersCorrectly:
     @_inrequest('/')
     def test_people_html_footer(self):
         g = PeopleGrid()
-        g.html
         assert '<a class="export-link" href="/?export_to=xlsx">XLSX</a>' in g.html()
 
     @_inrequest('/')
     def test_people_html_footer_only_csv(self):
         g = PeopleCSVGrid()
-        g.html
         assert '<a class="export-link" href="/?export_to=csv">CSV</a>' in g.html()
 
 
@@ -846,7 +843,7 @@ class PGTotalsStringExpr(PeopleGrid):
     Column('FloatCol', 'float_col', has_subtotal=True)
 
     def query_prep(self, query, has_sort, has_filters):
-        query = super(PGTotalsStringExpr, self).query_prep(query, has_sort, has_filters)
+        query = super().query_prep(query, has_sort, has_filters)
         return query.add_columns(Person.floatcol.label('float_col'))
 
 
@@ -1290,15 +1287,13 @@ class TestXLSXRenderer:
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set(
-            [
-                'A1:B1',
-                'C1:D1',
-                # E is a single cell
-                'F1:G1',
-                'H1:I1',
-            ],
-        )
+        assert {str(range_) for range_ in sheet.merged_cells.ranges} == {
+            'A1:B1',
+            'C1:D1',
+            # E is a single cell
+            'F1:G1',
+            'H1:I1',
+        }
         assert sheet.max_column == 9
 
     def test_group_headings_xlsxwriter(self):
@@ -1314,15 +1309,13 @@ class TestXLSXRenderer:
         assert row_values == [None, None, 'Lap 1', None, None, 'Lap 2', None, 'Lap 3', None]
         assert sheet.cell(2, 2).value == 'Label'
         assert sheet.cell(3, 2).value == 'Watch 1'
-        assert set([str(range_) for range_ in sheet.merged_cells.ranges]) == set(
-            [
-                'A1:B1',
-                'C1:D1',
-                # E is a single cell
-                'F1:G1',
-                'H1:I1',
-            ],
-        )
+        assert {str(range_) for range_ in sheet.merged_cells.ranges} == {
+            'A1:B1',
+            'C1:D1',
+            # E is a single cell
+            'F1:G1',
+            'H1:I1',
+        }
         assert sheet.max_column == 9
 
     def test_subtotals_with_no_records(self):
@@ -1407,7 +1400,7 @@ class TestXLSXRenderer:
                 self._num_records = record_count
                 self._col_count = col_count
                 self.subtotals = 'all' if has_subtotals else 'none'
-                super(FakeCountsGrid, self).__init__()
+                super().__init__()
 
             @property
             def record_count(self):
@@ -1430,7 +1423,7 @@ class TestXLSXRenderer:
 
         class TestGrid(PeopleGrid):
             def set_renderers(self):
-                super(TestGrid, self).set_renderers()
+                super().set_renderers()
                 self.xlsx = Renderer(self)
 
         with pytest.raises(RenderLimitExceeded):
@@ -1502,7 +1495,7 @@ class TestCSVRenderer:
     def test_it_renders_date_time_with_custom_format(self):
         class CSVGrid(Grid):
             session_on = True
-            allowed_export_targets = {'csv': CSV}
+            allowed_export_targets: ClassVar = {'csv': CSV}
             DateTimeColumn('Created', ArrowRecord.created_utc, csv_format='%m/%d/%Y %I:%M %p')
 
         ArrowRecord.query.delete()
@@ -1559,4 +1552,4 @@ class TestArrowDate:
         g.column('created_utc').filter = DateFilter(g.column('created_utc').expr)
         g.apply_qs_args(grid_args={'op(created_utc)': 'eq', 'v1(created_utc)': '2018-01-01'})
         assert g.column('created_utc').filter.is_active
-        g.record_count
+        g.record_count  # noqa: B018

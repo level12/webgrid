@@ -8,7 +8,6 @@ import json
 from operator import itemgetter
 import re
 import typing
-from typing import Dict, Union
 
 from blazeutils.containers import HTMLAttributes, LazyDict
 from blazeutils.functional import identity
@@ -116,11 +115,7 @@ class Renderer(ABC):
 class GroupMixin:
     def has_groups(self):
         """Returns True if any of the renderer's columns is part of a column group."""
-        for col in self.columns:
-            if col.group:
-                return True
-
-        return False
+        return any(col.group for col in self.columns)
 
     def get_group_heading_colspans(self):
         """Computes the number of columns spanned by various groups.
@@ -164,7 +159,7 @@ def _safe_id(idstring):
     TODO: Set IDs explicitly and don't rely on this being applied to name attributes
     """
     # Transform all whitespace to underscore
-    idstring = re.sub(r'\s', '_', '%s' % idstring)
+    idstring = re.sub(r'\s', '_', f'{idstring}')
     # Remove everything that is not a hyphen or a member of \w
     idstring = re.sub(r'(?!-)\W', '', idstring).lower()
     return idstring
@@ -315,6 +310,8 @@ class JSON(Renderer):
 class HTML(GroupMixin, Renderer):
     """Renderer for HTML output."""
 
+    NBSP = Markup('&nbsp;')
+
     @property
     def name(self):
         return 'html'
@@ -401,11 +398,7 @@ class HTML(GroupMixin, Renderer):
             rows.append(self.filtering_table_row(col))
         rows = Markup('\n'.join(rows))
 
-        top_row = ''
-        if self.grid.can_search():
-            top_row = self.get_search_row()
-        else:
-            top_row = self.get_add_filter_row()
+        top_row = self.get_search_row() if self.grid.can_search() else self.get_add_filter_row()
 
         return Markup('\n'.join([top_row, rows]))
 
@@ -439,10 +432,7 @@ class HTML(GroupMixin, Renderer):
     def filtering_col_op_select(self, col):
         """Render select box for filter Operator options."""
         filter = col.filter
-        if not filter.is_display_active:
-            current_selected = ''
-        else:
-            current_selected = filter.op
+        current_selected = '' if filter.is_display_active else filter.op
 
         primary_op = filter.primary_op or filter.operators[0]
         is_primary = lambda op: 'primary' if op == primary_op else None
@@ -468,12 +458,12 @@ class HTML(GroupMixin, Renderer):
             ident = f'{col.key}_input1'
             inputs += self._render_jinja(
                 '<input{{attrs|wg_attributes}} />',
-                attrs=dict(
-                    name=field_name,
-                    value=filter.value1_set_with,
-                    id=ident,
-                    type='text',
-                ),
+                attrs={
+                    'name': field_name,
+                    'value': filter.value1_set_with,
+                    'id': ident,
+                    'type': 'text',
+                },
             )
         if 'select' in filter.input_types:
             current_selected = tolist(filter.value1) or []
@@ -577,7 +567,12 @@ class HTML(GroupMixin, Renderer):
         ident = f'{col.key}_input2'
         return self._render_jinja(
             '<input{{attrs|wg_attributes}} />',
-            attrs=dict(name=field_name, value=filter.value2_set_with, id=ident, type='text'),
+            attrs={
+                'name': field_name,
+                'value': filter.value2_set_with,
+                'id': ident,
+                'type': 'text',
+            },
         )
 
     def filtering_add_filter_select(self):
@@ -622,7 +617,7 @@ class HTML(GroupMixin, Renderer):
         self,
         options,
         current_selection=None,
-        placeholder=('', Markup('&nbsp;')),
+        placeholder=('', NBSP),
         name=None,
         id=None,
         **kwargs,
@@ -670,7 +665,7 @@ class HTML(GroupMixin, Renderer):
                 {% endfor %}
             </select>
             """,
-            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None,))) for opt in options),
+            options=((tuple(opt) if len(opt) == 3 else (tuple(opt) + (None,))) for opt in options),  # noqa: RUF005
             current_selection=current_selection,
             placeholder=placeholder,
             attrs=kwargs,
@@ -1053,10 +1048,10 @@ class HTML(GroupMixin, Renderer):
 
         # turn empty values into a non-breaking space so table cells don't
         # collapse
-        if col_value is None:
-            styled_value = Markup('&nbsp;')
+        if col_value is None:  # noqa: SIM114
+            styled_value = self.NBSP
         elif isinstance(col_value, six.string_types) and col_value.strip() == '':
-            styled_value = Markup('&nbsp;')
+            styled_value = self.NBSP
         else:
             styled_value = col_value
 
@@ -1122,10 +1117,8 @@ class HTML(GroupMixin, Renderer):
 
             # multidicts extend, not replace, so we need to get rid of the
             # keys first
-            try:
+            if key in req_args:
                 del req_args[key]
-            except KeyError:
-                pass
 
         # convert to md first so that if we have lists in the kwargs, they
         # are converted appropriately
@@ -1619,7 +1612,7 @@ class XLSX(GroupMixin, Renderer):
                 continue
             if firstcol:
                 numrecords = self.grid.record_count
-                bufferval = 'Totals ({0} record{1}):'.format(
+                bufferval = 'Totals ({} record{}):'.format(
                     numrecords,
                     's' if numrecords != 1 else '',
                 )
@@ -1706,7 +1699,7 @@ class CSV(Renderer):
         # turn off paging
         self.grid.set_paging(None, None)
 
-        for rownum, record in enumerate(self.grid.records):
+        for record in self.grid.records:
             row = []
             for col in self.columns:
                 row.append(col.render('csv', record))

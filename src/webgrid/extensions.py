@@ -4,7 +4,7 @@ from decimal import Decimal
 import json
 from pathlib import Path
 import re
-from typing import Any, Dict
+from typing import Any
 import warnings
 
 import arrow
@@ -57,7 +57,7 @@ else:
 
 class CustomJsonEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime.date) or isinstance(obj, arrow.Arrow):
+        if isinstance(obj, (datetime.date, arrow.Arrow)):
             return obj.isoformat()
         elif isinstance(obj, Decimal):
             return float(obj)
@@ -109,8 +109,8 @@ class GridPrefixBase(ArgsLoader):
         request_args = self.get_args_from_request()
         if 'dgreset' in request_args:
             if 'session_key' in request_args:
-                return MultiDict(dict(dgreset=1, session_key=request_args['session_key']))
-            return MultiDict(dict(dgreset=1))
+                return MultiDict({'dgreset': 1, 'session_key': request_args['session_key']})
+            return MultiDict({'dgreset': 1})
 
         request_args = self.get_sanitized_args(grid, request_args)
         request_args.update(previous_args)
@@ -162,10 +162,7 @@ class RequestJsonLoader(ArgsLoader):
 
     def get_args(self, grid, previous_args):
         data = self.manager.request_json()
-        if data:
-            current_args = self.json_to_args(data)
-        else:
-            current_args = MultiDict()
+        current_args = self.json_to_args(data) if data else MultiDict()
         current_args.update(previous_args)
         return current_args
 
@@ -204,7 +201,7 @@ class WebSessionArgsLoader(ArgsLoader):
             bool: True if at least one op is present.
         """
         regex = re.compile(r'(op\(.*\))')
-        return any(regex.match(a) for a in args.keys())
+        return any(regex.match(a) for a in args)
 
     def args_have_page(self, args):
         """Check args for containing any page args.
@@ -216,7 +213,7 @@ class WebSessionArgsLoader(ArgsLoader):
             bool: True if at least one page arg is present.
         """
         regex = re.compile('(onpage|perpage)')
-        return any(regex.match(a) for a in args.keys())
+        return any(regex.match(a) for a in args)
 
     def args_have_sort(self, args):
         """Check args for containing any sort keys.
@@ -357,7 +354,7 @@ class WebSessionArgsLoader(ArgsLoader):
         #   and also as the default args for this grid
         web_session = self.manager.web_session()
         if 'dgsessions' not in web_session:
-            web_session['dgsessions'] = dict()
+            web_session['dgsessions'] = {}
         dgsessions = web_session['dgsessions']
         grid_session_key = args.get('session_key') or grid.session_key
         # work with a copy here
@@ -426,7 +423,7 @@ class WebSessionArgsLoader(ArgsLoader):
             if grid.session_on:
                 self.remove_grid_session(previous_args.get('session_key') or grid.session_key)
                 self.remove_grid_session(grid.default_session_key)
-            return MultiDict(dict(dgreset=1, session_key=previous_args.get('session_key')))
+            return MultiDict({'dgreset': 1, 'session_key': previous_args.get('session_key')})
 
         # From here on, work with a copy so as not to mutate the incoming args
         request_args = previous_args.copy()
