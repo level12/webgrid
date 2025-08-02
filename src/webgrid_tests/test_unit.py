@@ -9,7 +9,8 @@ from os import path
 import arrow
 import flask
 import pytest
-from mock import mock, MagicMock
+from unittest import mock
+from unittest.mock import MagicMock
 import sqlalchemy.sql as sasql
 from werkzeug.datastructures import MultiDict
 

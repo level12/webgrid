@@ -1,0 +1,23 @@
+services:
+  pg:
+      image: postgres:17-alpine
+      container_name: webgrid-pg
+      ports:
+        - '${DC_POSTGRES_HOST:-127.0.0.1}:${DC_POSTGRES_PORT:-5432}:5432'
+      environment:
+        # Ok for local dev, UNSAFE in most other applications.  Don't blindly copy & paste
+        # without considering implications.
+        POSTGRES_HOST_AUTH_METHOD: trust
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: webgrid-mssql
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: Docker-sa-password
+    ports:
+        - '${DC_MSSQL_HOST:-127.0.0.1}:${DC_MSSQL_PORT:-1433}:1433'
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-C", "-S", "127.0.0.1", "-U", "sa", "-P", "Docker-sa-password", "-Q", "select 1"]
+      interval: 10s
+      timeout: 15s
+      retries: 5
