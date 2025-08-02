@@ -1,0 +1,36 @@
+name: Nox
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+# Limit this workflow to a single run at a time per-branch to avoid wasting worker resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nox:
+    runs-on: ubuntu-latest
+
+    # Runs all steps inside this container
+    container:
+      image: ghcr.io/level12/ubuntu-mive:24-3.12
+      options: --user root
+
+    env:
+      UV_LINK_MODE: copy
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Mark repo as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Run Tests
+        run: |
+          uv run --only-group nox -- nox

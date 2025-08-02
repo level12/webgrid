@@ -1,3 +1,13 @@
+# .coveragerc to control coverage.py
 [run]
 branch = True
-source = webgrid
+omit =
+    src/webgrid/version.py
+
+source =
+    src/webgrid
+    src/webgrid_tests
+
+
+[html]
+directory = tmp/coverage-html
