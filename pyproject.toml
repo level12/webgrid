@@ -1,0 +1,48 @@
+[build-system]
+requires = [
+  "setuptools>=61.0",
+  "wheel",
+  "Babel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "WebGrid"
+# version is read from webgrid/version.py at build time
+dynamic = ["version"]
+description = "A library for rendering HTML tables and Excel files from SQLAlchemy models."
+readme = { file = "readme.rst", content-type = "text/x-rst" }
+license = { text = "BSD-3-Clause" }
+authors = [
+  { name = "Randy Syring", email = "randy.syring@level12.io" },
+]
+urls = { "homepage" = "https://github.com/level12/webgrid" }
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "BlazeUtils>=0.6.0",
+  "SQLAlchemy>=1.4.20",
+  "jinja2",
+  "python-dateutil",
+  "Werkzeug",
+]
+
+[project.optional-dependencies]
+i18n = ["morphi"]
+
+[project.scripts]
+webgrid_ta = "webgrid_ta.manage:script_entry"
+
+[tool.setuptools.dynamic]
+version = { attr = "webgrid.version:VERSION" }
+
+[tool.setuptools.packages.find]
+include = ["webgrid"]
+
+[tool.setuptools]
+# honors your MANIFEST.in / include_package_data=True
+include-package-data = true
