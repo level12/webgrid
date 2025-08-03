@@ -6,7 +6,7 @@ omit =
 
 source =
     src/webgrid
-    src/webgrid_tests
+    tests/webgrid_tests
 
 
 [html]

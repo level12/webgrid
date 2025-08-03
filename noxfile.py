@@ -21,7 +21,7 @@ def pytest_run(session: Session, *args, **env):
         '-ra',
         '--tb=native',
         '--strict-markers',
-        '--cov=webgrid',
+        '--cov',
         '--cov-config=.coveragerc',
         '--cov-report=xml',
         '--no-cov-on-fail',
@@ -39,9 +39,14 @@ def pytest(session: Session, db: str):
     pytest_run(session, WEBTEST_DB=db)
 
 
-@session(py=py_all, uv_groups=['tests', 'mssql'])
+@session(py=py_single, uv_groups=['tests', 'mssql'])
 def pytest_mssql(session: Session):
     pytest_run(session, WEBTEST_DB='mssql')
+
+
+@session(py=py_single, uv_groups=['tests'], uv_extras=['i18n'])
+def pytest_i18n(session: Session):
+    pytest_run(session)
 
 
 @session(py=py_single, uv_groups=['tests'], uv_no_install_project=True)
@@ -88,6 +93,6 @@ def translations(session: Session):
     )
 
 
-@session(py=py_single, uv_groups=['tests', 'docs'], default=False)
+@session(py=py_single, uv_groups=['tests', 'docs'])
 def docs(session: Session):
     session.run('make', '-C', docs_dpath, 'html', external=True)
