@@ -1,4 +1,5 @@
 from os import environ
+import sys
 
 
 # Default URLs works for Docker compose and CI
@@ -16,7 +17,8 @@ else:
     default_url = 'sqlite:///'
 
 db_url = environ.get('SQLALCHEMY_DATABASE_URI', default_url)
-print('Webgrid tests database URL', db_url)
+
+print('Webgrid sys.path', '\n'.join(sys.path))
 
 
 def pytest_configure(config):

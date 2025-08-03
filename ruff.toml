@@ -90,4 +90,4 @@ inline-quotes = 'single'
 [lint.isort]
 lines-after-imports = 2
 force-sort-within-sections = true
-known-first-party = ['webgrid_tasks_lib']
+known-first-party = ['webgrid_tasks_lib', 'webgrid_tests', 'webgrid_ta', 'webgrid_blazeweb_ta']
