@@ -54,7 +54,7 @@ def verify_translations():
 
     from morphi.messages.validation import check_translations
 
-    root_path = Path(__file__).resolve().parent.parent
+    root_path = Path(__file__).resolve().parent.parent.parent
     check_translations(
         root_path,
         'webgrid',

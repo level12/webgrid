@@ -64,3 +64,15 @@ def precommit(session: Session):
         'run',
         '--all-files',
     )
+
+
+@session(python=['3.11'], uv_groups=['tests'], uv_extras=['i18n'], default=False)
+def translations(session: Session):
+    # This is currently failing due to missing translations
+    # https://github.com/level12/webgrid/issues/194
+    session.run(
+        'python',
+        'tests/webgrid_ta/manage.py',
+        'verify-translations',
+        env={'PYTHONPATH': tests_dpath},
+    )

@@ -85,3 +85,27 @@ audit = [
 nox = [
     'nox-uv',
 ]
+
+[tool.babel.extract_messages]
+input_dirs   = ['src/webgrid']
+mapping_file = 'src/webgrid/i18n/babel.cfg'
+output_file  = 'src/webgrid/i18n/webgrid.pot'
+
+[tool.babel.init_catalog]
+domain     = 'webgrid'
+input_file = 'src/webgrid/i18n/webgrid.pot'
+output_dir = 'src/webgrid/i18n'
+
+[tool.babel.update_catalog]
+domain     = 'webgrid'
+input_file = 'src/webgrid/i18n/webgrid.pot'
+output_dir = 'src/webgrid/i18n'
+
+[tool.babel.compile_catalog]
+domain    = 'webgrid'
+directory = 'src/webgrid/i18n'
+
+[tool.babel.compile_json]
+domain     = 'webgrid'
+directory  = 'src/webgrid/i18n'
+output_dir = 'src/webgrid/static/i18n'
