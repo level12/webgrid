@@ -4,11 +4,15 @@ from nox import Session, options, parametrize
 from nox_uv import session
 
 
-options.default_venv_backend = 'uv'
-
 package_path = Path.cwd()
 tests_dpath = package_path / 'tests'
-py_versions = ['3.10', '3.11', '3.12', '3.13']
+docs_dpath = package_path / 'docs'
+
+py_all = ['3.10', '3.11', '3.12', '3.13']
+py_single = py_all[-1:]
+py_311 = ['3.11']
+
+options.default_venv_backend = 'uv'
 
 
 def pytest_run(session: Session, *args, **env):
@@ -29,13 +33,13 @@ def pytest_run(session: Session, *args, **env):
     )
 
 
-@session(python=py_versions, uv_groups=['tests'])
+@session(py=py_all, uv_groups=['tests'])
 @parametrize('db', ['pg', 'sqlite', 'mssql'])
 def pytest(session: Session, db: str):
     pytest_run(session, WEBTEST_DB=db)
 
 
-@session(uv_groups=['tests'], uv_no_install_project=True)
+@session(py=py_single, uv_groups=['tests'], uv_no_install_project=True)
 def wheel(session: Session):
     """
     Package the wheel, install in the venv, and then run the tests for one version of Python.
@@ -57,7 +61,7 @@ def wheel(session: Session):
     pytest_run(session)
 
 
-@session(uv_groups=['pre-commit'])
+@session(py=py_single, uv_groups=['pre-commit'], uv_no_install_project=True)
 def precommit(session: Session):
     session.run(
         'pre-commit',
@@ -66,7 +70,9 @@ def precommit(session: Session):
     )
 
 
-@session(python=['3.11'], uv_groups=['tests'], uv_extras=['i18n'], default=False)
+# Python 3.11 is required due to: https://github.com/level12/morphi/issues/11
+# TODO: default=False since this currently fails.  Make default once it's passing.
+@session(python=py_311, uv_groups=['tests'], uv_extras=['i18n'], default=False)
 def translations(session: Session):
     # This is currently failing due to missing translations
     # https://github.com/level12/webgrid/issues/194
