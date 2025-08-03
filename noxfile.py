@@ -34,9 +34,14 @@ def pytest_run(session: Session, *args, **env):
 
 
 @session(py=py_all, uv_groups=['tests'])
-@parametrize('db', ['pg', 'sqlite', 'mssql'])
+@parametrize('db', ['pg', 'sqlite'])
 def pytest(session: Session, db: str):
     pytest_run(session, WEBTEST_DB=db)
+
+
+@session(py=py_all, uv_groups=['tests', 'mssql'])
+def pytest_mssql(session: Session):
+    pytest_run(session, WEBTEST_DB='mssql')
 
 
 @session(py=py_single, uv_groups=['tests'], uv_no_install_project=True)

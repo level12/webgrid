@@ -56,6 +56,9 @@ docs = [
     'sphinx',
 ]
 
+# pyodbc is broken out by itself on the assumption that most devs are fine with testing sqlite or
+# postgresql locally but probably won't go through the hassle of setting up the mssql driver and
+# so don't need pyodbc installed either.
 mssql = [
     # NOTE: you will also need the driver, which is an OS level install.
     # See: tasks/odbc-driver-install
