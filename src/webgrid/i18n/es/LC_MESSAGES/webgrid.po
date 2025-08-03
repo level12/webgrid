@@ -418,4 +418,3 @@ msgstr "Ninguna expresión"
 #~ msgid_plural "Totals ({num} records):"
 #~ msgstr[0] "Totals ({num} record):"
 #~ msgstr[1] "Totals ({num} records):"
-

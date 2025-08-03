@@ -12,4 +12,3 @@ Base Filters
 
 .. autoclass:: webgrid.filters.OptionsIntFilterBase
     :members:
-

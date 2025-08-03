@@ -101,4 +101,3 @@ msgstr "Administrar Personas Grid"
 #: webgrid_ta/templates/index.html:14
 msgid "Manage People"
 msgstr "Gestionar Personas"
-

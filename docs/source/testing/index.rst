@@ -6,4 +6,3 @@ Testing
 
    test-helpers
    test-usage
-

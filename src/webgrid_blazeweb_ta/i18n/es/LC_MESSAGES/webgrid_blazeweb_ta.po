@@ -30,4 +30,3 @@ msgstr "C2"
 #: webgrid_blazeweb_ta/templates/manage_people.html:5
 msgid "Manage People"
 msgstr "Gestionar Personas"
-

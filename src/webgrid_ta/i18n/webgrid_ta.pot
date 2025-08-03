@@ -100,4 +100,3 @@ msgstr ""
 #: webgrid_ta/templates/index.html:14
 msgid "Manage People"
 msgstr ""
-

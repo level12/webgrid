@@ -13,7 +13,7 @@ repos:
       - id: check-added-large-files
       - id: check-yaml
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.12.0
+    rev: v0.12.7
     hooks:
       # i.e. `ruff check`
       - id: ruff
@@ -29,6 +29,6 @@ repos:
     hooks:
       - id: check-ruff-versions
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.7.13
+    rev: 0.8.4
     hooks:
       - id: uv-lock

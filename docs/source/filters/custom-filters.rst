@@ -56,4 +56,3 @@ search filters are aggregate. Using an aggregate filter will require a GROUP BY 
 
     class AggregateTextFilter(TextFilter):
         is_aggregate = True
-
