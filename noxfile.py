@@ -7,10 +7,11 @@ from nox_uv import session
 options.default_venv_backend = 'uv'
 
 package_path = Path.cwd()
+tests_dpath = package_path / 'tests'
 py_versions = ['3.10', '3.11', '3.12', '3.13']
 
 
-def pytest_run(session: Session, **env):
+def pytest_run(session: Session, *args, **env):
     session.run(
         'pytest',
         '-ra',
@@ -21,38 +22,38 @@ def pytest_run(session: Session, **env):
         '--cov-report=xml',
         '--no-cov-on-fail',
         f'--junit-xml={package_path}/ci/test-reports/{session.name}.pytests.xml',
-        'src/webgrid_tests',
+        'tests/webgrid_tests',
+        *args,
         *session.posargs,
         env=env,
     )
 
 
 @session(python=py_versions, uv_groups=['tests'])
-@parametrize('db', ['pg', 'sqlite'])
-def tests(session: Session, db: str):
+@parametrize('db', ['pg', 'sqlite', 'mssql'])
+def pytest(session: Session, db: str):
     pytest_run(session, WEBTEST_DB=db)
 
 
-@session(python=py_versions, uv_groups=['tests', 'mssql'])
-def tests_mssql(session: Session):
-    pytest_run(session, WEBTEST_DB='mssql')
-
-
-@session(python=[py_versions[-1]], uv_groups=['tests'], uv_no_install_project=True)
-def wheel_tests(session: Session):
+@session(uv_groups=['tests'], uv_no_install_project=True)
+def wheel(session: Session):
     """
     Package the wheel, install in the venv, and then run the tests for one version of Python.
     Helps ensure nothing is wrong with how we package the wheel.
     """
     session.install('hatch', 'check-wheel-contents')
-    session.run('hatch', 'build', '--clean')
-
     version = session.run('hatch', 'version', silent=True).strip()
     wheel_fpath = package_path / 'tmp' / 'dist' / f'webgrid-{version}-py3-none-any.whl'
 
-    session.run('check-wheel-contents', wheel_fpath)
+    if wheel_fpath.exists():
+        wheel_fpath.unlink()
 
+    session.run('hatch', 'build', '--clean')
+    session.run('check-wheel-contents', wheel_fpath)
     session.run('uv', 'pip', 'install', wheel_fpath)
+
+    out = session.run('python', '-c', 'import webgrid; print(webgrid.__file__)', silent=True)
+    assert 'site-packages/webgrid/__init__.py' in out
     pytest_run(session)
 
 
