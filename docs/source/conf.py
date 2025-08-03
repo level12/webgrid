@@ -14,29 +14,16 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import configparser
 import datetime as dt
 
-import webgrid
+import webgrid.version
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'WebGrid'
 copyright = f'{dt.datetime.utcnow().year} Level 12'
-
-
-cfg = configparser.SafeConfigParser()
-cfg.read('../../setup.cfg')
-
-tag = cfg.get('egg_info', 'tag_build')
-
-html_context = {
-    'prerelease': bool(tag),  # True if tag is not the empty string
-}
-
-# The full version, including alpha/beta/rc tags.
-release = webgrid.__version__ + tag
+release = webgrid.version.VERSION
 
 
 # -- General configuration ---------------------------------------------------

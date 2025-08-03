@@ -82,3 +82,8 @@ def translations(session: Session):
         'verify-translations',
         env={'PYTHONPATH': tests_dpath},
     )
+
+
+@session(py=py_single, uv_groups=['tests', 'docs'], default=False)
+def docs(session: Session):
+    session.run('make', '-C', docs_dpath, 'html', external=True)

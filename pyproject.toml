@@ -48,6 +48,14 @@ dev = [
     'hatch',
     'ruff',
 ]
+
+
+# Groups that follow are used indvidually by nox
+docs = [
+    'pytz',
+    'sphinx',
+]
+
 mssql = [
     # NOTE: you will also need the driver, which is an OS level install.
     # See: tasks/odbc-driver-install
