@@ -442,4 +442,3 @@ msgstr ""
 #: src/webgrid/templates/header_sorting.html:9
 msgid "Sort By"
 msgstr ""
-
