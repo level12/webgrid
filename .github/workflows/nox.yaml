@@ -13,24 +13,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  nox:
-    runs-on: ubuntu-latest
+  generate-matrix:
+    runs-on: ubuntu-24.04
 
-    # Runs all steps inside this container
-    container:
-      image: ghcr.io/level12/ubuntu-mive:24-3.12
-      options: --user root
+    outputs:
+      sessions: ${{ steps.set-matrix.outputs.sessions }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - id: set-matrix
+        name: Set nox sessions for matrix
+        run: |
+          set -euo pipefail
+          echo "sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)" >> $GITHUB_OUTPUT
+        env:
+          PYTHONPATH: './src'
+
+  nox:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.sessions) }}
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=15
+
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: Docker-sa-password
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P Docker-sa-password -Q \"select 'ok'\""
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=15
 
     env:
       UV_LINK_MODE: copy
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Mark repo as safe for Git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
 
-      - name: Run Tests
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      # MSSQL sessions need ODBC driver in the runner
+      - name: Install MS ODBC driver (Ubuntu)
+        if: contains(matrix.session, 'pytest_mssql')
+        run: tasks/odbc-driver-install
+
+      - name: Run Nox session
         run: |
-          uv run --only-group nox -- nox
+          uv run --only-group nox -- nox -s "${{ matrix.session }}"

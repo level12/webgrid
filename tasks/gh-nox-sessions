@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# mise description='Nox session list for GH CI'
+import json
+
+from webgrid_tasks_lib import sub_run
+
+
+def main():
+    result = sub_run('nox', '--list-sessions', '--json', capture=True)
+    sessions = json.loads(result.stdout)
+    print(json.dumps([rec['session'] for rec in sessions]))
+
+
+if __name__ == '__main__':
+    main()
