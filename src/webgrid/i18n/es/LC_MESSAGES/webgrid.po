@@ -7,22 +7,22 @@ msgid ""
 msgstr ""
 "Project-Id-Version: WebGrid 0.1.36\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2023-01-20 16:32-0500\n"
+"POT-Creation-Date: 2025-08-04 14:38-0400\n"
 "PO-Revision-Date: 2018-08-03 20:49-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
 "Language-Team: es <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.1\n"
+"Generated-By: Babel 2.17.0\n"
 
-#: webgrid/__init__.py:227
+#: src/webgrid/__init__.py:235
 msgid "expected group to be a subclass of ColumnGroup"
 msgstr "grupo esperado para ser una subclase de ColumnGroup"
 
-#: webgrid/__init__.py:241
+#: src/webgrid/__init__.py:251
 msgid ""
 "expected filter to be a SQLAlchemy column-like object, but it did not "
 "have a \"key\" or \"name\" attribute"
@@ -30,7 +30,7 @@ msgstr ""
 "se esperaba que el filtro fuera un objeto tipo columna SQLAlchemy, pero "
 "no tenía un atributo \"key\" o \"name\""
 
-#: webgrid/__init__.py:249
+#: src/webgrid/__init__.py:263
 msgid ""
 "the filter was a class type, but no column-like object is available from "
 "\"key\" to pass in as as the first argument"
@@ -38,139 +38,144 @@ msgstr ""
 "el filtro era un tipo de clase, pero no hay ningún objeto similar a una "
 "columna en \"key\" para pasar como primer argumento"
 
-#: webgrid/__init__.py:354
+#: src/webgrid/__init__.py:373
+#, python-brace-format
 msgid "key \"{key}\" not found in record"
 msgstr "clave \"{key}\" no encontrada en el registro"
 
-#: webgrid/__init__.py:463
+#: src/webgrid/__init__.py:536
 msgid "True"
 msgstr "Cierto"
 
-#: webgrid/__init__.py:463
+#: src/webgrid/__init__.py:537
 msgid "False"
 msgstr "Falso"
 
-#: webgrid/__init__.py:493
+#: src/webgrid/__init__.py:576
 msgid "Yes"
 msgstr "Sí"
 
-#: webgrid/__init__.py:493
+#: src/webgrid/__init__.py:577
 msgid "No"
 msgstr "No"
 
-#: webgrid/__init__.py:1246
+#: src/webgrid/__init__.py:1390
+#, python-brace-format
 msgid "can't sort on invalid key \"{key}\""
 msgstr "no se puede ordenar en clave no válida \"{key}\""
 
-#: webgrid/__init__.py:1843
+#: src/webgrid/__init__.py:1974
+#, python-brace-format
 msgid "\"{arg}\" grid argument invalid, ignoring"
 msgstr "\"{arg}\" argumento de la grilla no válido, ignorando"
 
-#: webgrid/filters.py:71 webgrid/filters.py:73
+#: src/webgrid/filters.py:69 src/webgrid/filters.py:71
 msgid "is"
 msgstr "es"
 
-#: webgrid/filters.py:72 webgrid/filters.py:74
+#: src/webgrid/filters.py:70 src/webgrid/filters.py:72
 msgid "is not"
 msgstr "no es"
 
-#: webgrid/filters.py:75
+#: src/webgrid/filters.py:73
 msgid "empty"
 msgstr "vacío"
 
-#: webgrid/filters.py:76
+#: src/webgrid/filters.py:74
 msgid "not empty"
 msgstr "no vacío"
 
-#: webgrid/filters.py:77
+#: src/webgrid/filters.py:75
 msgid "contains"
 msgstr "contiene"
 
-#: webgrid/filters.py:78
+#: src/webgrid/filters.py:76
 msgid "doesn't contain"
 msgstr "no contiene"
 
-#: webgrid/filters.py:79
+#: src/webgrid/filters.py:77
 msgid "less than or equal"
 msgstr "menor o igual"
 
-#: webgrid/filters.py:80
+#: src/webgrid/filters.py:78
 msgid "greater than or equal"
 msgstr "mayor que o igual"
 
-#: webgrid/filters.py:81
+#: src/webgrid/filters.py:79
 msgid "between"
 msgstr "entre"
 
-#: webgrid/filters.py:82
+#: src/webgrid/filters.py:80
 msgid "not between"
 msgstr "no entre"
 
-#: webgrid/filters.py:83
+#: src/webgrid/filters.py:81
 msgid "in the past"
 msgstr "en el pasado"
 
-#: webgrid/filters.py:84
+#: src/webgrid/filters.py:82
 msgid "in the future"
 msgstr "en el futuro"
 
-#: webgrid/filters.py:85
+#: src/webgrid/filters.py:83
 msgid "days ago"
 msgstr "hace días"
 
-#: webgrid/filters.py:86
+#: src/webgrid/filters.py:84
 msgid "less than days ago"
 msgstr "hace menos de un día"
 
-#: webgrid/filters.py:87
+#: src/webgrid/filters.py:85
 msgid "more than days ago"
 msgstr "hace más de un día"
 
-#: webgrid/filters.py:88
+#: src/webgrid/filters.py:86
 msgid "today"
 msgstr "hoy"
 
-#: webgrid/filters.py:89
+#: src/webgrid/filters.py:87
 msgid "this week"
 msgstr "esta semana"
 
-#: webgrid/filters.py:90
+#: src/webgrid/filters.py:88
 msgid "last week"
 msgstr "la semana pasada"
 
-#: webgrid/filters.py:91
+#: src/webgrid/filters.py:89
 msgid "in less than days"
 msgstr "en menos de días"
 
-#: webgrid/filters.py:92
+#: src/webgrid/filters.py:90
 msgid "in more than days"
 msgstr "en más de días"
 
-#: webgrid/filters.py:93
+#: src/webgrid/filters.py:91
 msgid "in days"
 msgstr "en días"
 
-#: webgrid/filters.py:94
+#: src/webgrid/filters.py:92
 msgid "this month"
 msgstr "este mes"
 
-#: webgrid/filters.py:95
+#: src/webgrid/filters.py:93
 msgid "last month"
 msgstr "el mes pasado"
 
-#: webgrid/filters.py:96
+#: src/webgrid/filters.py:94
 msgid "select month"
 msgstr "seleccione mes"
 
-#: webgrid/filters.py:97
+#: src/webgrid/filters.py:95
 msgid "this year"
 msgstr "este año"
 
-#: webgrid/filters.py:268
+#: src/webgrid/filters.py:278
+#, python-brace-format
 msgid "unrecognized operator: {op}"
 msgstr "operador no reconocido: {op}"
 
-#: webgrid/filters.py:446
+#: src/webgrid/filters.py:462
+#, python-brace-format
 msgid ""
 "value_modifier argument set to \"auto\", but the options set is empty and"
 " the type can therefore not be determined for {name}"
@@ -179,234 +184,276 @@ msgstr ""
 "conjunto de opciones está vacío y, por lo tanto, el tipo no se puede "
 "determinar para {name}"
 
-#: webgrid/filters.py:461
+#: src/webgrid/filters.py:480
+#, python-brace-format
 msgid "can't use value_modifier='auto' when option keys are {key_type}"
 msgstr ""
 "no se puede usar value_modifier='auto' cuando las teclas de opción son "
 "{key_type}"
 
-#: webgrid/filters.py:469
+#: src/webgrid/filters.py:491
 msgid ""
-"value_modifier must be the string \"auto\", have a \"to_python\" "
-"attribute, or be a callable"
+"value_modifier must be the string \"auto\", have a \"process\" attribute,"
+" or be a callable"
 msgstr ""
-"value_modifier debe ser la cadena \"auto\", tener un atributo "
-"\"to_python\" o ser invocable"
+"value_modifier debe ser la cadena \"auto\", tener un atributo \"process\""
+" o ser invocable"
 
-#: webgrid/filters.py:807
+#: src/webgrid/filters.py:875
 msgid "01-Jan"
 msgstr "01-Enero"
 
-#: webgrid/filters.py:807
+#: src/webgrid/filters.py:876
 msgid "02-Feb"
 msgstr "02-Feb"
 
-#: webgrid/filters.py:807
+#: src/webgrid/filters.py:877
 msgid "03-Mar"
 msgstr "03-Marzo"
 
-#: webgrid/filters.py:807
+#: src/webgrid/filters.py:878
 msgid "04-Apr"
 msgstr "04-Abr"
 
-#: webgrid/filters.py:808
+#: src/webgrid/filters.py:879
 msgid "05-May"
 msgstr "05-Mayo"
 
-#: webgrid/filters.py:808
+#: src/webgrid/filters.py:880
 msgid "06-Jun"
 msgstr "06-Jun"
 
-#: webgrid/filters.py:808
+#: src/webgrid/filters.py:881
 msgid "07-Jul"
 msgstr "07-Jul"
 
-#: webgrid/filters.py:808
+#: src/webgrid/filters.py:882
 msgid "08-Aug"
 msgstr "08-Agosto"
 
-#: webgrid/filters.py:809
+#: src/webgrid/filters.py:883
 msgid "09-Sep"
 msgstr "09-Set"
 
-#: webgrid/filters.py:809
+#: src/webgrid/filters.py:884
 msgid "10-Oct"
 msgstr "10-Oct"
 
-#: webgrid/filters.py:809
+#: src/webgrid/filters.py:885
 msgid "11-Nov"
 msgstr "11-Nov"
 
-#: webgrid/filters.py:809
+#: src/webgrid/filters.py:886
 msgid "12-Dec"
 msgstr "12-Dic"
 
-#: webgrid/filters.py:868 webgrid/static/webgrid.js:41
+#: src/webgrid/filters.py:956 src/webgrid/static/webgrid.js:39
 msgid "-- All --"
 msgstr "-- Todas --"
 
-#: webgrid/filters.py:924 webgrid/filters.py:925
+#: src/webgrid/filters.py:1010 src/webgrid/filters.py:1011
 msgid "before "
 msgstr "antes de "
 
-#: webgrid/filters.py:926 webgrid/filters.py:929
+#: src/webgrid/filters.py:1012 src/webgrid/filters.py:1015
 msgid "excluding "
 msgstr "excluyendo "
 
-#: webgrid/filters.py:927 webgrid/filters.py:928
+#: src/webgrid/filters.py:1013 src/webgrid/filters.py:1014
 msgid "after "
 msgstr "después "
 
-#: webgrid/filters.py:930
+#: src/webgrid/filters.py:1016
 msgid "up to "
 msgstr "arriba a "
 
-#: webgrid/filters.py:931
+#: src/webgrid/filters.py:1017
 msgid "beginning "
 msgstr "comenzando"
 
-#: webgrid/filters.py:945
+#: src/webgrid/filters.py:1031
 msgid "invalid"
 msgstr "inválido"
 
-#: webgrid/filters.py:950
+#: src/webgrid/filters.py:1034
 msgid "All"
 msgstr "Todas"
 
-#: webgrid/filters.py:956
+#: src/webgrid/filters.py:1040
 msgid "date not specified"
 msgstr "fecha no especificada"
 
-#: webgrid/filters.py:958
+#: src/webgrid/filters.py:1042
 msgid "any date"
 msgstr "cualquier fecha"
 
-#: webgrid/filters.py:969 webgrid/filters.py:1581
+#: src/webgrid/filters.py:1050 src/webgrid/filters.py:1789
 msgid "all"
 msgstr "todas"
 
-#: webgrid/filters.py:978 webgrid/filters.py:990
+#: src/webgrid/filters.py:1063 src/webgrid/filters.py:1075
+#, python-brace-format
 msgid "{descriptor}{date}"
 msgstr "{descriptor}{date}"
 
-#: webgrid/filters.py:984
+#: src/webgrid/filters.py:1067
+#, python-brace-format
 msgid "{descriptor}{first_date} - {second_date}"
 msgstr "{descriptor}{first_date} - {second_date}"
 
-#: webgrid/filters.py:1222 webgrid/filters.py:1229
+#: src/webgrid/filters.py:1363 src/webgrid/filters.py:1373
 msgid "date filter given is out of range"
 msgstr "filtro de fecha dado está fuera de rango"
 
-#: webgrid/filters.py:1247 webgrid/filters.py:1266 webgrid/filters.py:1444
-#: webgrid/filters.py:1470
+#: src/webgrid/filters.py:1394 src/webgrid/filters.py:1413
+#: src/webgrid/filters.py:1638 src/webgrid/filters.py:1664
 msgid "invalid date"
 msgstr "inválido"
 
-#: webgrid/filters.py:1567
+#: src/webgrid/filters.py:1774
 msgid "invalid time"
 msgstr "inválido"
 
-#: webgrid/filters.py:1582
+#: src/webgrid/filters.py:1790
 msgid "yes"
 msgstr "sí"
 
-#: webgrid/filters.py:1583
+#: src/webgrid/filters.py:1791
 msgid "no"
 msgstr "no"
 
-#: webgrid/renderers.py:698
+#: src/webgrid/renderers.py:686
+#, python-brace-format
 msgid "{label} DESC"
 msgstr "{label} DESC"
 
-#: webgrid/renderers.py:755
+#: src/webgrid/renderers.py:746
+#, python-brace-format
 msgid "of {page_count}"
 msgstr "de {page_count}"
 
-#: webgrid/renderers.py:843
+#: src/webgrid/renderers.py:834
 msgid "No records to display"
 msgstr "No hay registros que mostrar"
 
-#: webgrid/renderers.py:1019
+#: src/webgrid/renderers.py:1003
+#, python-brace-format
 msgid "{label} ({num} record):"
 msgid_plural "{label} ({num} records):"
 msgstr[0] "{label} ({num} record):"
 msgstr[1] "{label} ({num} records):"
 
-#: webgrid/renderers.py:1041
+#: src/webgrid/renderers.py:1025
 msgid "Page Totals"
 msgstr "Total de Páginas"
 
-#: webgrid/renderers.py:1046
+#: src/webgrid/renderers.py:1030
 msgid "Grand Totals"
 msgstr "Totales Generales"
 
-#: webgrid/renderers.py:1174
+#: src/webgrid/renderers.py:1160
 msgid "Add Filter:"
 msgstr "Agregar Filtro:"
 
-#: webgrid/renderers.py:1192
+#: src/webgrid/renderers.py:1178
 msgid "Search"
 msgstr "Buscar"
 
-#: webgrid/static/jquery.multiple.select.js:374
+#: src/webgrid/validators.py:37
+msgid "Please enter a value."
+msgstr "Por favor, introduzca un valor."
+
+#: src/webgrid/validators.py:48
+msgid "Please enter an integer value."
+msgstr "Introduzca un valor entero."
+
+#: src/webgrid/validators.py:58 src/webgrid/validators.py:68
+msgid "Please enter a number."
+msgstr "Por favor, introduzca un número."
+
+#: src/webgrid/validators.py:74
+msgid "must specify either min or max for range validation"
+msgstr "debe especificar mínimo o máximo para la validación del rango"
+
+#: src/webgrid/validators.py:81
+#, python-brace-format
+msgid "Value must be greater than or equal to {}."
+msgstr "El valor debe ser mayor o igual a {}."
+
+#: src/webgrid/validators.py:87
+#, python-brace-format
+msgid "Value must be less than or equal to {}."
+msgstr "El valor debe ser menor o igual a {}."
+
+#: src/webgrid/validators.py:103
+#, python-brace-format
+msgid "Value must be one of {}."
+msgstr "El valor debe ser uno de {}."
+
+#: src/webgrid/validators.py:113
+msgid "Processor should be callable and take a value argument"
+msgstr "El procesador debe ser invocable y tomar un argumento de valor."
+
+#: src/webgrid/static/jquery.multiple.select.js:369
 msgid "Select all"
 msgstr "Seleccionar todo"
 
-#: webgrid/static/jquery.multiple.select.js:375
+#: src/webgrid/static/jquery.multiple.select.js:370
 msgid "All selected"
 msgstr "Todos seleccionados"
 
-#: webgrid/static/jquery.multiple.select.js:377
+#: src/webgrid/static/jquery.multiple.select.js:372
+#, python-brace-format
 msgid "{count} of {total} selected"
 msgstr "{count} de {total} seleccionados"
 
-#: webgrid/templates/grid_footer.html:11
+#: src/webgrid/templates/grid_footer.html:11
 msgid " Export to "
 msgstr " Exportar a "
 
-#: webgrid/templates/grid_footer.html:24 webgrid/templates/grid_footer.html:31
+#: src/webgrid/templates/grid_footer.html:24
+#: src/webgrid/templates/grid_footer.html:31
 msgid "first"
 msgstr "primero"
 
-#: webgrid/templates/grid_footer.html:28 webgrid/templates/grid_footer.html:32
+#: src/webgrid/templates/grid_footer.html:28
+#: src/webgrid/templates/grid_footer.html:32
 msgid "previous"
 msgstr "anterior"
 
-#: webgrid/templates/grid_footer.html:37 webgrid/templates/grid_footer.html:44
+#: src/webgrid/templates/grid_footer.html:37
+#: src/webgrid/templates/grid_footer.html:44
 msgid "next"
 msgstr "siguiente"
 
-#: webgrid/templates/grid_footer.html:41 webgrid/templates/grid_footer.html:45
+#: src/webgrid/templates/grid_footer.html:41
+#: src/webgrid/templates/grid_footer.html:45
 msgid "last"
 msgstr "último"
 
-#: webgrid/templates/grid_header.html:23
+#: src/webgrid/templates/grid_header.html:23
 msgid "Apply"
 msgstr "Aplicar"
 
-#: webgrid/templates/grid_header.html:29
+#: src/webgrid/templates/grid_header.html:29
 msgid "reset"
 msgstr "reiniciar"
 
-#: webgrid/templates/header_paging.html:8
+#: src/webgrid/templates/header_paging.html:8
 msgid "Records"
 msgstr "Archivos"
 
-#: webgrid/templates/header_paging.html:14
+#: src/webgrid/templates/header_paging.html:14
 msgid "Page"
 msgstr "Página"
 
-#: webgrid/templates/header_paging.html:19
+#: src/webgrid/templates/header_paging.html:19
 msgid "Per Page"
 msgstr "Por Página"
 
-#: webgrid/templates/header_sorting.html:9
+#: src/webgrid/templates/header_sorting.html:9
 msgid "Sort By"
 msgstr "Ordenar Por"
-
-#: webgrid/tests/test_unit.py:42
-msgid "No Expression"
-msgstr "Ninguna expresión"
 
 #~ msgid "No matches found"
 #~ msgstr "No se encontraron coincidencias"
@@ -418,3 +465,16 @@ msgstr "Ninguna expresión"
 #~ msgid_plural "Totals ({num} records):"
 #~ msgstr[0] "Totals ({num} record):"
 #~ msgstr[1] "Totals ({num} records):"
+
+#~ msgid ""
+#~ "value_modifier must be the string "
+#~ "\"auto\", have a \"to_python\" attribute, "
+#~ "or be a callable"
+#~ msgstr ""
+#~ "value_modifier debe ser la cadena "
+#~ "\"auto\", tener un atributo \"to_python\" "
+#~ "o ser invocable"
+
+#~ msgid "No Expression"
+#~ msgstr "Ninguna expresión"
+

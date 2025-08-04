@@ -71,8 +71,7 @@ def precommit(session: Session):
 
 
 # Python 3.11 is required due to: https://github.com/level12/morphi/issues/11
-# TODO: default=False since this currently fails.  Make default once it's passing.
-@session(python=py_311, uv_groups=['tests'], uv_extras=['i18n'], default=False)
+@session(python=py_311, uv_groups=['tests'], uv_extras=['i18n'])
 def translations(session: Session):
     # This is currently failing due to missing translations
     # https://github.com/level12/webgrid/issues/194

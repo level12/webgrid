@@ -1,7 +1,7 @@
 {
     "": {
         "language": "es",
-        "plural-forms": "nplurals=2; plural=(n != 1)"
+        "plural-forms": "nplurals=2; plural=(n != 1);"
     },
     " Export to ": " Exportar a ",
     "\"{arg}\" grid argument invalid, ignoring": "\"{arg}\" argumento de la grilla no v\u00e1lido, ignorando",
@@ -25,20 +25,22 @@
     "False": "Falso",
     "Grand Totals": "Totales Generales",
     "No": "No",
-    "No Expression": "Ninguna expresi\u00f3n",
     "No records to display": "No hay registros que mostrar",
     "Page": "P\u00e1gina",
     "Page Totals": "Total de P\u00e1ginas",
     "Per Page": "Por P\u00e1gina",
+    "Please enter a number.": "Por favor, introduzca un n\u00famero.",
+    "Please enter a value.": "Por favor, introduzca un valor.",
+    "Please enter an integer value.": "Introduzca un valor entero.",
+    "Processor should be callable and take a value argument": "El procesador debe ser invocable y tomar un argumento de valor.",
     "Records": "Archivos",
     "Search": "Buscar",
     "Select all": "Seleccionar todo",
     "Sort By": "Ordenar Por",
-    "Totals ({num} record):": [
-        "Totals ({num} record):",
-        "Totals ({num} records):"
-    ],
     "True": "Cierto",
+    "Value must be greater than or equal to {}.": "El valor debe ser mayor o igual a {}.",
+    "Value must be less than or equal to {}.": "El valor debe ser menor o igual a {}.",
+    "Value must be one of {}.": "El valor debe ser uno de {}.",
     "Yes": "S\u00ed",
     "after ": "despu\u00e9s ",
     "all": "todas",
@@ -76,6 +78,7 @@
     "less than days ago": "hace menos de un d\u00eda",
     "less than or equal": "menor o igual",
     "more than days ago": "hace m\u00e1s de un d\u00eda",
+    "must specify either min or max for range validation": "debe especificar m\u00ednimo o m\u00e1ximo para la validaci\u00f3n del rango",
     "next": "siguiente",
     "no": "no",
     "not between": "no entre",
@@ -92,7 +95,7 @@
     "unrecognized operator: {op}": "operador no reconocido: {op}",
     "up to ": "arriba a ",
     "value_modifier argument set to \"auto\", but the options set is empty and the type can therefore not be determined for {name}": "El argumento value_modifier est\u00e1 establecido en \"auto\", pero el conjunto de opciones est\u00e1 vac\u00edo y, por lo tanto, el tipo no se puede determinar para {name}",
-    "value_modifier must be the string \"auto\", have a \"to_python\" attribute, or be a callable": "value_modifier debe ser la cadena \"auto\", tener un atributo \"to_python\" o ser invocable",
+    "value_modifier must be the string \"auto\", have a \"process\" attribute, or be a callable": "value_modifier debe ser la cadena \"auto\", tener un atributo \"process\" o ser invocable",
     "yes": "s\u00ed",
     "{count} of {total} selected": "{count} de {total} seleccionados",
     "{descriptor}{date}": "{descriptor}{date}",
