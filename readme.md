@@ -130,3 +130,9 @@ mise bump
 # See other options
 mise bump -- --help
 ```
+
+
+### Documentation
+
+The [RTD project](https://app.readthedocs.org/projects/webgrid/) will automatically build on pushes
+to master.
