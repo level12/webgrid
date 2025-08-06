@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import nox
 from nox import Session, options, parametrize
 from nox_uv import session
 
@@ -71,8 +72,17 @@ def wheel(session: Session):
     pytest_run(session)
 
 
-@session(py=py_single, uv_groups=['pre-commit'], uv_no_install_project=True)
+@nox.session(py=py_single)
 def precommit(session: Session):
+    session.run(
+        'uv',
+        'sync',
+        '--active',
+        '--no-default-groups',
+        '--no-install-project',
+        '--group',
+        'pre-commit',
+    )
     session.run(
         'pre-commit',
         'run',

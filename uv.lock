@@ -1917,6 +1917,7 @@ nox = [
 ]
 pre-commit = [
     { name = "pre-commit" },
+    { name = "pre-commit-uv" },
 ]
 tests = [
     { name = "arrow" },
@@ -1975,7 +1976,10 @@ docs = [
 ]
 mssql = [{ name = "pyodbc" }]
 nox = [{ name = "nox-uv" }]
-pre-commit = [{ name = "pre-commit" }]
+pre-commit = [
+    { name = "pre-commit" },
+    { name = "pre-commit-uv" },
+]
 tests = [
     { name = "arrow", specifier = ">=1.3.0" },
     { name = "flask", specifier = ">=3.0.3" },
