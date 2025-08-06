@@ -76,7 +76,7 @@ def wheel(session: Session):
     uv_sync(session, 'tests', project=False)
 
     session.install('hatch', 'check-wheel-contents')
-    version = session.run('hatch', 'version', silent=True).strip()
+    version = session.run('hatch', 'version', silent=True, stderr=None).strip()
     wheel_fpath = package_path / 'tmp' / 'dist' / f'webgrid-{version}-py3-none-any.whl'
 
     if wheel_fpath.exists():
