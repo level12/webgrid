@@ -42,3 +42,11 @@ description = 'Check the mssql service from our host'
 run = '''
     /opt/mssql-tools18/bin/sqlcmd -C -S 127.0.0.1 -U sa -P Docker-sa-password -Q "select 'connected' as status"
 '''
+
+
+[tasks.publish-test]
+description = 'Publish to test.pypi.org'
+run = [
+    'hatch build --clean',
+    'hatch publish -r test tmp/dist/',
+]

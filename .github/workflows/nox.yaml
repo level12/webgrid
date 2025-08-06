@@ -9,6 +9,7 @@ on:
   pull_request:
   workflow_dispatch:
 
+
 # Limit this workflow to a single run at a time per-branch to avoid wasting worker resources
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,31 +27,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # - uses: ./.github/actions/uv-setup
+      - uses: ./.github/actions/uv-setup
 
-      # - id: nox-sessions
-      #   run: |
-      #     sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)
-      #     echo "sessions=$sessions" >> $GITHUB_OUTPUT
-      #   env:
-      #     PYTHONPATH: './src'
+      - id: nox-sessions
+        run: |
+          sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)
+          echo "sessions=$sessions" >> $GITHUB_OUTPUT
+        env:
+          PYTHONPATH: './src'
 
-  # nox-other:
-  #   needs: generate-matrix
-  #   runs-on: ubuntu-24.04
+  nox-other:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).other }}
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).other }}
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - uses: ./.github/actions/nox-run
-  #       with:
-  #         nox-session: ${{ matrix.session }}
+      - uses: ./.github/actions/nox-run
+        with:
+          nox-session: ${{ matrix.session }}
 
 
   nox-pg:
@@ -84,59 +85,95 @@ jobs:
           nox-session: ${{ matrix.session }}
 
 
-  # nox-mssql:
-  #   needs: generate-matrix
-  #   runs-on: ubuntu-24.04
+  nox-mssql:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).mssql }}
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).mssql }}
 
-  #   services:
-  #     mssql:
-  #       image: mcr.microsoft.com/mssql/server:2019-latest
-  #       env:
-  #         ACCEPT_EULA: Y
-  #         SA_PASSWORD: Docker-sa-password
-  #       ports:
-  #         - 1433:1433
-  #       options: >-
-  #         --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P Docker-sa-password -Q \"select 'ok'\""
-  #         --health-interval=3s
-  #         --health-timeout=3s
-  #         --health-retries=15
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: Docker-sa-password
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P Docker-sa-password -Q \"select 'ok'\""
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=15
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - uses: ./.github/actions/nox-run
-  #       with:
-  #         nox-session: ${{ matrix.session }}
+      - uses: ./.github/actions/nox-run
+        with:
+          nox-session: ${{ matrix.session }}
 
 
-  # codecov:
-  #   needs:  [nox-other, nox-pg, nox-mssql]
-  #   runs-on: ubuntu-latest
+  codecov:
+    needs:  [nox-other, nox-pg, nox-mssql]
+    runs-on: ubuntu-latest
 
-  #   permissions:
-  #     id-token: write    # For codecov OIDC
+    permissions:
+      id-token: write    # For codecov OIDC
 
-  #   steps:
-  #     # Codecov action says we have to have done a checkout
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      # Codecov action says we have to have done a checkout
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - uses: actions/download-artifact@v5
-  #       with:
-  #         path: ci/github-coverage
-  #         merge-multiple: true
+      - uses: actions/download-artifact@v5
+        with:
+          path: ci/github-coverage
+          merge-multiple: true
 
-  #     - name: Coverage files
-  #       run: ls -R ci/
+      - name: Coverage files
+        run: ls -R ci/
 
-  #     - uses: codecov/codecov-action@v5
-  #       with:
-  #         use_oidc: true
-  #         files: ci/github-coverage/*.xml
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ci/github-coverage/*.xml
+
+  pypi-publish:
+    needs: [nox-other, nox-pg, nox-mssql]
+    runs-on: ubuntu-latest
+
+    env:
+      upload-url: ${{ startsWith(github.ref, 'refs/tags/v') && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+
+    permissions:
+      # required for pypa/gh-action-pypi-publish
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/uv-setup
+
+      - name: Hatch build
+        run: |
+          uv run --only-group release -- hatch --version
+          uv run --only-group release -- hatch build
+
+      - name: Uploading to
+        run: echo ${{ env.upload-url }}
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: tmp/dist
+          repository-url: ${{ env.upload-url }}
+          # If it's not a version tag, we only care that the publish step runs ok.  We don't
+          # (currently) care that the artifact uploaded to the test repo will keep matching the
+          # source code in the PR.  Without this, we'd have to come up with a way to modify the
+          # version for each CI publish, which is unneeded complexity.
+          skip-existing: ${{ !startsWith(github.ref, 'refs/tags/v') }}

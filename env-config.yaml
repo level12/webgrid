@@ -1,4 +1,7 @@
 profile:
   pypi:
     HATCH_INDEX_USER: '__token__'
-    HATCH_INDEX_AUTH: 'op://private/pypi.python.org/api-token'
+    HATCH_INDEX_AUTH: 'op://my/private/pypi.org/api-token'
+  test-pypi:
+    HATCH_INDEX_USER: '__token__'
+    HATCH_INDEX_AUTH: 'op://my/private/test.pypi.org/api-token'
