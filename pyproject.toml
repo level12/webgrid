@@ -47,6 +47,9 @@ dev = [
     'click',
     'hatch',
     'ruff',
+
+    # pre-commit-uv in CI breaks
+    'pre-commit-uv',
 ]
 
 
@@ -67,7 +70,6 @@ mssql = [
 
 pre-commit = [
     'pre-commit',
-    'pre-commit-uv',
 ]
 
 tests = [
