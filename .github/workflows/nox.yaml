@@ -17,25 +17,22 @@ jobs:
     runs-on: ubuntu-24.04
 
     outputs:
-      sessions: ${{ steps.set-matrix.outputs.sessions }}
+      pytest-sessions: ${{ steps.set-matrix.outputs.pytest_sessions }}
+      other-sessions: ${{ steps.set-matrix.outputs.other_sessions }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+      - name: Uv Setup
+        uses: ./.github/actions/uv-setup
 
       - id: set-matrix
         name: Set nox sessions for matrix
         run: |
           set -euo pipefail
-          echo "sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)" >> $GITHUB_OUTPUT
+          echo "pytest_sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions --for-pytest)" >> $GITHUB_OUTPUT
+          # echo "other_sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions --not-pytest)" >> $GITHUB_OUTPUT
         env:
           PYTHONPATH: './src'
 
@@ -46,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        session: ${{ fromJson(needs.generate-matrix.outputs.sessions) }}
+        session: ${{ fromJson(needs.generate-matrix.outputs.pytest-sessions) }}
 
     services:
       postgres:
