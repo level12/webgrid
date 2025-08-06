@@ -64,7 +64,7 @@ def pytest_mssql(session: Session):
 @session(py=py_single)
 def pytest_i18n(session: Session):
     uv_sync(session, 'tests', project=True, extra='i18n')
-    pytest_run(session)
+    pytest_run(session, WEBTEST_DB='sqlite')
 
 
 @session(py=py_single)
@@ -88,7 +88,8 @@ def wheel(session: Session):
 
     out = session.run('python', '-c', 'import webgrid; print(webgrid.__file__)', silent=True)
     assert 'site-packages/webgrid/__init__.py' in out
-    pytest_run(session)
+
+    pytest_run(session, WEBTEST_DB='sqlite')
 
 
 @session(py=py_single)

@@ -1,14 +1,27 @@
 #!/usr/bin/env python
 # mise description='Nox session list for GH CI'
 import json
+from os import environ
 
 from webgrid_tasks_lib import sub_run
 
 
+# GitHub outputs are harder if there are newlines, so don't do any formatting in CI
+is_ci = environ.get('CI')
+sort_keys = not is_ci
+indent = None if is_ci else 4
+
+
 def main():
     result = sub_run('nox', '--list-sessions', '--json', capture=True)
-    sessions = json.loads(result.stdout)
-    print(json.dumps([rec['session'] for rec in sessions]))
+    sess_names = [rec['session'] for rec in json.loads(result.stdout)]
+    ci_sessions = {}
+    ci_sessions['pg'] = [name for name in sess_names if "db='pg'" in name]
+    ci_sessions['mssql'] = [name for name in sess_names if 'mssql' in name]
+    ci_sessions['other'] = [
+        name for name in sess_names if name not in (*ci_sessions['pg'], *ci_sessions['mssql'])
+    ]
+    print(json.dumps(ci_sessions, indent=indent or None, sort_keys=sort_keys))
 
 
 if __name__ == '__main__':

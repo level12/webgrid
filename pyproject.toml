@@ -91,7 +91,6 @@ nox = [
     'nox',
 ]
 
-
 ############## TOOLS #####################
 
 [tool.babel.extract_messages]

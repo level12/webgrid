@@ -17,33 +17,47 @@ jobs:
     runs-on: ubuntu-24.04
 
     outputs:
-      pytest-sessions: ${{ steps.set-matrix.outputs.pytest_sessions }}
-      other-sessions: ${{ steps.set-matrix.outputs.other_sessions }}
+      nox-sessions: ${{ steps.nox-sessions.outputs.sessions }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Uv Setup
-        uses: ./.github/actions/uv-setup
+      - uses: ./.github/actions/uv-setup
 
-      - id: set-matrix
-        name: Set nox sessions for matrix
+      - id: nox-sessions
         run: |
-          set -euo pipefail
-          echo "pytest_sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions --for-pytest)" >> $GITHUB_OUTPUT
-          # echo "other_sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions --not-pytest)" >> $GITHUB_OUTPUT
+          sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)
+          echo "sessions=$sessions" >> $GITHUB_OUTPUT
         env:
           PYTHONPATH: './src'
 
-  nox:
+  nox-other:
     needs: generate-matrix
     runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
       matrix:
-        session: ${{ fromJson(needs.generate-matrix.outputs.pytest-sessions) }}
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).other }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/nox-run
+        with:
+          nox-session: ${{ matrix.session }}
+
+
+  nox-pg:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).pg }}
 
     services:
       postgres:
@@ -58,6 +72,25 @@ jobs:
           --health-timeout=3s
           --health-retries=15
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/nox-run
+        with:
+          nox-session: ${{ matrix.session }}
+
+
+  nox-mssql:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).mssql }}
+
+    services:
       mssql:
         image: mcr.microsoft.com/mssql/server:2019-latest
         env:
@@ -71,26 +104,10 @@ jobs:
           --health-timeout=3s
           --health-retries=15
 
-    env:
-      UV_LINK_MODE: copy
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Set up Python"
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/nox-run
         with:
-          python-version-file: "pyproject.toml"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      # MSSQL sessions need ODBC driver in the runner
-      - name: Install MS ODBC driver (Ubuntu)
-        if: contains(matrix.session, 'pytest_mssql')
-        run: tasks/odbc-driver-install
-
-      - name: Run Nox session
-        run: |
-          uv run --only-group nox -- nox -s "${{ matrix.session }}"
+          nox-session: ${{ matrix.session }}
