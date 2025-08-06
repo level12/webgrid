@@ -14,7 +14,7 @@ authors = [
 ]
 requires-python = '>=3.10'
 dynamic = ['version']
-readme = { file = 'readme.rst', content-type = 'text/x-rst' }
+readme = 'readme.md'
 license.file = 'license.txt'
 urls.homepage = 'https://github.com/level12/webgrid'
 classifiers = [
