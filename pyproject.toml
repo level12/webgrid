@@ -91,6 +91,12 @@ nox = [
     'nox',
 ]
 
+# Used by CI
+release = [
+    'hatch',
+]
+
+
 ############## TOOLS #####################
 
 [tool.babel.extract_messages]

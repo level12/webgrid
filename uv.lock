@@ -1907,6 +1907,9 @@ pre-commit = [
     { name = "pre-commit" },
     { name = "pre-commit-uv" },
 ]
+release = [
+    { name = "hatch" },
+]
 tests = [
     { name = "arrow" },
     { name = "flask" },
@@ -1968,6 +1971,7 @@ pre-commit = [
     { name = "pre-commit" },
     { name = "pre-commit-uv" },
 ]
+release = [{ name = "hatch" }]
 tests = [
     { name = "arrow", specifier = ">=1.3.0" },
     { name = "flask", specifier = ">=3.0.3" },
