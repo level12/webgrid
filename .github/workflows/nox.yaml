@@ -12,6 +12,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+
+permissions:
+  contents: read     # for actions/checkout
+  id-token: write    # For codecov OIDC
+
+
 jobs:
   generate-matrix:
     runs-on: ubuntu-24.04
@@ -111,3 +117,26 @@ jobs:
       - uses: ./.github/actions/nox-run
         with:
           nox-session: ${{ matrix.session }}
+
+
+  codecov:
+    needs:  [nox-other, nox-pg, nox-mssql]
+    runs-on: ubuntu-latest
+
+    steps:
+      # Codecov action says we have to have done a checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: ci/github-coverage
+          merge-multiple: true
+
+      - name: Coverage files
+        run: ls -R ci/
+
+      - uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ci/github-coverage/*.xml
