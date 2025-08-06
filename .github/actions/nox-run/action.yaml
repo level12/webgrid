@@ -1,0 +1,30 @@
+name: "Nox Run"
+
+inputs:
+  nox-session:
+    description: "Name of the nox session to execute"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/uv-setup
+
+    # MSSQL sessions need ODBC driver in the runner
+    - name: Install MS ODBC driver (Ubuntu)
+      if: contains(inputs.nox-session, 'pytest_mssql')
+      run: tasks/odbc-driver-install
+      shell: bash
+
+    - name: Run nox session
+      run: uv run --only-group nox -- nox -s "${{ inputs.nox-session }}"
+      env:
+        UV_LINK_MODE: copy
+      shell: bash
+
+    - name: upload coverage artifact
+      if: contains(inputs.nox-session, 'pytest')
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-${{ inputs.nox-session }}
+        path: ci/coverage/${{ inputs.nox-session }}.xml

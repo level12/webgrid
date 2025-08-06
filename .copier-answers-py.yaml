@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier
+#
+# Updating `_src` could be helpful, see notes at:
+# https://github.com/level12/coppy/wiki#creating-a-project
+#
+# Otherwise, NEVER EDIT MANUALLY
+_commit: v1.20250622.1
+_src_path: gh:level12/coppy
+author_email: devteam@level12.io
+author_name: Level 12
+gh_org: level12
+gh_repo: webgrid
+hatch_version_tag_sign: true
+project_name: WebGrid
+py_module: webgrid
+python_version: '3.10'
+script_name: ''
+use_circleci: false
+use_gh_nox: true

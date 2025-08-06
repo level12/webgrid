@@ -1,0 +1,444 @@
+# Translations template for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-08-04 14:38-0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: src/webgrid/__init__.py:235
+msgid "expected group to be a subclass of ColumnGroup"
+msgstr ""
+
+#: src/webgrid/__init__.py:251
+msgid ""
+"expected filter to be a SQLAlchemy column-like object, but it did not "
+"have a \"key\" or \"name\" attribute"
+msgstr ""
+
+#: src/webgrid/__init__.py:263
+msgid ""
+"the filter was a class type, but no column-like object is available from "
+"\"key\" to pass in as as the first argument"
+msgstr ""
+
+#: src/webgrid/__init__.py:373
+#, python-brace-format
+msgid "key \"{key}\" not found in record"
+msgstr ""
+
+#: src/webgrid/__init__.py:536
+msgid "True"
+msgstr ""
+
+#: src/webgrid/__init__.py:537
+msgid "False"
+msgstr ""
+
+#: src/webgrid/__init__.py:576
+msgid "Yes"
+msgstr ""
+
+#: src/webgrid/__init__.py:577
+msgid "No"
+msgstr ""
+
+#: src/webgrid/__init__.py:1390
+#, python-brace-format
+msgid "can't sort on invalid key \"{key}\""
+msgstr ""
+
+#: src/webgrid/__init__.py:1974
+#, python-brace-format
+msgid "\"{arg}\" grid argument invalid, ignoring"
+msgstr ""
+
+#: src/webgrid/filters.py:69 src/webgrid/filters.py:71
+msgid "is"
+msgstr ""
+
+#: src/webgrid/filters.py:70 src/webgrid/filters.py:72
+msgid "is not"
+msgstr ""
+
+#: src/webgrid/filters.py:73
+msgid "empty"
+msgstr ""
+
+#: src/webgrid/filters.py:74
+msgid "not empty"
+msgstr ""
+
+#: src/webgrid/filters.py:75
+msgid "contains"
+msgstr ""
+
+#: src/webgrid/filters.py:76
+msgid "doesn't contain"
+msgstr ""
+
+#: src/webgrid/filters.py:77
+msgid "less than or equal"
+msgstr ""
+
+#: src/webgrid/filters.py:78
+msgid "greater than or equal"
+msgstr ""
+
+#: src/webgrid/filters.py:79
+msgid "between"
+msgstr ""
+
+#: src/webgrid/filters.py:80
+msgid "not between"
+msgstr ""
+
+#: src/webgrid/filters.py:81
+msgid "in the past"
+msgstr ""
+
+#: src/webgrid/filters.py:82
+msgid "in the future"
+msgstr ""
+
+#: src/webgrid/filters.py:83
+msgid "days ago"
+msgstr ""
+
+#: src/webgrid/filters.py:84
+msgid "less than days ago"
+msgstr ""
+
+#: src/webgrid/filters.py:85
+msgid "more than days ago"
+msgstr ""
+
+#: src/webgrid/filters.py:86
+msgid "today"
+msgstr ""
+
+#: src/webgrid/filters.py:87
+msgid "this week"
+msgstr ""
+
+#: src/webgrid/filters.py:88
+msgid "last week"
+msgstr ""
+
+#: src/webgrid/filters.py:89
+msgid "in less than days"
+msgstr ""
+
+#: src/webgrid/filters.py:90
+msgid "in more than days"
+msgstr ""
+
+#: src/webgrid/filters.py:91
+msgid "in days"
+msgstr ""
+
+#: src/webgrid/filters.py:92
+msgid "this month"
+msgstr ""
+
+#: src/webgrid/filters.py:93
+msgid "last month"
+msgstr ""
+
+#: src/webgrid/filters.py:94
+msgid "select month"
+msgstr ""
+
+#: src/webgrid/filters.py:95
+msgid "this year"
+msgstr ""
+
+#: src/webgrid/filters.py:278
+#, python-brace-format
+msgid "unrecognized operator: {op}"
+msgstr ""
+
+#: src/webgrid/filters.py:462
+#, python-brace-format
+msgid ""
+"value_modifier argument set to \"auto\", but the options set is empty and"
+" the type can therefore not be determined for {name}"
+msgstr ""
+
+#: src/webgrid/filters.py:480
+#, python-brace-format
+msgid "can't use value_modifier='auto' when option keys are {key_type}"
+msgstr ""
+
+#: src/webgrid/filters.py:491
+msgid ""
+"value_modifier must be the string \"auto\", have a \"process\" attribute,"
+" or be a callable"
+msgstr ""
+
+#: src/webgrid/filters.py:875
+msgid "01-Jan"
+msgstr ""
+
+#: src/webgrid/filters.py:876
+msgid "02-Feb"
+msgstr ""
+
+#: src/webgrid/filters.py:877
+msgid "03-Mar"
+msgstr ""
+
+#: src/webgrid/filters.py:878
+msgid "04-Apr"
+msgstr ""
+
+#: src/webgrid/filters.py:879
+msgid "05-May"
+msgstr ""
+
+#: src/webgrid/filters.py:880
+msgid "06-Jun"
+msgstr ""
+
+#: src/webgrid/filters.py:881
+msgid "07-Jul"
+msgstr ""
+
+#: src/webgrid/filters.py:882
+msgid "08-Aug"
+msgstr ""
+
+#: src/webgrid/filters.py:883
+msgid "09-Sep"
+msgstr ""
+
+#: src/webgrid/filters.py:884
+msgid "10-Oct"
+msgstr ""
+
+#: src/webgrid/filters.py:885
+msgid "11-Nov"
+msgstr ""
+
+#: src/webgrid/filters.py:886
+msgid "12-Dec"
+msgstr ""
+
+#: src/webgrid/filters.py:956 src/webgrid/static/webgrid.js:39
+msgid "-- All --"
+msgstr ""
+
+#: src/webgrid/filters.py:1010 src/webgrid/filters.py:1011
+msgid "before "
+msgstr ""
+
+#: src/webgrid/filters.py:1012 src/webgrid/filters.py:1015
+msgid "excluding "
+msgstr ""
+
+#: src/webgrid/filters.py:1013 src/webgrid/filters.py:1014
+msgid "after "
+msgstr ""
+
+#: src/webgrid/filters.py:1016
+msgid "up to "
+msgstr ""
+
+#: src/webgrid/filters.py:1017
+msgid "beginning "
+msgstr ""
+
+#: src/webgrid/filters.py:1031
+msgid "invalid"
+msgstr ""
+
+#: src/webgrid/filters.py:1034
+msgid "All"
+msgstr ""
+
+#: src/webgrid/filters.py:1040
+msgid "date not specified"
+msgstr ""
+
+#: src/webgrid/filters.py:1042
+msgid "any date"
+msgstr ""
+
+#: src/webgrid/filters.py:1050 src/webgrid/filters.py:1789
+msgid "all"
+msgstr ""
+
+#: src/webgrid/filters.py:1063 src/webgrid/filters.py:1075
+#, python-brace-format
+msgid "{descriptor}{date}"
+msgstr ""
+
+#: src/webgrid/filters.py:1067
+#, python-brace-format
+msgid "{descriptor}{first_date} - {second_date}"
+msgstr ""
+
+#: src/webgrid/filters.py:1363 src/webgrid/filters.py:1373
+msgid "date filter given is out of range"
+msgstr ""
+
+#: src/webgrid/filters.py:1394 src/webgrid/filters.py:1413
+#: src/webgrid/filters.py:1638 src/webgrid/filters.py:1664
+msgid "invalid date"
+msgstr ""
+
+#: src/webgrid/filters.py:1774
+msgid "invalid time"
+msgstr ""
+
+#: src/webgrid/filters.py:1790
+msgid "yes"
+msgstr ""
+
+#: src/webgrid/filters.py:1791
+msgid "no"
+msgstr ""
+
+#: src/webgrid/renderers.py:686
+#, python-brace-format
+msgid "{label} DESC"
+msgstr ""
+
+#: src/webgrid/renderers.py:746
+#, python-brace-format
+msgid "of {page_count}"
+msgstr ""
+
+#: src/webgrid/renderers.py:834
+msgid "No records to display"
+msgstr ""
+
+#: src/webgrid/renderers.py:1003
+#, python-brace-format
+msgid "{label} ({num} record):"
+msgid_plural "{label} ({num} records):"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/webgrid/renderers.py:1025
+msgid "Page Totals"
+msgstr ""
+
+#: src/webgrid/renderers.py:1030
+msgid "Grand Totals"
+msgstr ""
+
+#: src/webgrid/renderers.py:1160
+msgid "Add Filter:"
+msgstr ""
+
+#: src/webgrid/renderers.py:1178
+msgid "Search"
+msgstr ""
+
+#: src/webgrid/validators.py:37
+msgid "Please enter a value."
+msgstr ""
+
+#: src/webgrid/validators.py:48
+msgid "Please enter an integer value."
+msgstr ""
+
+#: src/webgrid/validators.py:58 src/webgrid/validators.py:68
+msgid "Please enter a number."
+msgstr ""
+
+#: src/webgrid/validators.py:74
+msgid "must specify either min or max for range validation"
+msgstr ""
+
+#: src/webgrid/validators.py:81
+#, python-brace-format
+msgid "Value must be greater than or equal to {}."
+msgstr ""
+
+#: src/webgrid/validators.py:87
+#, python-brace-format
+msgid "Value must be less than or equal to {}."
+msgstr ""
+
+#: src/webgrid/validators.py:103
+#, python-brace-format
+msgid "Value must be one of {}."
+msgstr ""
+
+#: src/webgrid/validators.py:113
+msgid "Processor should be callable and take a value argument"
+msgstr ""
+
+#: src/webgrid/static/jquery.multiple.select.js:369
+msgid "Select all"
+msgstr ""
+
+#: src/webgrid/static/jquery.multiple.select.js:370
+msgid "All selected"
+msgstr ""
+
+#: src/webgrid/static/jquery.multiple.select.js:372
+#, python-brace-format
+msgid "{count} of {total} selected"
+msgstr ""
+
+#: src/webgrid/templates/grid_footer.html:11
+msgid " Export to "
+msgstr ""
+
+#: src/webgrid/templates/grid_footer.html:24
+#: src/webgrid/templates/grid_footer.html:31
+msgid "first"
+msgstr ""
+
+#: src/webgrid/templates/grid_footer.html:28
+#: src/webgrid/templates/grid_footer.html:32
+msgid "previous"
+msgstr ""
+
+#: src/webgrid/templates/grid_footer.html:37
+#: src/webgrid/templates/grid_footer.html:44
+msgid "next"
+msgstr ""
+
+#: src/webgrid/templates/grid_footer.html:41
+#: src/webgrid/templates/grid_footer.html:45
+msgid "last"
+msgstr ""
+
+#: src/webgrid/templates/grid_header.html:23
+msgid "Apply"
+msgstr ""
+
+#: src/webgrid/templates/grid_header.html:29
+msgid "reset"
+msgstr ""
+
+#: src/webgrid/templates/header_paging.html:8
+msgid "Records"
+msgstr ""
+
+#: src/webgrid/templates/header_paging.html:14
+msgid "Page"
+msgstr ""
+
+#: src/webgrid/templates/header_paging.html:19
+msgid "Per Page"
+msgstr ""
+
+#: src/webgrid/templates/header_sorting.html:9
+msgid "Sort By"
+msgstr ""

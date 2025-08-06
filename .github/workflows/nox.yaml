@@ -1,0 +1,142 @@
+name: Nox
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+# Limit this workflow to a single run at a time per-branch to avoid wasting worker resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  generate-matrix:
+    runs-on: ubuntu-24.04
+
+    outputs:
+      nox-sessions: ${{ steps.nox-sessions.outputs.sessions }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # - uses: ./.github/actions/uv-setup
+
+      # - id: nox-sessions
+      #   run: |
+      #     sessions=$(uv run --only-group nox -- tasks/gh-nox-sessions)
+      #     echo "sessions=$sessions" >> $GITHUB_OUTPUT
+      #   env:
+      #     PYTHONPATH: './src'
+
+  # nox-other:
+  #   needs: generate-matrix
+  #   runs-on: ubuntu-24.04
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).other }}
+
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - uses: ./.github/actions/nox-run
+  #       with:
+  #         nox-session: ${{ matrix.session }}
+
+
+  nox-pg:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).pg }}
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/nox-run
+        with:
+          nox-session: ${{ matrix.session }}
+
+
+  # nox-mssql:
+  #   needs: generate-matrix
+  #   runs-on: ubuntu-24.04
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       session: ${{ fromJson(needs.generate-matrix.outputs.nox-sessions).mssql }}
+
+  #   services:
+  #     mssql:
+  #       image: mcr.microsoft.com/mssql/server:2019-latest
+  #       env:
+  #         ACCEPT_EULA: Y
+  #         SA_PASSWORD: Docker-sa-password
+  #       ports:
+  #         - 1433:1433
+  #       options: >-
+  #         --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P Docker-sa-password -Q \"select 'ok'\""
+  #         --health-interval=3s
+  #         --health-timeout=3s
+  #         --health-retries=15
+
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - uses: ./.github/actions/nox-run
+  #       with:
+  #         nox-session: ${{ matrix.session }}
+
+
+  # codecov:
+  #   needs:  [nox-other, nox-pg, nox-mssql]
+  #   runs-on: ubuntu-latest
+
+  #   permissions:
+  #     id-token: write    # For codecov OIDC
+
+  #   steps:
+  #     # Codecov action says we have to have done a checkout
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - uses: actions/download-artifact@v5
+  #       with:
+  #         path: ci/github-coverage
+  #         merge-multiple: true
+
+  #     - name: Coverage files
+  #       run: ls -R ci/
+
+  #     - uses: codecov/codecov-action@v5
+  #       with:
+  #         use_oidc: true
+  #         files: ci/github-coverage/*.xml

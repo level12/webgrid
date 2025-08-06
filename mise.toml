@@ -1,0 +1,44 @@
+[env]
+DC_MSSQL_PORT = '12001'
+DC_POSTGRES_PORT = '12000'
+PROJECT_SLUG = '{{ config_root | basename | slugify }}'
+
+_.python.venv.path = '{% if env.UV_PROJECT_ENVIRONMENT %}{{ env.UV_PROJECT_ENVIRONMENT }}{% else %}.venv{% endif %}'
+_.python.venv.create = true
+
+[tools]
+python = ['3.10', '3.11', '3.12', '3.13']
+
+
+[task_config]
+includes = [
+    'tasks',
+]
+
+
+################ TASKS #################
+[tasks.pytest-cov]
+description = 'Full pytest run with html coverage report'
+# .coveragerc sets directory to ./tmp/coverage-html
+run = 'pytest --cov --cov-report=html --no-cov-on-fail'
+
+
+[tasks.upgrade-deps]
+description = 'Upgrade uv and pre-commit dependencies'
+run = [
+    'uv sync --upgrade',
+    'pre-commit autoupdate',
+]
+
+[tasks.mssql-docker-check]
+description = 'Check the mssql service from inside the docker container'
+run = '''
+    docker compose exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S 127.0.0.1 -U sa -P Docker-sa-password -Q "select 'connected' as status"
+'''
+
+[tasks.mssql-host-check]
+description = 'Check the mssql service from our host'
+# Task odbc-driver-install installs sqlcmd
+run = '''
+    /opt/mssql-tools18/bin/sqlcmd -C -S 127.0.0.1 -U sa -P Docker-sa-password -Q "select 'connected' as status"
+'''

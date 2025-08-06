@@ -1,0 +1,124 @@
+[build-system]
+requires = [
+    'hatchling',
+    'hatch-regex-commit',
+]
+build-backend = 'hatchling.build'
+
+
+[project]
+name = 'WebGrid'
+description = 'A library for rendering HTML tables and Excel files from SQLAlchemy models.'
+authors = [
+    {name = 'Level 12', email = 'devteam@level12.io'},
+]
+requires-python = '>=3.10'
+dynamic = ['version']
+readme = 'readme.md'
+license.file = 'license.txt'
+urls.homepage = 'https://github.com/level12/webgrid'
+classifiers = [
+  'Development Status :: 4 - Beta',
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: BSD License',
+  'Operating System :: OS Independent',
+]
+
+# Dependencies
+dependencies = [
+  'BlazeUtils>=0.6.0',
+  'SQLAlchemy>=1.4.20',
+  'jinja2',
+  'python-dateutil',
+  'Werkzeug',
+]
+
+
+[project.optional-dependencies]
+i18n = ['morphi']
+
+
+[dependency-groups]
+dev = [
+    {include-group = 'tests'},
+    {include-group = 'pre-commit'},
+    {include-group = 'nox'},
+    {include-group = 'docs'},
+    'click',
+    'hatch',
+    'ruff',
+]
+
+
+# Groups that follow are used indvidually by nox
+docs = [
+    'pytz',
+    'sphinx',
+]
+
+# pyodbc is broken out by itself on the assumption that most devs are fine with testing sqlite or
+# postgresql locally but probably won't go through the hassle of setting up the mssql driver and
+# so don't need pyodbc installed either.
+mssql = [
+    # NOTE: you will also need the driver, which is an OS level install.
+    # See: tasks/odbc-driver-install
+    'pyodbc',
+]
+
+pre-commit = [
+    'pre-commit',
+    'pre-commit-uv',
+]
+
+tests = [
+    'arrow>=1.3.0',
+    'flask>=3.0.3',
+    'flask-bootstrap>=3.3.7.1',
+    'flask-sqlalchemy>=3.1.1',
+    'flask-webtest>=0.1.6',
+    'flask-wtf>=1.2.2',
+    'openpyxl>=3.1.5',
+    'psycopg[binary]>=3.2.9',
+    'pyquery>=2.0.1',
+    'pytest',
+    'pytest-cov',
+    'sqlalchemy-utils>=0.41.2',
+    'xlsxwriter>=3.2.5',
+]
+
+# Used by CI
+nox = [
+    'nox',
+]
+
+# Used by CI
+release = [
+    'hatch',
+]
+
+
+############## TOOLS #####################
+
+[tool.babel.extract_messages]
+input_dirs   = ['src/webgrid']
+mapping_file = 'src/webgrid/i18n/babel.cfg'
+output_file  = 'src/webgrid/i18n/webgrid.pot'
+
+[tool.babel.init_catalog]
+domain     = 'webgrid'
+input_file = 'src/webgrid/i18n/webgrid.pot'
+output_dir = 'src/webgrid/i18n'
+
+[tool.babel.update_catalog]
+domain     = 'webgrid'
+input_file = 'src/webgrid/i18n/webgrid.pot'
+output_dir = 'src/webgrid/i18n'
+
+[tool.babel.compile_catalog]
+domain    = 'webgrid'
+directory = 'src/webgrid/i18n'
+
+[tool.babel.compile_json]
+domain     = 'webgrid'
+directory  = 'src/webgrid/i18n'
+output_dir = 'src/webgrid/static/i18n'

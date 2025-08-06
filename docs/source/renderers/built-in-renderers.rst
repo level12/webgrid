@@ -16,4 +16,3 @@ Built-in Renderers
 .. autoclass:: webgrid.renderers.CSV
     :members:
     :inherited-members:
-

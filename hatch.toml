@@ -1,0 +1,18 @@
+## Build
+[build]
+directory = 'tmp/dist'
+dev-mode-dirs = ['src']
+
+[build.targets.wheel]
+packages = ['src/webgrid']
+
+
+## Env: default
+[envs.default]
+installer = "uv"
+
+
+## Version
+[version]
+source = 'regex_commit'
+path = 'src/webgrid/version.py'

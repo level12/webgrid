@@ -1,0 +1,34 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-ast
+        types: [ python ]
+      - id: debug-statements
+        types: [ python ]
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-yaml
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.12.7
+    hooks:
+      # i.e. `ruff check`
+      - id: ruff
+      # i.e. `ruff format --check`
+      - id: ruff-format
+        # Due to the Ruff config we use (see comment in pyproject.yaml), it's possible that the
+        # formatter creates linting failures. By only doing a check here, it forces the dev to run
+        # the formatter before pre-commit runs (presumably on save through their editor) and then
+        # the linting check above would always catch a problem created by the formatter.
+        args: [ --check ]
+  - repo: https://github.com/level12/pre-commit-hooks
+    rev: v0.20250226.1
+    hooks:
+      - id: check-ruff-versions
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.4
+    hooks:
+      - id: uv-lock

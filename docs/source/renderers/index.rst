@@ -6,4 +6,3 @@ Renderers
 
    base-renderer
    built-in-renderers
-

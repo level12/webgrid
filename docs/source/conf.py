@@ -14,29 +14,16 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import webgrid
 import datetime as dt
 
-import configparser
+import webgrid.version
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'WebGrid'
-copyright = u"{year} Level 12".format(year=dt.datetime.utcnow().year)
-
-
-cfg = configparser.SafeConfigParser()
-cfg.read('../../setup.cfg')
-
-tag = cfg.get('egg_info', 'tag_build')
-
-html_context = {
-    'prerelease': bool(tag),  # True if tag is not the empty string
-}
-
-# The full version, including alpha/beta/rc tags.
-release = webgrid.__version__ + tag
+copyright = f'{dt.datetime.utcnow().year} Level 12'
+release = webgrid.version.VERSION
 
 
 # -- General configuration ---------------------------------------------------
@@ -78,8 +65,7 @@ html_theme_options = {
         'Level 12': 'https://www.level12.io',
         'File an Issue': 'https://github.com/level12/webgrid/issues/new',
     },
-    'show_powered_by': True
-
+    'show_powered_by': True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

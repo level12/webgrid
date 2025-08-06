@@ -1,0 +1,14 @@
+name: "uv setup"
+description: "Install Python & uv"
+
+runs:
+  using: composite
+  steps:
+      # NOTE: use GH's action to install Python b/c mise docs say it will be faster due to caching
+      - name: "Set up Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
