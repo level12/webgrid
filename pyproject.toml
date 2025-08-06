@@ -88,7 +88,7 @@ tests = [
 
 # Used by CI
 nox = [
-    'nox-uv',
+    'nox',
 ]
 
 

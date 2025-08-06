@@ -1,8 +1,6 @@
 from pathlib import Path
 
-import nox
-from nox import Session, options, parametrize
-from nox_uv import session
+from nox import Session, options, parametrize, session
 
 
 package_path = Path.cwd()
@@ -34,28 +32,49 @@ def pytest_run(session: Session, *args, **env):
     )
 
 
-@session(py=py_all, uv_groups=['tests'])
+def uv_sync(session: Session, *groups, project, extra=None):
+    project_args = () if project else ('--no-install-project',)
+    group_args = [arg for group in groups for arg in ('--group', group)]
+    extra_args = ('--extra', extra) if extra else ()
+    run_args = (
+        'uv',
+        'sync',
+        '--active',
+        '--no-default-groups',
+        *project_args,
+        *group_args,
+        *extra_args,
+    )
+    session.run(*run_args)
+
+
+@session(py=py_all)
 @parametrize('db', ['pg', 'sqlite'])
 def pytest(session: Session, db: str):
+    uv_sync(session, 'tests', project=True)
     pytest_run(session, WEBTEST_DB=db)
 
 
-@session(py=py_single, uv_groups=['tests', 'mssql'])
+@session(py=py_single)
 def pytest_mssql(session: Session):
+    uv_sync(session, 'tests', 'mssql', project=True)
     pytest_run(session, WEBTEST_DB='mssql')
 
 
-@session(py=py_single, uv_groups=['tests'], uv_extras=['i18n'])
+@session(py=py_single)
 def pytest_i18n(session: Session):
+    uv_sync(session, 'tests', project=True, extra='i18n')
     pytest_run(session)
 
 
-@session(py=py_single, uv_groups=['tests'], uv_no_install_project=True)
+@session(py=py_single)
 def wheel(session: Session):
     """
     Package the wheel, install in the venv, and then run the tests for one version of Python.
     Helps ensure nothing is wrong with how we package the wheel.
     """
+    uv_sync(session, 'tests', project=False)
+
     session.install('hatch', 'check-wheel-contents')
     version = session.run('hatch', 'version', silent=True).strip()
     wheel_fpath = package_path / 'tmp' / 'dist' / f'webgrid-{version}-py3-none-any.whl'
@@ -72,17 +91,9 @@ def wheel(session: Session):
     pytest_run(session)
 
 
-@nox.session(py=py_single)
+@session(py=py_single)
 def precommit(session: Session):
-    session.run(
-        'uv',
-        'sync',
-        '--active',
-        '--no-default-groups',
-        '--no-install-project',
-        '--group',
-        'pre-commit',
-    )
+    uv_sync(session, 'pre-commit', project=False)
     session.run(
         'pre-commit',
         'run',
@@ -91,8 +102,9 @@ def precommit(session: Session):
 
 
 # Python 3.11 is required due to: https://github.com/level12/morphi/issues/11
-@session(python=py_311, uv_groups=['tests'], uv_extras=['i18n'])
+@session(python=py_311)
 def translations(session: Session):
+    uv_sync(session, 'tests', project=True, extra='i18n')
     # This is currently failing due to missing translations
     # https://github.com/level12/webgrid/issues/194
     session.run(
@@ -103,6 +115,7 @@ def translations(session: Session):
     )
 
 
-@session(py=py_single, uv_groups=['tests', 'docs'])
+@session(py=py_single)
 def docs(session: Session):
+    uv_sync(session, 'tests', 'docs', project=True)
     session.run('make', '-C', docs_dpath, 'html', external=True)
