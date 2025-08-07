@@ -432,7 +432,7 @@ class HTML(GroupMixin, Renderer):
     def filtering_col_op_select(self, col):
         """Render select box for filter Operator options."""
         filter = col.filter
-        current_selected = '' if filter.is_display_active else filter.op
+        current_selected = filter.op if filter.is_display_active else ''
 
         primary_op = filter.primary_op or filter.operators[0]
         is_primary = lambda op: 'primary' if op == primary_op else None

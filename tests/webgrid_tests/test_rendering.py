@@ -786,6 +786,20 @@ class TestHtmlRenderer:
         filter_html = tg.html.filtering_fields()
         assert '<input id="search_input"' not in filter_html
 
+    @_inrequest('/thepage?op(firstname)=contains&v1(firstname)=Fred')
+    def test_filtering_operator_selected(self):
+        g = PeopleGrid()
+        g.apply_qs_args()
+
+        pyq = PyQuery(g.html())
+
+        # Ensures the op we have in the URL is valid.  If it wasn't valid, webgrid would not render
+        # a value for input1.
+        assert pyq('#firstname_input1').val() == 'Fred'
+
+        selected_opts = pyq('tr.firstname_filter td.operator option[selected]')
+        assert selected_opts.val() == 'contains'
+
 
 class PGPageTotals(PeopleGrid):
     subtotals = 'page'
