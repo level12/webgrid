@@ -10,7 +10,10 @@ if (typeof _ === "undefined") {
     var _ = function (msg) { return msg; };
 }
 
-$(document).ready(function() {
+$(document).ready(datagrid_on_doc_ready);
+
+
+function datagrid_on_doc_ready() {
     // sorting
     datagrid_toggle_sort_selects();
     $('.datagrid .header .sorting select').change(datagrid_toggle_sort_selects);
@@ -26,7 +29,7 @@ $(document).ready(function() {
     $('.datagrid .export-link').click(verify_export);
     $('.datagrid form.header').submit(datagrid_cleanup_before_form_submission);
     _datagrid_is_loaded = true;
-});
+}
 
 /*
  datagrid_activate_mselect_ui()
