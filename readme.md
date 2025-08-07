@@ -139,7 +139,7 @@ PyPI publishing is automated in the `nox.yaml` GitHub action:
 - "v" tags will publish to pypi.org (production)
 - Anything else that triggers the Nox GH action will publish to test.pypi.org
 
-Auth for test.pypi.org is seprate from production so users who should be able to manage the PyPI
+Auth for test.pypi.org is separate from production so users who should be able to manage the PyPI
 project need to be given access in both systems.
 
 
