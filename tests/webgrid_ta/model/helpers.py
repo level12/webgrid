@@ -3,7 +3,6 @@ import datetime as dt
 from blazeutils.decorators import curry
 from blazeutils.helpers import tolist
 from blazeutils.strings import randchars
-import six
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect as sa_inspect
@@ -382,7 +381,7 @@ class MethodsMixin:
 
         mapper = saorm.object_mapper(self)
 
-        for key, value in six.iteritems(data):
+        for key, value in data.items():
             if isinstance(value, dict):
                 dbvalue = getattr(self, key)
                 rel_class = mapper.get_property(key).mapper.class_
@@ -520,7 +519,7 @@ def clear_db_mssql():
         'U': 'drop table [%(name)s]',
     }
     delete_sql = []
-    for kind, drop_sql in six.iteritems(mapping):
+    for kind, drop_sql in mapping.items():
         sql = (
             'select name, object_name( parent_object_id ) as parent_name '
             "from sys.objects where type in ('{}')".format('", "'.join(kind))

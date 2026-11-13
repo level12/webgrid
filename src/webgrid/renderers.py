@@ -17,7 +17,6 @@ from blazeutils.spreadsheets import WriterX, openpyxl, xlsxwriter
 from blazeutils.strings import randnumerics, reindent
 import jinja2 as jinja
 from markupsafe import Markup
-import six
 from werkzeug.datastructures import MultiDict
 from werkzeug.routing import Map, Rule
 
@@ -50,7 +49,7 @@ def fix_xls_value(value):
     prior to sending a value to be written by the spreadsheet library
     """
     if is_lazy_string(value):
-        return six.text_type(value)
+        return str(value)
 
     return value
 
@@ -394,7 +393,7 @@ class HTML(GroupMixin, Renderer):
     def filtering_fields(self):
         """Table rows for the filter area."""
         rows = []
-        for col in six.itervalues(self.grid.filtered_cols):
+        for col in self.grid.filtered_cols.values():
             rows.append(self.filtering_table_row(col))
         rows = Markup('\n'.join(rows))
 
@@ -585,7 +584,7 @@ class HTML(GroupMixin, Renderer):
     def filtering_json_data(self):
         """Export certain filter data as a JSON object for use by the JS asset."""
         for_js = {}
-        for col_key, col in six.iteritems(self.grid.filtered_cols):
+        for col_key, col in self.grid.filtered_cols.items():
             html_input_types = getattr(col.filter, 'html_input_types', {})
             for_js[col_key] = opdict = {}
             for op in col.filter.operators:
@@ -1050,7 +1049,7 @@ class HTML(GroupMixin, Renderer):
         # collapse
         if col_value is None:  # noqa: SIM114
             styled_value = self.NBSP
-        elif isinstance(col_value, six.string_types) and col_value.strip() == '':
+        elif isinstance(col_value, str) and col_value.strip() == '':
             styled_value = self.NBSP
         else:
             styled_value = col_value
@@ -1137,7 +1136,7 @@ class HTML(GroupMixin, Renderer):
         url_args['export_to'] = None
         url_args['datagrid-add-filter'] = None
 
-        for col in six.itervalues(self.grid.filtered_cols):
+        for col in self.grid.filtered_cols.values():
             url_args[f'op({col.key})'] = None
             url_args[f'v1({col.key})'] = None
             url_args[f'v2({col.key})'] = None
@@ -1659,7 +1658,7 @@ class CSV(Renderer):
         return 'csv'
 
     def render(self):
-        self.output = six.StringIO()
+        self.output = io.StringIO()
         self.writer = csv.writer(self.output, delimiter=',', quotechar='"')
         self.body_headings()
         self.body_records()
@@ -1676,7 +1675,7 @@ class CSV(Renderer):
     def build_csv(self):
         """Render grid output as CSV and return the contents in an IO stream."""
         self.render()
-        byte_data = six.BytesIO()
+        byte_data = io.BytesIO()
         byte_data.write(self.output.getvalue().encode('utf-8'))
         return byte_data
 
