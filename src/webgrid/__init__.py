@@ -12,7 +12,6 @@ from blazeutils.helpers import tolist
 from blazeutils.numbers import decimalfmt
 from blazeutils.spreadsheets import openpyxl, xlsxwriter
 from blazeutils.strings import case_cw2us, randchars
-import six
 import sqlalchemy as sa
 import sqlalchemy.sql as sasql
 
@@ -240,7 +239,7 @@ class Column:
         # works with a SA Query instance
         if key is None:
             self.can_sort = False
-        elif not isinstance(key, six.string_types):
+        elif not isinstance(key, str):
             self.expr = col = key
             # use column.key, column.name, or None in that order
             key = getattr(col, 'key', getattr(col, 'name', None))
@@ -299,11 +298,7 @@ class Column:
         # try to be smart about which attributes should get copied to the
         # new instance by looking for attributes on the class that have the
         # same name as arguments to the classes __init__ method
-        args = (
-            inspect.getargspec(self.__init__).args
-            if six.PY2
-            else inspect.getfullargspec(self.__init__).args
-        )
+        args = inspect.getfullargspec(self.__init__).args
 
         for argname in args:
             if (
@@ -413,7 +408,7 @@ class Column:
         """
         if self.xls_width:
             return self.xls_width
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return len(value)
         return len(str(value))
 
@@ -987,7 +982,7 @@ class QueryStringBuilder:
         return urllib.parse.urlencode(sorted(grid_args), safe='()')
 
 
-class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
+class BaseGrid(metaclass=_DeclarativeMeta):
     r"""WebGrid grid base class.
 
     Handles class declarative-style grid description of columns, filterers, and rendering.
@@ -1228,7 +1223,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
 
             IndexError when ident is an int but out of bounds for the grid.
         """
-        if isinstance(ident, six.string_types):
+        if isinstance(ident, str):
             return self.key_column_map[ident]
         return self.columns[ident]
 
@@ -1244,7 +1239,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         """
         if ident is None:
             return False
-        if isinstance(ident, six.string_types):
+        if isinstance(ident, str):
             return ident in self.key_column_map
         return 0 <= ident < len(self.columns)
 
@@ -1426,7 +1421,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Returns:
             bool: True if filter(s) have op/value set or single search value is given.
         """
-        for col in six.itervalues(self.filtered_cols):
+        for col in self.filtered_cols.values():
             if col.filter.is_active:
                 return True
         return self.search_value is not None
@@ -1520,7 +1515,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
             labeled_aggregate_col = None
             if callable(sa_aggregate_func):
                 labeled_aggregate_col = sa_aggregate_func(aggregate_this).label(colname)
-            elif isinstance(sa_aggregate_func, six.string_types):
+            elif isinstance(sa_aggregate_func, str):
                 labeled_aggregate_col = sasql.literal_column(sa_aggregate_func).label(colname)
             else:
                 labeled_aggregate_col = sa_aggregate_func.label(colname)
@@ -1701,7 +1696,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         if self.search_value:
             query = self.apply_search(query, self.search_value)
 
-        for col in six.itervalues(self.filtered_cols):
+        for col in self.filtered_cols.values():
             if col.filter.is_active:
                 filter_display.append(f'{col.key}: {col.filter}')
                 query = col.filter.apply(query)
@@ -1862,7 +1857,7 @@ class BaseGrid(six.with_metaclass(_DeclarativeMeta, object)):
         Args:
             args (MultiDict): Full arguments to search for filters.
         """
-        for col in six.itervalues(self.filtered_cols):
+        for col in self.filtered_cols.values():
             filter = col.filter
             filter_op_qsk = f'op({col.key})'
             filter_v1_qsk = f'v1({col.key})'

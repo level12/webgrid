@@ -8,7 +8,6 @@ from blazeutils import tolist
 from blazeutils.dates import ensure_date, ensure_datetime
 from dateutil.parser import parse
 from dateutil.relativedelta import SU, relativedelta
-import six
 import sqlalchemy as sa
 from sqlalchemy.sql import and_, or_
 from werkzeug.datastructures import ImmutableDict
@@ -466,7 +465,7 @@ class OptionsFilterBase(FilterBase):
                     ),
                 )
             first_key = self.option_keys[0]
-            if isinstance(first_key, six.string_types) or self.value_modifier is None:
+            if isinstance(first_key, str) or self.value_modifier is None:
                 self.value_modifier = validators.StringValidator()
             elif isinstance(first_key, int):
                 self.value_modifier = validators.IntValidator()
@@ -859,7 +858,7 @@ class NumberFilter(NumberFilterBase):
         # call the validator to ensure the value is in the right format, but
         # don't use its value b/c it converts to float
         NumberFilterBase.process(self, value, is_value2)
-        if value is None or (isinstance(value, six.string_types) and not len(value)):
+        if value is None or (isinstance(value, str) and not len(value)):
             return None
         return D(value)
 
