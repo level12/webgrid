@@ -16,10 +16,9 @@ nox.options.default_venv_backend = 'uv'
 
 
 @nox.session(python=py_all)
-@nox.parametrize('db', ['pg', 'sqlite'])
-def pytest(session: nox.Session, db: str):
+def pytest(session: nox.Session):
     uv_sync(session, 'pytest')
-    pytest_run(session, WEBTEST_DB=db)
+    pytest_run(session, WEBTEST_DB=environ.get('WEBTEST_DB', 'sqlite'))
 
 
 @nox.session(python=py_single)

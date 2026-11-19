@@ -28,31 +28,40 @@ jobs:
           nox-session: ${{ matrix.session }}
 
   nox-pytest:
-    name: ${{ matrix.session }}
+    name: ${{ matrix.session }} (${{ matrix.database }})
     runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - session: "pytest-3.12(db='pg')"
+          - session: pytest-3.12
             database: postgres
-          - session: "pytest-3.13(db='pg')"
+            db: pg
+          - session: pytest-3.13
             database: postgres
-          - session: "pytest-3.14(db='pg')"
+            db: pg
+          - session: pytest-3.14
             database: postgres
-          - session: "pytest-3.15(db='pg')"
+            db: pg
+          - session: pytest-3.15
             database: postgres
-          - session: "pytest-3.12(db='sqlite')"
+            db: pg
+          - session: pytest-3.12
             database: sqlite
-          - session: "pytest-3.13(db='sqlite')"
+            db: sqlite
+          - session: pytest-3.13
             database: sqlite
-          - session: "pytest-3.14(db='sqlite')"
+            db: sqlite
+          - session: pytest-3.14
             database: sqlite
-          - session: "pytest-3.15(db='sqlite')"
+            db: sqlite
+          - session: pytest-3.15
             database: sqlite
+            db: sqlite
           - session: pytest_mssql-3.15
             database: mssql
+            db: mssql
 
     services:
       postgres:
@@ -96,6 +105,8 @@ jobs:
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
       - uses: level12/coppy/gh-actions/nox-run@main
+        env:
+          WEBTEST_DB: ${{ matrix.db }}
         with:
           nox-session: ${{ matrix.session }}
 
