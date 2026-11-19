@@ -1,5 +1,3 @@
---extra-index-url https://package-index.level12.net
-
 sphinx
 pytz
--e .[develop]
+-e .

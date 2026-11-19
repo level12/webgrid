@@ -1,5 +1,3 @@
-import warnings
-
 import flask
 from flask import Flask
 from flask_bootstrap import Bootstrap
@@ -20,9 +18,6 @@ except ImportError:
 
     default_registry = BlankObject()
 
-
-# ignore warning about Decimal lossy conversion with SQLite from SA
-warnings.filterwarnings('ignore', '.*support Decimal objects natively.*')
 
 webgrid = WebGrid()
 

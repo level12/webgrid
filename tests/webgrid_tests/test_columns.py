@@ -4,6 +4,8 @@ from decimal import Decimal as D
 from blazeutils.containers import HTMLAttributes
 from blazeutils.datastructures import BlankObject
 import pytest
+from webgrid_ta.grids import Grid
+from webgrid_ta.model.entities import Person
 
 from webgrid import (
     BoolColumn,
@@ -15,8 +17,6 @@ from webgrid import (
     YesNoColumn,
 )
 from webgrid.filters import DateFilter, IntFilter, TextFilter
-from webgrid_ta.grids import Grid
-from webgrid_ta.model.entities import Person
 
 
 class FirstNameColumn(LinkColumnBase):

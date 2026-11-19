@@ -3,11 +3,20 @@ DC_MSSQL_PORT = '12001'
 DC_POSTGRES_PORT = '12000'
 PROJECT_SLUG = '{{ config_root | basename | slugify }}'
 
-_.python.venv.path = '{% if env.UV_PROJECT_ENVIRONMENT %}{{ env.UV_PROJECT_ENVIRONMENT }}{% else %}.venv{% endif %}'
-_.python.venv.create = true
+
+[hooks]
+enter = "uv sync"
+
 
 [tools]
-python = ['3.10', '3.11', '3.12', '3.13']
+rumdl = 'latest'
+
+
+[settings]
+# Have mise get its Python version from .python-version. This lets uv and GitHub's setup-python
+# action use the same version file outside mise.
+idiomatic_version_file_enable_tools = ["python"]
+python.uv_venv_auto = "create|source"
 
 
 [task_config]
@@ -19,16 +28,25 @@ includes = [
 ################ TASKS #################
 [tasks.pytest-cov]
 description = 'Full pytest run with html coverage report'
-# .coveragerc sets directory to ./tmp/coverage-html
+dir = "{{ config_root }}"
 run = 'pytest --cov --cov-report=html --no-cov-on-fail'
 
 
 [tasks.upgrade-deps]
-description = 'Upgrade uv and pre-commit dependencies'
+description = 'Upgrade mise, uv, and prek dependencies'
+dir = "{{ config_root }}"
 run = [
+    'mise upgrade --local',
     'uv sync --upgrade',
-    'pre-commit autoupdate',
+    'prek update',
 ]
+
+
+[tasks.rm-unused-imports]
+description = 'Remove unused imports using ruff'
+dir = "{{ config_root }}"
+run = 'ruff check --select F401 --fix --fixable F401 .'
+
 
 [tasks.mssql-docker-check]
 description = 'Check the mssql service from inside the docker container'
@@ -36,17 +54,9 @@ run = '''
     docker compose exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S 127.0.0.1 -U sa -P Docker-sa-password -Q "select 'connected' as status"
 '''
 
+
 [tasks.mssql-host-check]
 description = 'Check the mssql service from our host'
-# Task odbc-driver-install installs sqlcmd
 run = '''
     /opt/mssql-tools18/bin/sqlcmd -C -S 127.0.0.1 -U sa -P Docker-sa-password -Q "select 'connected' as status"
 '''
-
-
-[tasks.publish-test]
-description = 'Publish to test.pypi.org'
-run = [
-    'hatch build --clean',
-    'hatch publish -r test tmp/dist/',
-]

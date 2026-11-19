@@ -1,7 +1,3 @@
 profile:
   pypi:
-    HATCH_INDEX_USER: '__token__'
-    HATCH_INDEX_AUTH: 'op://my/private/pypi.org/api-token'
-  test-pypi:
-    HATCH_INDEX_USER: '__token__'
-    HATCH_INDEX_AUTH: 'op://my/private/test.pypi.org/api-token'
+    UV_PUBLISH_TOKEN: 'op://my/private/pypi.org/api-token'

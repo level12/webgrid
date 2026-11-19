@@ -11,6 +11,8 @@ import arrow
 import flask
 import pytest
 import sqlalchemy.sql as sasql
+from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
+from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 from werkzeug.datastructures import MultiDict
 
 from webgrid import BoolColumn, Column, YesNoColumn
@@ -27,8 +29,6 @@ from webgrid.extensions import (
 from webgrid.filters import AggregateIntFilter, FilterBase, IntFilter, TextFilter
 from webgrid.renderers import CSV
 from webgrid.testing import assert_in_query, assert_not_in_query
-from webgrid_ta.grids import Grid, PeopleGrid, PeopleGridByConfig
-from webgrid_ta.model.entities import Person, Status, Stopwatch, db
 
 from .helpers import _inrequest
 
@@ -237,7 +237,7 @@ class TestGrid:
         assert grid.columns[-1].label == 'First Name'
         assert grid.columns[0].label == 'Last Name'
 
-        with pytest.raises(Exception, match="Keys not recognized on grid: {'foo'}"):
+        with pytest.raises(Exception, match=r"Keys not recognized on grid: \{'foo'\}"):
             grid.set_column_order(('foo',))
 
     def test_add_column(self):
@@ -275,8 +275,10 @@ class TestGrid:
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',
                 r'^<Grid "CTG">$',
-                r'^firstname: class=TextFilter, op=eq, value1=foo, value2=None;'
-                r'lastname: class=TextFilter, op=eq, value1=bar, value2=None$',
+                (
+                    r'^firstname: class=TextFilter, op=eq, value1=foo, value2=None;'
+                    r'lastname: class=TextFilter, op=eq, value1=bar, value2=None$'
+                ),
                 r'^No sorts$',
                 r'^Page 1; 50 per page$',
                 r'^Data query ran in \d+\.?\d* seconds$',

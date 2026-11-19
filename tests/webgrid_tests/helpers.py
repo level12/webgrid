@@ -4,11 +4,11 @@ from blazeutils.testing import assert_equal_txt
 import flask
 from flask_webtest import SessionScope
 import sqlalchemy as sa
+from webgrid_ta.model import db
 from werkzeug.datastructures import MultiDict
 import wrapt
 
 from webgrid import Column
-from webgrid_ta.model import db
 
 
 cdir = Path(__file__).parent

@@ -1,5 +1,4 @@
 line-length = 100
-target-version = 'py310'
 output-format = 'concise'
 
 [format]
@@ -52,7 +51,7 @@ select = [
 ignore = [
     'A003',    # Class attribute is shadowing a Python builtin
     'E731',    # Do not assign a `lambda` expression, use a `def`
-    'UP038',   # Deprecated by Ruff, so ignore
+    'COM812',   # Conflicts with the formatter
 
     # Rules that conflict with the formatter.  See:
     #
@@ -90,4 +89,4 @@ inline-quotes = 'single'
 [lint.isort]
 lines-after-imports = 2
 force-sort-within-sections = true
-known-first-party = ['webgrid_tasks_lib', 'webgrid_tests', 'webgrid_ta', 'webgrid_blazeweb_ta']
+known-local-folder = ['src', 'tests']

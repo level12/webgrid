@@ -3,6 +3,8 @@ import datetime as dt
 from decimal import Decimal as D
 
 import pytest
+from webgrid_ta.model import entities as ents
+from webgrid_ta.model.entities import AccountType, ArrowRecord, Person, db
 
 from webgrid import validators
 from webgrid.filters import (
@@ -21,8 +23,6 @@ from webgrid.filters import (
     YesNoFilter,
 )
 from webgrid.testing import query_to_str
-from webgrid_ta.model import entities as ents
-from webgrid_ta.model.entities import AccountType, ArrowRecord, Person, db
 
 from .helpers import ModelBase
 
@@ -1731,7 +1731,7 @@ class TestOptionsFilter(CheckFilterBase):
     def test_unknown_type(self):
         with pytest.raises(
             TypeError,
-            match="can't use value_modifier='auto' when option keys are <(class|type) 'list'>",
+            match=r"can't use value_modifier='auto' when option keys are <(class|type) 'list'>",
         ):
             BadTypeFilter(Person.boolcol).new_instance()
 
