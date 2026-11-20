@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+- **BREAKING CHANGES**
+
+  - require Python 3.12 or newer
+  - require SQLAlchemy 2.0 or newer
+
+- test Python 3.12 through 3.15 against SQLite and PostgreSQL 15
+- update project tooling to the current Coppy template
+- replace pre-commit with prek and add build validation and trusted PyPI publishing
+- test the MSSQL integration against SQL Server 2022
+- remove the obsolete private package index and legacy AppVeyor configuration
+- remove obsolete warning suppressions
+
+
 0.5.10 released 2024-07-19
 --------------------------
 

@@ -9,7 +9,7 @@ services:
         # without considering implications.
         POSTGRES_HOST_AUTH_METHOD: trust
   mssql:
-    image: mcr.microsoft.com/mssql/server:2019-latest
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: webgrid-mssql
     environment:
       ACCEPT_EULA: Y

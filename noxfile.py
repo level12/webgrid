@@ -1,112 +1,77 @@
+from os import environ
 from pathlib import Path
 
-from nox import Session, options, parametrize, session
+import nox
 
 
-package_path = Path.cwd()
+package_path = Path(__file__).parent
 tests_dpath = package_path / 'tests'
 docs_dpath = package_path / 'docs'
+is_circleci = 'CIRCLECI' in environ
 
-py_all = ['3.10', '3.11', '3.12', '3.13']
+py_all = ['3.12', '3.13', '3.14', '3.15']
 py_single = py_all[-1:]
-py_311 = ['3.11']
 
-options.default_venv_backend = 'uv'
-
-
-def pytest_run(session: Session, *args, **env):
-    session.run(
-        'pytest',
-        '-ra',
-        '--tb=native',
-        '--strict-markers',
-        '--cov',
-        '--cov-config=.coveragerc',
-        f'--cov-report=xml:{package_path}/ci/coverage/{session.name}.xml',
-        '--no-cov-on-fail',
-        'tests/webgrid_tests',
-        *args,
-        *session.posargs,
-        env=env,
-    )
+nox.options.default_venv_backend = 'uv'
 
 
-def uv_sync(session: Session, *groups, project, extra=None):
-    project_args = () if project else ('--no-install-project',)
-    group_args = [arg for group in groups for arg in ('--group', group)]
-    extra_args = ('--extra', extra) if extra else ()
-    run_args = (
-        'uv',
-        'sync',
-        '--active',
-        '--no-default-groups',
-        *project_args,
-        *group_args,
-        *extra_args,
-    )
-    session.run(*run_args)
+@nox.session(python=py_all)
+def pytest(session: nox.Session):
+    uv_sync(session, 'pytest')
+    pytest_run(session, WEBTEST_DB=environ.get('WEBTEST_DB', 'sqlite'))
 
 
-@session(py=py_all)
-@parametrize('db', ['pg', 'sqlite'])
-def pytest(session: Session, db: str):
-    uv_sync(session, 'tests', project=True)
-    pytest_run(session, WEBTEST_DB=db)
-
-
-@session(py=py_single)
-def pytest_mssql(session: Session):
-    uv_sync(session, 'tests', 'mssql', project=True)
+@nox.session(python=py_single)
+def pytest_mssql(session: nox.Session):
+    uv_sync(session, 'pytest', 'mssql')
     pytest_run(session, WEBTEST_DB='mssql')
 
 
-@session(py=py_single)
-def pytest_i18n(session: Session):
-    uv_sync(session, 'tests', project=True, extra='i18n')
+@nox.session(python=py_single)
+def pytest_i18n(session: nox.Session):
+    uv_sync(session, 'pytest', extra='i18n')
     pytest_run(session, WEBTEST_DB='sqlite')
 
 
-@session(py=py_single)
-def wheel(session: Session):
-    """
-    Package the wheel, install in the venv, and then run the tests for one version of Python.
-    Helps ensure nothing is wrong with how we package the wheel.
-    """
-    uv_sync(session, 'tests', project=False)
-
-    session.install('hatch', 'check-wheel-contents')
-    version = session.run('hatch', 'version', silent=True, stderr=None).strip()
-    wheel_fpath = package_path / 'tmp' / 'dist' / f'webgrid-{version}-py3-none-any.whl'
-
-    if wheel_fpath.exists():
-        wheel_fpath.unlink()
-
-    session.run('hatch', 'build', '--clean')
-    session.run('check-wheel-contents', wheel_fpath)
-    session.run('uv', 'pip', 'install', wheel_fpath)
-
-    out = session.run('python', '-c', 'import webgrid; print(webgrid.__file__)', silent=True)
-    assert 'site-packages/webgrid/__init__.py' in out
-
-    pytest_run(session, WEBTEST_DB='sqlite')
+@nox.session
+def prek(session: nox.Session):
+    uv_sync(session)
+    session.run('prek', 'run', '--all-files')
 
 
-@session(py=py_single)
-def precommit(session: Session):
-    uv_sync(session, 'pre-commit', project=False)
+@nox.session
+def audit(session: nox.Session):
+    uv_sync(session)
+    session.run('pip-audit', '--desc', '--skip-editable', *pip_audit_ignore_args())
+
+
+@nox.session
+def build(session: nox.Session):
+    uv_sync(session, 'build')
+    output_dir = Path(environ.get('WEBGRID_DIST_DIR', Path(session.create_tmp()) / 'dist'))
+    session.run('python', '-m', 'build', '--outdir', output_dir)
+    session.run('twine', 'check', *output_dir.glob('*'))
+    (wheel_path,) = output_dir.glob('*.whl')
     session.run(
-        'pre-commit',
-        'run',
-        '--all-files',
+        'uv',
+        'pip',
+        'install',
+        '--python',
+        session.virtualenv.location,
+        '--reinstall',
+        '--no-deps',
+        wheel_path,
+    )
+    session.run(
+        'python',
+        '-c',
+        'import webgrid; print(f"Imported installed wheel from {webgrid.__file__}")',
     )
 
 
-# Python 3.11 is required due to: https://github.com/level12/morphi/issues/11
-@session(python=py_311)
-def translations(session: Session):
-    uv_sync(session, 'tests', project=True, extra='i18n')
-    # This is currently failing due to missing translations
-    # https://github.com/level12/webgrid/issues/194
+@nox.session(python=py_single)
+def translations(session: nox.Session):
+    uv_sync(session, 'pytest', project=True, extra='i18n')
     session.run(
         'python',
         'tests/webgrid_ta/manage.py',
@@ -115,7 +80,57 @@ def translations(session: Session):
     )
 
 
-@session(py=py_single)
-def docs(session: Session):
-    uv_sync(session, 'tests', 'docs', project=True)
+@nox.session(python=py_single)
+def docs(session: nox.Session):
+    uv_sync(session, 'pytest', 'docs', project=True)
     session.run('make', '-C', docs_dpath, 'html', external=True)
+
+
+def pytest_run(session: nox.Session, *args, **env):
+    junit_opt = f'--junit-xml={package_path}/ci/test-reports/{session.name}.pytests.xml'
+    junit_args = (junit_opt,) if is_circleci else ()
+    test_args = session.posargs or (package_path / 'tests' / 'webgrid_tests',)
+    session.run(
+        'pytest',
+        '-rA',
+        '--tb=native',
+        '--strict-markers',
+        '--cov',
+        '--cov-report=xml',
+        '--no-cov-on-fail',
+        *junit_args,
+        *args,
+        *test_args,
+        env=env,
+    )
+
+
+def uv_sync(session: nox.Session, *groups, project=False, extra=None):
+    if not groups:
+        groups = (session.name,)
+    project_args = () if project or session.name.startswith('pytest') else ('--no-install-project',)
+    group_args = [arg for group in groups for arg in ('--group', group)]
+    extra_args = ('--extra', extra) if extra else ()
+    session.run(
+        'uv',
+        'sync',
+        '--active',
+        '--frozen',
+        '--exact',
+        '--no-default-groups',
+        *project_args,
+        *group_args,
+        *extra_args,
+    )
+
+
+def pip_audit_ignore_args() -> list | tuple:
+    ignore_fpath = package_path / 'pip-audit-ignore.txt'
+    if not ignore_fpath.exists():
+        return ()
+    vuln_ids = [
+        line
+        for line in ignore_fpath.read_text().strip().splitlines()
+        if line.strip() and not line.startswith('#')
+    ]
+    return [arg for vuln_id in vuln_ids for arg in ('--ignore-vuln', vuln_id)]

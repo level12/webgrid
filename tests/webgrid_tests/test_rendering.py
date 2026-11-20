@@ -10,6 +10,23 @@ from markupsafe import Markup
 import openpyxl
 from pyquery import PyQuery
 import pytest
+from webgrid_ta.grids import (
+    ArrowCSVGrid,
+    ArrowGrid,
+    Grid,
+    StopwatchGrid,
+)
+from webgrid_ta.grids import (
+    PeopleGrid as PG,
+)
+from webgrid_ta.model.entities import (
+    AccountType,
+    ArrowRecord,
+    Email,
+    Person,
+    Status,
+    db,
+)
 from werkzeug.datastructures import MultiDict
 import xlsxwriter
 
@@ -36,23 +53,6 @@ from webgrid.renderers import (
     RenderLimitExceeded,
     XLSXWriterWorkbookManager,
     render_html_attributes,
-)
-from webgrid_ta.grids import (
-    ArrowCSVGrid,
-    ArrowGrid,
-    Grid,
-    StopwatchGrid,
-)
-from webgrid_ta.grids import (
-    PeopleGrid as PG,
-)
-from webgrid_ta.model.entities import (
-    AccountType,
-    ArrowRecord,
-    Email,
-    Person,
-    Status,
-    db,
 )
 
 from .helpers import _inrequest, eq_html, render_in_grid

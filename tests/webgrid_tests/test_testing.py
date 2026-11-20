@@ -3,11 +3,11 @@ from io import BytesIO
 from unittest import mock
 
 import pytest
+from webgrid_ta.grids import RadioGrid, TemporalGrid
+from webgrid_ta.model.entities import Person, db
 import xlsxwriter
 
 from webgrid import testing
-from webgrid_ta.grids import RadioGrid, TemporalGrid
-from webgrid_ta.model.entities import Person, db
 
 
 def setup_module():

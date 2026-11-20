@@ -1,0 +1,55 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+hooks = [
+  { id = "check-merge-conflict" },
+  {
+    id = "check-ast",
+    types = ["python"]
+  },
+  {
+    id = "debug-statements",
+    types = ["python"]
+  },
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "check-added-large-files" },
+  { id = "check-yaml" }
+]
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.17.5"
+hooks = [
+  { id = "ruff-check" },
+  {
+    id = "ruff-format",
+    args = ["--check"]
+  }
+]
+
+[[repos]]
+repo = "https://github.com/level12/pre-commit-hooks"
+rev = "v0.20260509.3"
+hooks = [
+  { id = "check-ruff-versions" }
+]
+
+[[repos]]
+repo = 'https://github.com/rvben/rumdl-pre-commit'
+rev = "v0.3.5"
+hooks = [
+  # Run rumdl check
+  { id = 'rumdl' },
+]
+
+[[repos]]
+repo = "https://github.com/astral-sh/uv-pre-commit"
+rev = "0.13.9"
+hooks = [
+  { id = "uv-lock" }
+]

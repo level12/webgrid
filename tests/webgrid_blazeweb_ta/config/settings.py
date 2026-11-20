@@ -1,5 +1,4 @@
 from os import path
-import warnings
 
 from blazeweb.config import DefaultSettings
 
@@ -22,9 +21,6 @@ class Default(DefaultSettings):
 
         self.name.full = 'WebGrid'
         self.name.short = 'WebGrid'
-
-        # ignore the really big SA warning about lossy numeric types & sqlite
-        warnings.filterwarnings('ignore', '.*support Decimal objects natively.*')
 
     def init_routing(self):
         self.add_route('/people/manage', endpoint='ManagePeople')

@@ -712,14 +712,14 @@ class OptionsEnumArrayFilter(OptionsEnumFilter):
         """Query modifier to apply the needed clauses for filter inputs."""
         if self.op == ops.is_:
             if len(self.value1) == 1 and self.value1[0]:
-                return query.filter(self.sa_col.any(self.value1[0].name))
+                return query.filter(sa.any_(self.sa_col) == self.value1[0].name)
             elif len(self.value1) > 1:
                 return query.filter(self.sa_col.contains(self.value1))
             else:
                 return query
         if self.op == ops.not_is:
             if len(self.value1) == 1 and self.value1[0]:
-                return query.filter(~self.sa_col.any(self.value1[0].name))
+                return query.filter(~(sa.any_(self.sa_col) == self.value1[0].name))
             elif len(self.value1) > 1:
                 return query.filter(~self.sa_col.contains(self.value1))
             else:
@@ -916,29 +916,37 @@ class _DateMixin:
             ops.not_between: lambda self, today: self._between_range(),
             # ops with single date populated
             ops.less_than_days_ago: lambda self, today: (
-                today - dt.timedelta(days=self.value1),
-                today,
-            )
-            if self.value1 is not None
-            else (None, None),
+                (
+                    today - dt.timedelta(days=self.value1),
+                    today,
+                )
+                if self.value1 is not None
+                else (None, None)
+            ),
             ops.in_less_than_days: lambda self, today: (
-                today,
-                today + dt.timedelta(days=self.value1),
-            )
-            if self.value1 is not None
-            else (None, None),
+                (
+                    today,
+                    today + dt.timedelta(days=self.value1),
+                )
+                if self.value1 is not None
+                else (None, None)
+            ),
             ops.days_ago: lambda self, today: (
-                today - dt.timedelta(days=self.value1),
-                today - dt.timedelta(days=self.value1),
-            )
-            if self.value1 is not None
-            else (None, None),
+                (
+                    today - dt.timedelta(days=self.value1),
+                    today - dt.timedelta(days=self.value1),
+                )
+                if self.value1 is not None
+                else (None, None)
+            ),
             ops.more_than_days_ago: lambda self, today: (
-                None,
-                today - dt.timedelta(days=self.value1),
-            )
-            if self.value1 is not None
-            else (None, None),
+                (
+                    None,
+                    today - dt.timedelta(days=self.value1),
+                )
+                if self.value1 is not None
+                else (None, None)
+            ),
             ops.in_days: lambda self, today: self._in_days(today),
             ops.in_more_than_days: lambda self, today: self._in_days(today),
             ops.eq: lambda self, today: self._equality(),
@@ -1098,13 +1106,13 @@ class _DateMixin:
             value = dt.datetime.combine(value, dt.time.min)
 
         if self.dialect.name == 'postgresql':
-            # https://www.enterprisedb.com/edb-docs/d/edb-postgres-advanced-server/user-guides/database-compatibility-for-oracle-developers-guide/9.4/Database_Compatibility_for_Oracle_Developers_Guide.1.038.html  # noqa
+            # https://www.enterprisedb.com/edb-docs/d/edb-postgres-advanced-server/user-guides/database-compatibility-for-oracle-developers-guide/9.4/Database_Compatibility_for_Oracle_Developers_Guide.1.038.html
             return min_dt(-4713, 1, 1) <= value <= max_dt(294276, 12, 31, 23, 59, 59)
         elif self.dialect.name == 'sqlite':
             # https://www.sqlite.org/lang_datefunc.html
             return min_dt(0, 1, 1) <= value <= max_dt(9999, 12, 31, 23, 59, 59)
         elif self.dialect.name == 'mssql':
-            # https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql?view=sql-server-ver15#datetime-description  # noqa
+            # https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql?view=sql-server-ver15#datetime-description
             return min_dt(1753, 1, 1) <= value <= max_dt(9999, 12, 31, 23, 59, 59, 997)
         return True
 
@@ -1550,14 +1558,16 @@ class DateTimeFilter(DateFilter):
                     time_part=dt.time(23, 59, 59, 999999),
                 ),
             ),
-            ops.eq: lambda self, query, today: (query.filter(self._eq_clause())),
-            ops.not_eq: lambda self, query, today: (query.filter(~self._eq_clause())),
-            ops.less_than_equal: lambda self, query, today: query.filter(
-                self.sa_col
-                <= ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999)),
-            )
-            if self._has_date_only1
-            else None,
+            ops.eq: lambda self, query, today: query.filter(self._eq_clause()),
+            ops.not_eq: lambda self, query, today: query.filter(~self._eq_clause()),
+            ops.less_than_equal: lambda self, query, today: (
+                query.filter(
+                    self.sa_col
+                    <= ensure_datetime(self.value1.date(), time_part=dt.time(23, 59, 59, 999999)),
+                )
+                if self._has_date_only1
+                else None
+            ),
             ops.between: lambda self, query, today: query.filter(self._between_clause()),
             ops.not_between: lambda self, query, today: query.filter(~self._between_clause()),
         },

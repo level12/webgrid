@@ -14,7 +14,8 @@
 
 
 # Editor Clutter
-.vscode
+/.vscode/*
+!/.vscode/settings.json
 .idea
 
 

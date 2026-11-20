@@ -7,12 +7,7 @@ dev-mode-dirs = ['src']
 packages = ['src/webgrid']
 
 
-## Env: default
-[envs.default]
-installer = "uv"
-
-
 ## Version
 [version]
-source = 'regex_commit'
+source = 'regex'
 path = 'src/webgrid/version.py'
